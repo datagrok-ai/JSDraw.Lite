@@ -17,14 +17,16 @@
 *    &lt;script type="text/javascript"&gt;
 *        scil.ready(function () {
 *            new scil.DropdownInput('d', { items: ["Boston", "New York", "London"],
-*                onclickitem: function (city) { alert(city); } 
+*                onclickitem: function (city) { alert(city); }
 *            });
 *        });
 *    &lt;/script&gt;
 * </pre>
 */
 
-document.write('<style type="text/css">input._scil_dropdown::-ms-clear {display: none;}</style>');
+// TODO: Recover style
+// https://github.com/scilligence/JSDraw.Lite/issues/4
+// document.write('<style type="text/css">input._scil_dropdown::-ms-clear {display: none;}</style>');
 
 scil.DropdownInput = scil.extend(scilligence._base, {
     /**

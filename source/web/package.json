@@ -1,0 +1,53 @@
+{
+  "name": "@datagrok/js-draw-lite",
+  "friendlyName": "JsDrawLite",
+  "version": "0.0.1",
+  "description": "JSDraw.Lite forked from http://www.scilligence.com/",
+  "sources": [
+    "https://ajax.googleapis.com/ajax/libs/dojo/1.10.4/dojo/dojo.js.uncompressed.js"
+  ],
+  "dependencies": {
+    "datagrok-api": "1.18.6"
+  },
+  "devDependencies": {
+    "@types/dojo": "^1.9.48",
+    "@types/node": "^18.11.18",
+    "@types/wu": "^2.1.44",
+    "@typescript-eslint/eslint-plugin": "latest",
+    "@typescript-eslint/parser": "latest",
+    "css-loader": "^6.7.3",
+    "eslint": "latest",
+    "eslint-config-google": "latest",
+    "source-map-loader": "^4.0.1",
+    "ts-loader": "^9.2.5",
+    "typescript": "^4.8.4",
+    "webpack": "^5.76.3",
+    "webpack-cli": "^4.9.1"
+  },
+  "scripts": {
+    "link-all": "",
+    "debug-jsdrawlite": "webpack && grok publish",
+    "release-jsdrawlite": "webpack && grok publish --release",
+    "build-jsdrawlite": "webpack",
+    "build": "webpack",
+    "debug-jsdrawlite-dev": "webpack && grok publish dev",
+    "release-jsdrawlite-dev": "webpack && grok publish dev --release",
+    "debug-jsdrawlite-public": "webpack && grok publish public",
+    "release-jsdrawlite-public": "webpack && grok publish public --release",
+    "debug-jsdrawlite-local": "webpack && grok publish local",
+    "release-jsdrawlite-local": "webpack && grok publish local --release",
+    "debug-jsdrawlite-test": "webpack && grok publish test",
+    "release-jsdrawlite-test": "webpack && grok publish test --release",
+    "debug-jsdrawlite-release": "webpack && grok publish release",
+    "release-jsdrawlite-release": "webpack && grok publish release --release",
+    "lint": "eslint src --ext .ts",
+    "lint-fix": "eslint src --ext .ts --fix",
+    "test": "grok test"
+  },
+  "canEdit": [
+    "Developers"
+  ],
+  "canView": [
+    "All users"
+  ]
+}
