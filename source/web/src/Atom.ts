@@ -8,41 +8,53 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
+import {IPoint, IRGroup, JSDraw2ModuleType} from './types/jsdraw2';
+import type {ScilModuleType} from './types/scil';
+import {DojoType, DojoxType} from './types/dojo';
+import {OrgType} from './types/org';
+
+declare const dojo: DojoType;
+declare const dojox: DojoxType;
+
+declare const scil: ScilModuleType;
+declare const JSDraw2: JSDraw2ModuleType<any>;
+
+declare const org: OrgType;
 /**
-* Atom class
-* @class scilligence.JSDraw2.Atom
-*/
+ * Atom class
+ * @class scilligence.JSDraw2.Atom
+ */
 JSDraw2.Atom = scil.extend(scil._base, {
     /**
-    @property {Point} p Atom Coordinate
-    */
+     @property {Point} p Atom Coordinate
+     */
     /**
-    @property {number} charge Atom charges
-    */
+     @property {number} charge Atom charges
+     */
     /**
-    @property {number} isotope Atom Isotope
-    */
+     @property {number} isotope Atom Isotope
+     */
     /**
-    @property {number} radical Atom Radical
-    */
+     @property {number} radical Atom Radical
+     */
     /**
-    @property {string} elem Element Symbol 
-    */
+     @property {string} elem Element Symbol
+     */
     /**
-    @property {string} color Display Color
-    */
+     @property {string} color Display Color
+     */
     /**
-    @property {bool} selected Selecting Flag
-    */
+     @property {bool} selected Selecting Flag
+     */
 
     /**
-    * @constructor Atom
-    * @param {Point} p - coordinate
-    * @param {string} elem - element symbol
-    * @bio {bool} bio - indicate if this is a Bio object
-    */
-    constructor: function (p, elem, bio) {
-        this.T = "ATOM";
+     * @constructor Atom
+     * @param {Point} p - coordinate
+     * @param {string} elem - element symbol
+     * @bio {bool} bio - indicate if this is a Bio object
+     */
+    constructor: function(p: IPoint, elem: string, bio: any) {
+        this.T = 'ATOM';
         this.p = p;
         this.charge = 0;
         this.isotope = null;
@@ -58,21 +70,17 @@ JSDraw2.Atom = scil.extend(scil._base, {
         this._rect = null;
         if (bio == null) {
             if (elem == null || elem.length == 0) {
-                this.elem = "C";
-            }
-            else if (elem == "D") {
-                this.elem = "H";
+                this.elem = 'C';
+            } else if (elem == 'D') {
+                this.elem = 'H';
                 this.isotope = 2;
-            }
-            else if (elem == "T") {
-                this.elem = "H";
+            } else if (elem == 'T') {
+                this.elem = 'H';
                 this.isotope = 3;
-            }
-            else {
+            } else {
                 this.elem = elem;
             }
-        }
-        else {
+        } else {
             this.elem = elem;
         }
         this.color = null;
@@ -89,8 +97,8 @@ JSDraw2.Atom = scil.extend(scil._base, {
         this.tag = null;
     },
 
-    clone: function (selectedOnly) {
-        var a = new JSDraw2.Atom(this.p.clone(), this.elem, dojo.clone(this.bio));
+    clone: function(selectedOnly: boolean) {
+        const a = new JSDraw2.Atom(this.p.clone(), this.elem, dojo.clone(this.bio));
         a.charge = this.charge;
         a.isotope = this.isotope;
         a.radical = this.radical;
@@ -117,11 +125,11 @@ JSDraw2.Atom = scil.extend(scil._base, {
         return a;
     },
 
-    biotype: function () {
+    biotype: function() {
         return this.bio == null ? null : this.bio.type;
     },
 
-    isMarkedStereo: function () {
+    isMarkedStereo: function() {
         var bs = this.bonds;
         if (bs == null || bs.length != 3 && bs.length != 4)
             return false;
@@ -134,146 +142,145 @@ JSDraw2.Atom = scil.extend(scil._base, {
         return false;
     },
 
-    updateRGroup: function () {
+    updateRGroup: function() {
         if (this.rgroup != null)
-            this.rgroup.text = (this.alias == null || this.alias == "" ? this.elem : this.alias) + "=";
+            this.rgroup.text = (this.alias == null || this.alias == '' ? this.elem : this.alias) + '=';
     },
 
-    getLabel: function () {
-        if (this.alias != null && this.alias != "")
+    getLabel: function() {
+        if (this.alias != null && this.alias != '')
             return this.alias;
         return this.elem;
     },
 
-    html: function (scale, len) {
-        var s = "<a i='" + this.id + "' e='" + scil.Utils.escXmlValue(this.elem) + "' p='" + this.p.toString(scale) + "'";
+    html: function(scale, len) {
+        var s = '<a i=\'' + this.id + '\' e=\'' + scil.Utils.escXmlValue(this.elem) + '\' p=\'' + this.p.toString(scale) + '\'';
         if (this.bio == null) {
             if (this.charge != 0)
-                s += " c='" + this.charge + "'";
+                s += ' c=\'' + this.charge + '\'';
             if (this.radical >= 1 && this.radical <= 3)
-                s += " rad='" + this.radical + "'";
+                s += ' rad=\'' + this.radical + '\'';
             if (this.isotope > 0)
-                s += " iso='" + this.isotope + "'";
-            if (this.tag != null && this.tag != "")
-                s += " tag='" + scil.Utils.escXmlValue(this.tag) + "'";
-            if (this.alias != null && this.alias != "")
-                s += " alias='" + scil.Utils.escXmlValue(this.alias) + "'";
+                s += ' iso=\'' + this.isotope + '\'';
+            if (this.tag != null && this.tag != '')
+                s += ' tag=\'' + scil.Utils.escXmlValue(this.tag) + '\'';
+            if (this.alias != null && this.alias != '')
+                s += ' alias=\'' + scil.Utils.escXmlValue(this.alias) + '\'';
             if (this.color != null)
-                s += " clr='" + this.color + "'";
+                s += ' clr=\'' + this.color + '\'';
             if (this.atommapid > 0)
-                s += " ami='" + this.atommapid + "'";
+                s += ' ami=\'' + this.atommapid + '\'';
             if (this.locked)
-                s += " locked='1'";
+                s += ' locked=\'1\'';
             if (this.attachpoints.length > 0) {
-                var apos = "";
+                var apos = '';
                 for (var i = 0; i < this.attachpoints.length; ++i)
                     apos += (i > 0 ? ',' : '') + this.attachpoints[i];
-                s += " apo='" + apos + "'";
+                s += ' apo=\'' + apos + '\'';
             }
             if (this.hs > 0)
-                s += " hs='" + this.hs + "'";
+                s += ' hs=\'' + this.hs + '\'';
             if (this.val > 0)
-                s += " val='" + this.val + "'";
+                s += ' val=\'' + this.val + '\'';
             if (this.group != null)
-                s += " g='" + this.group.id + "'";
+                s += ' g=\'' + this.group.id + '\'';
             if (this.query != null) {
                 if (this.query.sub != null)
-                    s += " sub='" + this.query.sub + "'";
+                    s += ' sub=\'' + this.query.sub + '\'';
                 if (this.query.uns != null)
-                    s += " uns='" + (this.query.uns ? 1 : 0) + "'";
+                    s += ' uns=\'' + (this.query.uns ? 1 : 0) + '\'';
                 if (this.query.rbc != null)
-                    s += " rbc='" + this.query.rbc + "'";
+                    s += ' rbc=\'' + this.query.rbc + '\'';
                 if (this.query.als != null && this.query.t != null) {
-                    s += " als='" + this.query.als.join(',') + "'";
-                    s += " als_t='" + (this.query.t == false ? 0 : 1) + "'";
+                    s += ' als=\'' + this.query.als.join(',') + '\'';
+                    s += ' als_t=\'' + (this.query.t == false ? 0 : 1) + '\'';
                 }
             }
-        }
-        else {
-            s += " bio='" + this.bio.type + "'";
+        } else {
+            s += ' bio=\'' + this.bio.type + '\'';
             if (!scil.Utils.isNullOrEmpty(this.bio.subtype))
-                s += " subtype='" + this.bio.subtype + "'";
+                s += ' subtype=\'' + this.bio.subtype + '\'';
             if (!scil.Utils.isNullOrEmpty(this.bio.sequences))
-                s += " seq='" + scil.Utils.escXmlValue(this.bio.sequences) + "'";
+                s += ' seq=\'' + scil.Utils.escXmlValue(this.bio.sequences) + '\'';
             if (this.bio.id > 0)
-                s += " bioid='" + scil.Utils.escXmlValue(this.bio.id) + "'";
+                s += ' bioid=\'' + scil.Utils.escXmlValue(this.bio.id) + '\'';
             if (!scil.Utils.isNullOrEmpty(this.bio.annotation))
-                s += " ann='" + scil.Utils.escXmlValue(this.bio.annotation) + "'";
-            if (this.elem == "?" && !scil.Utils.isNullOrEmpty(this.bio.ambiguity))
-                s += " amb='" + scil.Utils.escXmlValue(this.bio.ambiguity) + "'";
+                s += ' ann=\'' + scil.Utils.escXmlValue(this.bio.annotation) + '\'';
+            if (this.elem == '?' && !scil.Utils.isNullOrEmpty(this.bio.ambiguity))
+                s += ' amb=\'' + scil.Utils.escXmlValue(this.bio.ambiguity) + '\'';
             if (this.biotype() == org.helm.webeditor.HELM.BLOB && !scil.Utils.isNullOrEmpty(this.bio.blobtype))
-                s += " blobtype='" + scil.Utils.escXmlValue(this.bio.blobtype) + "'";
+                s += ' blobtype=\'' + scil.Utils.escXmlValue(this.bio.blobtype) + '\'';
         }
 
         if (this.rgroup == null && this.superatom == null) {
-            s += "/>";
+            s += '/>';
         } else {
-            s += ">\n";
+            s += '>\n';
             if (this.rgroup != null) {
-                s += "<rgroup>\n";
-                s += this.rgroup.html(scale) + "\n";
+                s += '<rgroup>\n';
+                s += this.rgroup.html(scale) + '\n';
                 for (var j = 0; j < this.rgroup.mols.length; ++j) {
                     var s2 = this.rgroup.mols[j]._getXml(null, null, null, null, len, true);
                     if (s2 != null)
                         s += s2;
                 }
-                s += "</rgroup>";
+                s += '</rgroup>';
             }
             if (this.superatom != null) {
-                s += "<superatom>\n";
+                s += '<superatom>\n';
                 s += this.superatom._getXml(null, null, null, null, len, true);
-                s += "</superatom>";
+                s += '</superatom>';
             }
-            s += "</a>";
+            s += '</a>';
         }
         return s;
     },
 
-    readHtml: function (e) {
-        var c = e.getAttribute("c");
+    readHtml: function(e) {
+        var c = e.getAttribute('c');
         if (c != null)
             this.charge = parseInt(c);
 
-        var r = e.getAttribute("clr");
+        var rStr: string | null = e.getAttribute('clr');
         if (r != null)
             this.color = r;
 
-        var rad = e.getAttribute("rad");
-        if (rad != null && rad != "")
+        var rad = e.getAttribute('rad');
+        if (rad != null && rad != '')
             this.radical = parseInt(rad);
 
-        var iso = e.getAttribute("iso");
-        if (iso != null && iso != "")
+        var iso = e.getAttribute('iso');
+        if (iso != null && iso != '')
             this.isotope = parseInt(iso);
 
-        var hs = e.getAttribute("hs");
-        if (hs != null && hs != "")
+        var hs = e.getAttribute('hs');
+        if (hs != null && hs != '')
             this.hs = parseInt(hs);
 
-        var val = e.getAttribute("val");
-        if (val != null && val != "")
+        var val = e.getAttribute('val');
+        if (val != null && val != '')
             this.val = parseInt(val);
 
-        var tag = e.getAttribute("tag");
-        if (tag != null && tag != "")
+        var tag = e.getAttribute('tag');
+        if (tag != null && tag != '')
             this.tag = tag;
 
-        var alias = e.getAttribute("alias");
-        if (alias != null && alias != "")
+        var alias = e.getAttribute('alias');
+        if (alias != null && alias != '')
             this.alias = alias;
 
-        var ami = e.getAttribute("ami");
+        var ami = e.getAttribute('ami');
         if (ami != null && !isNaN(ami))
             this.atommapid = parseInt(ami);
 
-        var apo = e.getAttribute("apo");
+        var apo: string | null = e.getAttribute('apo');
         if (apo != null && apo != '') {
             var ss = apo.split(',');
             for (var i = 0; i < ss.length; ++i) {
                 var s2 = ss[i];
-                var apo = isNaN(s2) ? 0 : parseInt(s2);
-                if (apo > 0)
-                    this.attachpoints.push(apo);
+                var apon: number = isNaN(s2 as any) ? 0 : parseInt(s2);
+                if (apon > 0)
+                    this.attachpoints.push(apon);
             }
         }
 
@@ -292,10 +299,10 @@ JSDraw2.Atom = scil.extend(scil._base, {
         }
 
         var uns = e.getAttribute('uns');
-        if (uns == "1" || uns == "0") {
+        if (uns == '1' || uns == '0') {
             if (this.query == null)
                 this.query = {};
-            this.query.uns = uns == "1";
+            this.query.uns = uns == '1';
         }
 
         var als = JSDraw2.PT.makeAtomList(e.getAttribute('als'), e.getAttribute('als_t'));
@@ -307,36 +314,36 @@ JSDraw2.Atom = scil.extend(scil._base, {
         }
 
         if (this.bio != null) {
-            this.bio.subtype = e.getAttribute("subtype");
-            this.bio.sequences = e.getAttribute("seq");
-            bioid = parseInt(e.getAttribute("bioid"));
+            this.bio.subtype = e.getAttribute('subtype');
+            this.bio.sequences = e.getAttribute('seq');
+            const bioid: number = parseInt(e.getAttribute('bioid'));
             if (bioid > 0)
                 this.bio.id = bioid;
 
-            var ann = e.getAttribute("ann");
+            var ann = e.getAttribute('ann');
             if (!scil.Utils.isNullOrEmpty(ann))
                 this.bio.annotation = ann;
 
-            var amb = e.getAttribute("amb");
-            if (this.elem == "?" && !scil.Utils.isNullOrEmpty(amb))
+            var amb = e.getAttribute('amb');
+            if (this.elem == '?' && !scil.Utils.isNullOrEmpty(amb))
                 this.bio.ambiguity = amb;
 
-            var blobtype = e.getAttribute("blobtype");
+            var blobtype = e.getAttribute('blobtype');
             if (this.biotype() == org.helm.webeditor.HELM.BLOB && !scil.Utils.isNullOrEmpty(blobtype))
                 this.bio.blobtype = blobtype;
         }
 
         if (this.elem != null) {
-            var rg = scil.Utils.getFirstElement(e, "rgroup");
-            if (rg) {
-                var t = scil.Utils.getFirstElement(rg, "i");
+            var rgEl = scil.Utils.getFirstElement(e, 'rgroup');
+            if (rgEl) {
+                var t = scil.Utils.getFirstElement(rgEl, 'i');
                 if (t != null) {
-                    var r = new JSDraw2.RGroup();
+                    var r: IRGroup = new JSDraw2.RGroup();
                     if (r.readHtml(t, null)) {
                         this.rgroup = r;
 
-                        r.position = JSDraw2.Point.fromString(e.getAttribute("p"));
-                        var divs = scil.Utils.getElements(rg, "div");
+                        r.position = JSDraw2.Point.fromString(e.getAttribute('p'));
+                        var divs = scil.Utils.getElements(rgEl, 'div');
                         for (var i = 0; i < divs.length; ++i) {
                             var m = new JSDraw2.Mol();
                             if (m.setXml(divs[i]) != null)
@@ -348,16 +355,15 @@ JSDraw2.Atom = scil.extend(scil._base, {
         }
 
         if (this.alias != null || this.bio != null) {
-            var superatom = scil.Utils.getFirstElement(e, "superatom");
-            var div = superatom == null ? null : scil.Utils.getFirstElement(superatom, "div");
+            var superatom = scil.Utils.getFirstElement(e, 'superatom');
+            var div = superatom == null ? null : scil.Utils.getFirstElement(superatom, 'div');
             if (div != null) {
                 var m = new JSDraw2.Mol();
                 if (m.setXml(div) != null) {
                     if (m.atoms.length == 1 && m.atoms[0].elem == this.alias) {
                         this.elem = this.alias;
                         this.alias = null;
-                    }
-                    else {
+                    } else {
                         this.superatom = m;
                     }
                 }
@@ -365,16 +371,16 @@ JSDraw2.Atom = scil.extend(scil._base, {
         }
     },
 
-    toggle: function (p, tor) {
+    toggle: function(p, tor) {
         if (this._rect != null)
             return this._rect.contains(p);
         return this.p.distTo(p) <= tor;
     },
 
-    drawCur: function (surface, r, color, m) {
+    drawCur: function(surface, r, color, m) {
         var c = this._rect == null ? this.p : this._rect.center();
-        surface.createCircle({ cx: c.x, cy: c.y, r: r }).setFill(color);
-        if (this.elem == "@" && m != null) {
+        surface.createCircle({cx: c.x, cy: c.y, r: r}).setFill(color);
+        if (this.elem == '@' && m != null) {
             var list = m.getAllBonds(this);
             for (var i = 0; i < list.length; ++i) {
                 var b = list[i];
@@ -384,25 +390,25 @@ JSDraw2.Atom = scil.extend(scil._base, {
         }
     },
 
-    needShowAtomLabel: function () {
+    needShowAtomLabel: function() {
         return this.elem != 'C' || this.charge != 0 || this.isotope != null || this.hcount == 4;
     },
 
-    showLabel: function () {
-        return a.elem != 'C' || a.charge != 0 || a.isotope != null || a.hcount == 4;
-    },
+    // showLabel: function() {
+    //   return a.elem != 'C' || a.charge != 0 || a.isotope != null || a.hcount == 4;
+    // },
 
-    drawBio: function (surface, linewidth, fontsize, color) {
+    drawBio: function(surface, linewidth, fontsize, color) {
         var a = this;
         var biotype = this.biotype();
         var p = a.p.clone();
         if (biotype == JSDraw2.BIO.ANTIBODY) {
-            color = "#00f";
-            var color2 = a.bio.subtype == JSDraw2.ANTIBODY.ScFv ? "#bbb" : color;
-            var color3 = a.bio.subtype == JSDraw2.ANTIBODY.ScFv || a.bio.subtype == JSDraw2.ANTIBODY.Fab ? "#bbb" : color;
-            surface.createCircle({ cx: p.x, cy: p.y, r: fontsize })
-                    .setFill("white")
-                    .setStroke({ color: color, width: linewidth / 2 });
+            color = '#00f';
+            var color2 = a.bio.subtype == JSDraw2.ANTIBODY.ScFv ? '#bbb' : color;
+            var color3 = a.bio.subtype == JSDraw2.ANTIBODY.ScFv || a.bio.subtype == JSDraw2.ANTIBODY.Fab ? '#bbb' : color;
+            surface.createCircle({cx: p.x, cy: p.y, r: fontsize})
+              .setFill('white')
+              .setStroke({color: color, width: linewidth / 2});
             fontsize /= 2;
             p.offset(0, -linewidth);
             JSDraw2.Drawer.drawLine(surface, new JSDraw2.Point(p.x - linewidth, p.y), new JSDraw2.Point(p.x - linewidth - fontsize, p.y - fontsize), color2, linewidth);
@@ -411,30 +417,26 @@ JSDraw2.Atom = scil.extend(scil._base, {
             JSDraw2.Drawer.drawLine(surface, new JSDraw2.Point(p.x + 2 * linewidth, p.y + fontsize / 1.5), new JSDraw2.Point(p.x + 2 * linewidth + fontsize, p.y - fontsize + fontsize / 1.5), color, linewidth);
             JSDraw2.Drawer.drawLine(surface, new JSDraw2.Point(p.x - linewidth, p.y), new JSDraw2.Point(p.x - linewidth, p.y + fontsize * 2), color3, linewidth);
             JSDraw2.Drawer.drawLine(surface, new JSDraw2.Point(p.x + linewidth, p.y), new JSDraw2.Point(p.x + linewidth, p.y + fontsize * 2), color3, linewidth);
-        }
-        else if (biotype == JSDraw2.BIO.PROTEIN) {
-            var colors = [{ offset: 0, color: "#4ea1fc" }, { offset: linewidth / 20, color: "#0072e5" }, { offset: linewidth / 10, color: "#003b80"}];
-            surface.createCircle({ cx: this.p.x, cy: this.p.y, r: fontsize })
-                    .setFill({ type: "radial", cx: this.p.x + fontsize / 4, cy: this.p.y + fontsize / 4, colors: colors });
-        }
-        else if (biotype == JSDraw2.BIO.GENE || biotype == JSDraw2.BIO.DNA || biotype == JSDraw2.BIO.RNA) {
-            color = "#00f";
-            var color2 = a.bio.subtype == JSDraw2.ANTIBODY.ScFv ? "#bbb" : color;
-            var color3 = a.bio.subtype == JSDraw2.ANTIBODY.ScFv || a.bio.subtype == JSDraw2.ANTIBODY.Fab ? "#bbb" : color;
-            surface.createCircle({ cx: p.x, cy: p.y, r: fontsize })
-                    .setFill("white")
-                    .setStroke({ color: color, width: linewidth / 2 });
+        } else if (biotype == JSDraw2.BIO.PROTEIN) {
+            var colors = [{offset: 0, color: '#4ea1fc'}, {offset: linewidth / 20, color: '#0072e5'}, {offset: linewidth / 10, color: '#003b80'}];
+            surface.createCircle({cx: this.p.x, cy: this.p.y, r: fontsize})
+              .setFill({type: 'radial', cx: this.p.x + fontsize / 4, cy: this.p.y + fontsize / 4, colors: colors});
+        } else if (biotype == JSDraw2.BIO.GENE || biotype == JSDraw2.BIO.DNA || biotype == JSDraw2.BIO.RNA) {
+            color = '#00f';
+            var color2 = a.bio.subtype == JSDraw2.ANTIBODY.ScFv ? '#bbb' : color;
+            var color3 = a.bio.subtype == JSDraw2.ANTIBODY.ScFv || a.bio.subtype == JSDraw2.ANTIBODY.Fab ? '#bbb' : color;
+            surface.createCircle({cx: p.x, cy: p.y, r: fontsize})
+              .setFill('white')
+              .setStroke({color: color, width: linewidth / 2});
             this.drawEllipse(surface, p.x + fontsize / 6, p.y + fontsize / 3, fontsize / 6, fontsize / 2, color, -20);
             this.drawEllipse(surface, p.x + fontsize / 6, p.y - fontsize / 3, fontsize / 6, fontsize / 2, color, +20);
             this.drawEllipse(surface, p.x - fontsize / 6, p.y + fontsize / 3, fontsize / 6, fontsize / 2, color, +20);
             this.drawEllipse(surface, p.x - fontsize / 6, p.y - fontsize / 3, fontsize / 6, fontsize / 2, color, -20);
-        }
-        else if (org.helm.webeditor.isHelmNode(a)) {
+        } else if (org.helm.webeditor.isHelmNode(a)) {
             org.helm.webeditor.Interface.drawMonomer(surface, a, p, fontsize, linewidth, color);
-        }
-        else {
+        } else {
             if (color == null)
-                color = a.bio.type == JSDraw2.BIO.AA ? "#00F" : (a.bio.type == JSDraw2.BIO.BASE_RNA ? "#278925" : "#FFAA00");
+                color = a.bio.type == JSDraw2.BIO.AA ? '#00F' : (a.bio.type == JSDraw2.BIO.BASE_RNA ? '#278925' : '#FFAA00');
             this.drawDiamond(surface, p.x, p.y, fontsize * 0.55, color, linewidth);
             p.offset(0, -1);
             JSDraw2.Drawer.drawLabel(surface, p, a.elem, color, fontsize * (a.elem.length > 1 ? 2 / a.elem.length : 1.0), null, null, null, false);
@@ -444,34 +446,34 @@ JSDraw2.Atom = scil.extend(scil._base, {
         //    this.drawSelect(surface, linewidth);
     },
 
-    drawDiamond: function (surface, x, y, w, color, linewidth) {
-        surface.createRect({ x: x - w, y: y - w, width: 2 * w, height: 2 * w })
-            .setTransform([dojox.gfx.matrix.rotategAt(45, x, y)])
-            .setFill("white")
-            .setStroke({ color: color, width: linewidth / 2 });
+    drawDiamond: function(surface, x, y, w, color, linewidth) {
+        surface.createRect({x: x - w, y: y - w, width: 2 * w, height: 2 * w})
+          .setTransform([dojox.gfx.matrix.rotategAt(45, x, y)])
+          .setFill('white')
+          .setStroke({color: color, width: linewidth / 2});
     },
 
-    drawEllipse: function (surface, x, y, rx, ry, color, deg) {
-        surface.createEllipse({ cx: x, cy: y, rx: rx, ry: ry })
-            .setFill(color)
-            .setTransform([dojox.gfx.matrix.rotategAt(deg, x, y)]);
+    drawEllipse: function(surface, x, y, rx, ry, color, deg) {
+        surface.createEllipse({cx: x, cy: y, rx: rx, ry: ry})
+          .setFill(color)
+          .setTransform([dojox.gfx.matrix.rotategAt(deg, x, y)]);
     },
 
-    hasLabel: function (m, showcarbon) {
+    hasLabel: function(m, showcarbon) {
         var a = this;
         return a.bio == null && (a.elem != 'C' || a.charge != 0 || a.radical != null ||
-            a.elem == 'C' && (showcarbon == "all" || showcarbon == "terminal" && m.getNeighborAtoms(a).length == 1) ||
-            a.isotope != null || a.hcount == 4 || a.hs > 0 || a.val > 0 || a.alias != null && a.alias != "" ||
-            a.query != null && (a.query.sub != null || a.query.uns != null || a.query.rbc != null || a.query.als != null && a.query.t != null));
+          a.elem == 'C' && (showcarbon == 'all' || showcarbon == 'terminal' && m.getNeighborAtoms(a).length == 1) ||
+          a.isotope != null || a.hcount == 4 || a.hs > 0 || a.val > 0 || a.alias != null && a.alias != '' ||
+          a.query != null && (a.query.sub != null || a.query.uns != null || a.query.rbc != null || a.query.als != null && a.query.t != null));
     },
 
-    hasErr: function () {
+    hasErr: function() {
         var a = this;
         var e = a.bio ? null : JSDraw2.PT[a.elem];
-        return (!a.bio && (e == null || e.a >= 0 && a.hasError)) && a.elem != "3'" && a.elem != "5'";
+        return (!a.bio && (e == null || e.a >= 0 && a.hasError)) && a.elem != '3\'' && a.elem != '5\'';
     },
 
-    draw: function (surface, linewidth, m, fontsize, showError) {
+    draw: function(surface, linewidth, m, fontsize, showError) {
         var a = this;
 
         this._rect = null;
@@ -487,80 +489,77 @@ JSDraw2.Atom = scil.extend(scil._base, {
         var atomcolor = color;
         if (color == null) {
             if (surface.monocolor)
-                color = "black";
+                color = 'black';
             else
-                color = e == null || e.c == null ? "#000" : "#" + e.c;
+                color = e == null || e.c == null ? '#000' : '#' + e.c;
             atomcolor = color;
             if (hasError)
-                atomcolor = e == null || e.c == null ? "#000" : "#fff";
+                atomcolor = e == null || e.c == null ? '#000' : '#fff';
         }
 
         if (a.attachpoints.length > 0)
             this.drawApo(a, m, surface, linewidth, fontsize, color);
 
-        if (a.alias != null && a.alias != "") {
-            this._rect = JSDraw2.Atom.drawAlias(m.calcHDir(a, 4 * linewidth, true), surface, a.p, a.alias, hasError ? "red" : atomcolor, fontsize);
-        }
-        else {
+        if (a.alias != null && a.alias != '') {
+            this._rect = JSDraw2.Atom.drawAlias(m.calcHDir(a, 4 * linewidth, true), surface, a.p, a.alias, hasError ? 'red' : atomcolor, fontsize);
+        } else {
             var elem = a.elem;
             var isotope = a.isotope;
-            if (elem == "H") {
+            if (elem == 'H') {
                 if (isotope == 2) {
-                    elem = "D";
+                    elem = 'D';
+                    isotope = null;
+                } else if (isotope == 3) {
+                    elem = 'T';
                     isotope = null;
                 }
-                else if (isotope == 3) {
-                    elem = "T";
-                    isotope = null;
-                }
-            }
-            else if (a.query != null) {
-                var x = "";
-                var x2 = "";
+            } else if (a.query != null) {
+                var x = '';
+                var x2 = '';
                 if (a.query.als != null)
-                    x = (a.query.t == false ? "!" : "") + "[" + a.query.als.join(",") + "]";
+                    x = (a.query.t == false ? '!' : '') + '[' + a.query.als.join(',') + ']';
                 if (a.query.rbc != null)
-                    x2 += (x2 == "" ? "" : ",") + "r" + a.query.rbc;
+                    x2 += (x2 == '' ? '' : ',') + 'r' + a.query.rbc;
                 if (a.query.sub != null)
-                    x2 += (x2 == "" ? "" : ",") + "s" + a.query.sub;
+                    x2 += (x2 == '' ? '' : ',') + 's' + a.query.sub;
                 if (a.query.uns)
-                    x2 += (x2 == "" ? "" : ",") + "u";
+                    x2 += (x2 == '' ? '' : ',') + 'u';
 
-                if (x != "" || x2 != "")
-                    elem = (x == "" ? elem : x) + (x2 == "" ? "" : "(" + x2 + ")");
+                if (x != '' || x2 != '')
+                    elem = (x == '' ? elem : x) + (x2 == '' ? '' : '(' + x2 + ')');
             }
 
-            var x2 = 0;
-            var y2 = 0;
+            var x2n: number = 0;
+            var y2: number = 0;
             if (hasError || this._haslabel) {
-                var t = JSDraw2.Drawer.drawLabel(surface, a.p, elem, atomcolor, fontsize, hasError ? "#f00" : false);
+                var t = JSDraw2.Drawer.drawLabel(surface, a.p, elem, atomcolor, fontsize, hasError ? '#f00' : false);
                 var c = null;
                 var h = null;
                 var n = null;
                 var iso = null;
 
-                var s = "";
+                var s = '';
                 if (a.charge != 0)
-                    s += (Math.abs(a.charge) == 1 ? "" : Math.abs(a.charge) + "") + (a.charge > 0 ? "+" : "-");
+                    s += (Math.abs(a.charge) == 1 ? '' : Math.abs(a.charge) + '') + (a.charge > 0 ? '+' : '-');
                 switch (a.radical) {
-                    case 1:
-                        s += ":";
-                        break;
-                    case 2:
-                        s += "^";
-                        break;
-                    case 3:
-                        s += "^^";
-                        break;
+                case 1:
+                    s += ':';
+                    break;
+                case 2:
+                    s += '^';
+                    break;
+                case 3:
+                    s += '^^';
+                    break;
                 }
-                if (s != "")
+                if (s != '')
                     c = JSDraw2.Drawer.drawLabel(surface, a.p, s, color, fontsize / 1.2, false);
 
                 if (isotope != null)
-                    iso = JSDraw2.Drawer.drawLabel(surface, a.p, isotope + "", color, fontsize / 1.1, false);
-                if (a.query == null && a.hcount > 0 && (this._haslabel || elem != "C" || a.charge != 0 || a.hcount == 4)) {
+                    iso = JSDraw2.Drawer.drawLabel(surface, a.p, isotope + '', color, fontsize / 1.1, false);
+                if (a.query == null && a.hcount > 0 && (this._haslabel || elem != 'C' || a.charge != 0 || a.hcount == 4)) {
                     h = JSDraw2.Drawer.drawLabel(surface, a.p, 'H', color, fontsize, false);
-                    n = a.hcount == 1 ? null : JSDraw2.Drawer.drawLabel(surface, a.p, a.hcount + "", color, fontsize / 1.4, false);
+                    n = a.hcount == 1 ? null : JSDraw2.Drawer.drawLabel(surface, a.p, a.hcount + '', color, fontsize / 1.4, false);
                 }
 
                 var tw = t.getTextWidth();
@@ -571,84 +570,83 @@ JSDraw2.Atom = scil.extend(scil._base, {
                     var cw = c == null ? 0 : c.getTextWidth() + extra;
                     var iw = iso == null ? 0 : iso.getTextWidth() + extra;
 
-                    var noAdj = true; //scil.Utils.isIE || scil.Utils.isTouch;
+                    var noAdj: boolean = true; //scil.Utils.isIE || scil.Utils.isTouch;
                     switch (m.calcHDir(a, 4 * linewidth)) {
-                        case JSDraw2.ALIGN.RIGHT:
-                            if (iso != null)
-                                iso.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw / 2 + (noAdj ? 0 : 2)), -4)]);
-                            if (h != null)
-                                h.setTransform([dojox.gfx.matrix.translate(tw / 2 + hw / 2 + (noAdj ? 0 : 2), 0)]);
-                            if (n != null)
-                                n.setTransform([dojox.gfx.matrix.translate(tw / 2 + hw + nw / 2 + (noAdj ? 0 : 4), 4)]);
-                            if (c != null)
-                                c.setTransform([dojox.gfx.matrix.translate(tw / 2 + hw + nw + cw / 2 + (noAdj ? 0 : 2), -4)]);
-                            x2 = tw / 2 + hw + nw + cw + (noAdj ? 0 : 2);
-                            break;
-                        case JSDraw2.ALIGN.LEFT:
-                            if (iso != null)
-                                iso.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw / 2 + (noAdj ? 0 : 2)), -4)]);
-                            if (n != null)
-                                n.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw + nw / 2 + (noAdj ? 0 : 4)), 4)]);
-                            if (h != null)
-                                h.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw + nw + hw / 2 + (noAdj ? 0 : 6)), 0)]);
-                            if (c != null)
-                                c.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw + nw + hw + cw / 2 + (noAdj == 0 ? 0 : 0)), -4)]);
-                            x2 = tw / 2;
-                            break;
-                        case JSDraw2.ALIGN.BOTTOM:
-                            if (iso != null)
-                                iso.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw / 2 + (noAdj ? 0 : 2)), -4)]);
-                            if (h != null)
-                                h.setTransform([dojox.gfx.matrix.translate(0, fontsize)]);
-                            if (n != null)
-                                n.setTransform([dojox.gfx.matrix.translate(hw / 2 + nw / 2 + (noAdj ? 0 : 2), fontsize + 4)]);
-                            if (c != null)
-                                c.setTransform([dojox.gfx.matrix.translate((h == null ? tw / 2 : hw / 2 + nw) + cw / 2 + (noAdj ? 0 : 4), (h == null ? 0 : fontsize) - 4)]);
-                            x2 = (h == null ? tw / 2 : hw / 2 + nw) + cw + (noAdj ? 0 : 4);
-                            break;
-                        case JSDraw2.ALIGN.TOP:
-                            if (iso != null)
-                                iso.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw / 2 + (noAdj ? 0 : 2)), -4)]);
-                            if (h != null)
-                                h.setTransform([dojox.gfx.matrix.translate(0, -fontsize)]);
-                            if (n != null)
-                                n.setTransform([dojox.gfx.matrix.translate(hw / 2 + nw / 2 + (noAdj ? 0 : 2), -fontsize + 4)]);
-                            if (c != null)
-                                c.setTransform([dojox.gfx.matrix.translate((h == null ? tw / 2 : hw / 2 + nw) + cw / 2 + (noAdj ? 0 : 4), (h == null ? 0 : -fontsize) - 4)]);
-                            x2 = (h == null ? tw / 2 : hw / 2 + nw) + cw + (noAdj ? 0 : 4);
-                            y2 = (h == null ? 0 : -fontsize) - 4;
-                            break;
+                    case JSDraw2.ALIGN.RIGHT:
+                        if (iso != null)
+                            iso.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw / 2 + (noAdj ? 0 : 2)), -4)]);
+                        if (h != null)
+                            h.setTransform([dojox.gfx.matrix.translate(tw / 2 + hw / 2 + (noAdj ? 0 : 2), 0)]);
+                        if (n != null)
+                            n.setTransform([dojox.gfx.matrix.translate(tw / 2 + hw + nw / 2 + (noAdj ? 0 : 4), 4)]);
+                        if (c != null)
+                            c.setTransform([dojox.gfx.matrix.translate(tw / 2 + hw + nw + cw / 2 + (noAdj ? 0 : 2), -4)]);
+                        x2n = tw / 2 + hw + nw + cw + (noAdj ? 0 : 2);
+                        break;
+                    case JSDraw2.ALIGN.LEFT:
+                        if (iso != null)
+                            iso.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw / 2 + (noAdj ? 0 : 2)), -4)]);
+                        if (n != null)
+                            n.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw + nw / 2 + (noAdj ? 0 : 4)), 4)]);
+                        if (h != null)
+                            h.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw + nw + hw / 2 + (noAdj ? 0 : 6)), 0)]);
+                        if (c != null)
+                            c.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw + nw + hw + cw / 2 + (!noAdj ? 0 : 0)), -4)]);
+                        x2n = tw / 2;
+                        break;
+                    case JSDraw2.ALIGN.BOTTOM:
+                        if (iso != null)
+                            iso.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw / 2 + (noAdj ? 0 : 2)), -4)]);
+                        if (h != null)
+                            h.setTransform([dojox.gfx.matrix.translate(0, fontsize)]);
+                        if (n != null)
+                            n.setTransform([dojox.gfx.matrix.translate(hw / 2 + nw / 2 + (noAdj ? 0 : 2), fontsize + 4)]);
+                        if (c != null)
+                            c.setTransform([dojox.gfx.matrix.translate((h == null ? tw / 2 : hw / 2 + nw) + cw / 2 + (noAdj ? 0 : 4), (h == null ? 0 : fontsize) - 4)]);
+                        x2n = (h == null ? tw / 2 : hw / 2 + nw) + cw + (noAdj ? 0 : 4);
+                        break;
+                    case JSDraw2.ALIGN.TOP:
+                        if (iso != null)
+                            iso.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw / 2 + (noAdj ? 0 : 2)), -4)]);
+                        if (h != null)
+                            h.setTransform([dojox.gfx.matrix.translate(0, -fontsize)]);
+                        if (n != null)
+                            n.setTransform([dojox.gfx.matrix.translate(hw / 2 + nw / 2 + (noAdj ? 0 : 2), -fontsize + 4)]);
+                        if (c != null)
+                            c.setTransform([dojox.gfx.matrix.translate((h == null ? tw / 2 : hw / 2 + nw) + cw / 2 + (noAdj ? 0 : 4), (h == null ? 0 : -fontsize) - 4)]);
+                        x2n = (h == null ? tw / 2 : hw / 2 + nw) + cw + (noAdj ? 0 : 4);
+                        y2 = (h == null ? 0 : -fontsize) - 4;
+                        break;
                     }
-                }
-                else {
-                    x2 = tw / 2;
+                } else {
+                    x2n = tw / 2;
                 }
             }
 
             if (a.atommapid != null) {
                 var p = a.p.clone();
-                var t = JSDraw2.Drawer.drawText(surface, p.offset(x2, y2 - fontsize - 2), "(" + a.atommapid + ")", "#f55", fontsize / 1.4);
-                x2 += t.getTextWidth();
+                var t = JSDraw2.Drawer.drawText(surface, p.offset(x2n, y2 - fontsize - 2), '(' + a.atommapid + ')', '#f55', fontsize / 1.4);
+                x2n += t.getTextWidth();
             }
 
             if (a.val > 0) {
                 var p = a.p.clone();
-                var t = JSDraw2.Drawer.drawText(surface, p.offset(x2, y2 - fontsize - 2), "(" + (a.val == 15 ? 0 : a.val) + ")", "#000", fontsize / 1.2);
-                x2 += t.getTextWidth();
+                var t = JSDraw2.Drawer.drawText(surface, p.offset(x2n, y2 - fontsize - 2), '(' + (a.val == 15 ? 0 : a.val) + ')', '#000', fontsize / 1.2);
+                x2n += t.getTextWidth();
             }
 
-            if (a.tag != null && a.tag != "") {
+            if (a.tag != null && a.tag != '') {
                 var p = a.p.clone();
-                var t = JSDraw2.Drawer.drawText(surface, p.offset(x2, y2 - fontsize - 2), "<" + a.tag + ">", "#000", fontsize / 1.2);
-                x2 += t.getTextWidth();
+                var t = JSDraw2.Drawer.drawText(surface, p.offset(x2n, y2 - fontsize - 2), '<' + a.tag + '>', '#000', fontsize / 1.2);
+                x2n += t.getTextWidth();
             }
         }
 
         if (a.locked)
-            surface.createCircle({ cx: a.p.x, cy: a.p.y, r: fontsize * 0.6 }).setStroke({ color: "#0ff", width: linewidth });
+            surface.createCircle({cx: a.p.x, cy: a.p.y, r: fontsize * 0.6}).setStroke({color: '#0ff', width: linewidth});
     },
 
-    drawApo: function (a, m, surface, linewidth, fontsize, color) {
+    drawApo: function(a, m, surface, linewidth, fontsize, color) {
         var attachpoints = a.attachpoints;
         for (var i = 0; i < attachpoints.length; ++i) {
             var apo = attachpoints[i];
@@ -674,26 +672,25 @@ JSDraw2.Atom = scil.extend(scil._base, {
                     JSDraw2.Drawer.drawBasis(surface, p1, p2, color, linewidth / 2);
                 else
                     JSDraw2.Drawer.drawCurves(surface, p1, p2, color, linewidth / 2);
-            }
-            else {
+            } else {
                 this.drawDiamond(surface, p.x, p.y, fontsize * 0.3, color, linewidth / 3);
-                JSDraw2.Drawer.drawText(surface, p.offset(-fontsize * 0.2, -fontsize * 0.6), apo + "", color, fontsize * 0.7);
+                JSDraw2.Drawer.drawText(surface, p.offset(-fontsize * 0.2, -fontsize * 0.6), apo + '', color, fontsize * 0.7);
             }
         }
     },
 
-    drawSelect: function (lasso) {
+    drawSelect: function(lasso) {
         var c = this._rect == null ? this.p : this._rect.center();
         lasso.draw(this, c);
     }
 });
 
-JSDraw2.Atom.cast = function (a) {
+JSDraw2.Atom.cast = function(a) {
     return a != null && a.T == 'ATOM' ? a : null;
 };
 
 scil.apply(JSDraw2.Atom, {
-    match: function (x, y) {
+    match: function(x, y) {
         if (!scil.Utils.areListEq(x.attachpoints, y.attachpoints))
             return false;
 
@@ -703,7 +700,7 @@ scil.apply(JSDraw2.Atom, {
         if (f)
             return true;
 
-        if (x.isotope != y.isotype || x.charge != y.charge)
+        if (x.isotope != y.isotope || x.charge != y.charge)
             return false;
 
         if (x.bio != null || y.bio != null) {
@@ -712,7 +709,7 @@ scil.apply(JSDraw2.Atom, {
             return x.bio.type == y.bio.type && e1 == e2;
         }
 
-        if (e1 != "L" && e2 != "L")
+        if (e1 != 'L' && e2 != 'L')
             return false;
 
         var list1 = [];
@@ -726,9 +723,8 @@ scil.apply(JSDraw2.Atom, {
                 if (x.query.t == false)
                     t1 = false;
             }
-        }
-        else {
-            list.push(e1);
+        } else {
+            list1.push(e1);
         }
 
         if (e2 == 'L') {
@@ -738,8 +734,7 @@ scil.apply(JSDraw2.Atom, {
                 if (y.query.t == false)
                     t2 = false;
             }
-        }
-        else {
+        } else {
             list2.push(e2);
         }
 
@@ -754,15 +749,15 @@ scil.apply(JSDraw2.Atom, {
         return t1 != t2;
     },
 
-    match2: function (e1, e2) {
-        return e1 == e2 || e1 == "*" || e1 == "A" || e2 == "*" || e2 == "A" ||
-            e1 == "X" && (e2 == "F" || e2 == "Cl" || e2 == "Br" || e2 == "I") ||
-            e2 == "X" && (e1 == "F" || e1 == "Cl" || e1 == "Br" || e1 == "I") ||
-            e1 == "Q" && (e2 != "H" && e2 != "C") ||
-            e2 == "Q" && (e1 != "H" && e1 != "C");
+    match2: function(e1, e2) {
+        return e1 == e2 || e1 == '*' || e1 == 'A' || e2 == '*' || e2 == 'A' ||
+          e1 == 'X' && (e2 == 'F' || e2 == 'Cl' || e2 == 'Br' || e2 == 'I') ||
+          e2 == 'X' && (e1 == 'F' || e1 == 'Cl' || e1 == 'Br' || e1 == 'I') ||
+          e1 == 'Q' && (e2 != 'H' && e2 != 'C') ||
+          e2 == 'Q' && (e1 != 'H' && e1 != 'C');
     },
 
-    drawAlias: function (dir, surface, p, s, color, fontsize) {
+    drawAlias: function(dir, surface, p, s, color, fontsize) {
         return JSDraw2.Drawer.drawFormula(surface, p, dir == JSDraw2.ALIGN.LEFT, s, color, fontsize);
 
         //        var t = null;
@@ -774,13 +769,13 @@ scil.apply(JSDraw2.Atom, {
         //        return t._rect;
     },
 
-    isValidChiral: function (c) {
+    isValidChiral: function(c: string) {
         if (c == null)
             return false;
         return /^R|S|(abs)|(\&[0-9]+)|(and[0-9]+)|(or[0-9]+)$/.test(c);
     },
 
-    isStereo: function (s) {
+    isStereo: function(s: string) {
         return s != null && /^((abs)|(or[0-9]+)|(and[0-9]+))$/.test(s);
     }
 });

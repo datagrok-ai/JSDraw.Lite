@@ -1,29 +1,21 @@
-/* Do not change these import lines to match external modules in webpack configuration */
-import * as grok from 'datagrok-api/grok';
-import * as ui from 'datagrok-api/ui';
-import * as DG from 'datagrok-api/dg';
+import {errInfo, timeout} from './dg-utils/index';
 
-import {errInfo, timeout} from './dg-utils';
-
-export const _package = new DG.Package();
-
-//tags: init
 export async function initJsDrawLite(): Promise<void> {
   const logPrefix: string = 'JSDrawLite: _package.initJsDrawLite()';
-  _package.logger.debug(`${logPrefix}, start`);
+  console.debug(`${logPrefix}, start`);
 
-  _package.logger.debug(`${logPrefix}, dojo.ready(), before`);
+  console.debug(`${logPrefix}, dojo.ready(), before`);
   await timeout<void>(new Promise<void>((resolve, reject) => {
     try {
       // @ts-ignore
       if (window.dojo.config.afterOnLoad) {
-        _package.logger.debug(`${logPrefix}, dojo.config.afterOnLoad already`);
+        console.debug(`${logPrefix}, dojo.config.afterOnLoad already`);
         resolve();
       }
 
       // @ts-ignore
       dojo.require('dojo/ready')(() => {
-        _package.logger.debug(`${logPrefix}, dojo.ready(), callback`);
+        console.debug(`${logPrefix}, dojo.ready(), callback`);
         resolve();
       });
 
@@ -37,18 +29,18 @@ export async function initJsDrawLite(): Promise<void> {
     }
   }), 5000, 'dojo.ready() callback timeout 5000 ms');
 
-  _package.logger.debug(`${logPrefix}, loadModules(), before`);
-  loadModules();
-  _package.logger.debug(`${logPrefix}, loadModules(), after`);
+  console.debug(`${logPrefix}, loadModules(), before`);
+  await loadModules();
+  console.debug(`${logPrefix}, loadModules(), after`);
   // const [errMsg, errStack] = errInfo(err);
   // grok.shell.error(`Package 'JsDrawLite' init error:\n${errMsg}`);
   // const errRes = new Error(`${logPrefix} error:\n  ${errMsg}\n${errStack}`);
   // errRes.stack = errStack;
   // throw errRes;
-  _package.logger.debug(`${logPrefix}, end`);
+  console.debug(`${logPrefix}, end`);
 }
 
-function loadModules(): void {
+async function loadModules(): Promise<void> {
   // Based on _merge.lite.bat
   require('./Core.js');
   require('./Utils.js');
@@ -56,12 +48,12 @@ function loadModules(): void {
   require('./JSDraw.Lite.js');
   require('./PT.Lite.js');
 
-  require('./Atom.js');
+  await import(/* webpackMode: "eager" */ './Atom');
   require('./BA.js');
   require('./Base64.js');
   require('./Bond.js');
   require('./JSDrawIO.js');
-  require('./Mol.js');
+  await import(/* webpackMode: "eager" */ './Mol');
   require('./Point.js');
   require('./Rect.js');
   require('./Stack.js');
@@ -115,8 +107,11 @@ function loadModules(): void {
   require('../Scilligence.JSDraw2.Resources.js');
 }
 
-//name: ensureLoadJsDrawLite
-export async function ensureLoadJsDrawLite(): Promise<void> {
-  _package.logger.debug(`Package '${_package.friendlyName}' ensure load.`);
-}
+// //name: ensureLoadJsDrawLite
+// export async function ensureLoadJsDrawLite(): Promise<void> {
+//   _package.logger.debug(`Package '${_package.friendlyName}' ensure load.`);
+// }
 
+export const jsDrawLiteInitPromise: Promise<void> = (async () => {
+  await initJsDrawLite();
+})();
