@@ -1,4 +1,5 @@
 import {errInfo, timeout} from './dg-utils/index';
+import {JSDraw2Window} from './types';
 
 export async function initJsDrawLite(): Promise<void> {
   const logPrefix: string = 'JSDrawLite: _package.initJsDrawLite()';
@@ -112,6 +113,9 @@ async function loadModules(): Promise<void> {
 //   _package.logger.debug(`Package '${_package.friendlyName}' ensure load.`);
 // }
 
-export const jsDrawLiteInitPromise: Promise<void> = (async () => {
+declare const window: Window & JSDraw2Window;
+
+window.jsDraw2$ = window.jsDraw2$ || {};
+window.jsDraw2$.initPromise = (async () => {
   await initJsDrawLite();
 })();

@@ -3,13 +3,10 @@ import {JSDraw2ModuleType} from './jsdraw2';
 
 export {ScilModuleType, JSDraw2ModuleType};
 
-type JSDrawWindowType = {
+export type JSDraw2Window = {
+  jsDraw2$: {
+    initPromise?: Promise<void>;
+  },
   scil: ScilModuleType;
   JSDraw2: JSDraw2ModuleType<any>;
-}
-
-declare const window: JSDrawWindowType;
-
-export async function getJSDrawModules(): Promise<JSDrawWindowType> {
-  return window;
 }
