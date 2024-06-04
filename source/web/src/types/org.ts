@@ -33,7 +33,7 @@ export const enum HelmTypes {
 /** 'HELM_BASE' | 'HELM_SUGAR' | 'HELM_LINKER' | 'HELM_AA' | 'HELM_CHEM' | 'HELM_BLOB' | 'HELM_NUCLETIDE' */
 export type HelmType = `${HelmTypes}`
 
-type IHelmTypes = Record<HelmTypes, OrgHelmType>;
+// type IHelmTypes = Record<HelmTypes, OrgHelmType>;
 
 export type WebEditorRGroups = { [group: string]: string };
 
@@ -56,17 +56,23 @@ export interface IOrgWebEditorMonomer {
   smiles?: string;
 }
 
-export type IOrgWebEditor = {
+export interface IOrgMonomers<TBio> {
+  getMonomer(a: IAtom<TBio> | TBio, elem?: string): IOrgWebEditorMonomer | null;
+}
+
+export type IOrgWebEditor<TBio> = {
   HELM: typeof HelmTypes;
   Interface: any;
+  Monomers: IOrgMonomers<TBio>;
   isHelmNode(a: any): boolean;
+  symbolCase(s: string): string;
 }
 
-export type OrgHelmType = {
-  webeditor: IOrgWebEditor;
+export type OrgHelmType<TBio> = {
+  webeditor: IOrgWebEditor<TBio>;
 }
 
-export type OrgType = {
-  helm: OrgHelmType;
+export type OrgType<TBio> = {
+  helm: OrgHelmType<TBio>;
 }
 

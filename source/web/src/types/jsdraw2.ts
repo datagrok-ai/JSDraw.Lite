@@ -1,4 +1,5 @@
 import {MonomerTypes} from './org';
+import {IParserMolHandler} from './parser-mol-handler';
 
 export const enum BondTypes {
   UNKNOWN = 0,
@@ -114,7 +115,7 @@ export interface IGraphics {
   rect(): IRect;
 }
 
-export interface IBracket<TBio> extends ICast<IBracket<TBio>> {
+export interface IBracket<TBio> extends IGraphics, ICast<IBracket<TBio>> {
   atoms: IAtom<TBio>[];
   conn: string | null;
   expandedatoms: any | null;
@@ -145,7 +146,7 @@ export interface IMol<TBio> {
   mw: number;
   attachpoints: any;
 
-  new(): IMol<TBio>;
+  new(showimplicithydrogens?: boolean): IMol<TBio>;
 
   isEmpty(): boolean;
   clone(selectedOnly: boolean): IMol<TBio>;
@@ -153,6 +154,7 @@ export interface IMol<TBio> {
   setXml(el: HTMLElement): any;
   setMolV3000(linses: string[], start: number, rxn: any, pos?: any, endtoken?: any): void;
 
+  addGraphics(G: IGraphics): IGraphics;
   _addAtom(a1: IAtom<TBio>, parent?: IMol<TBio>): void;
   _addBond(b1: IBond<TBio>, parent?: IMol<TBio>): void;
   _addGraphics(g1: any): void;
@@ -161,7 +163,7 @@ export interface IMol<TBio> {
   getMaxRIndex(index: number): number;
 }
 
-export interface IEditor<TBio> {
+export interface IEditor<TBio> extends IParserMolHandler<TBio> {
   BONDLENGTH: number;
   ANGLESTOP: number;
   LINEWIDTH: number;
@@ -330,9 +332,11 @@ export interface IAtom<TBio = any> extends IJsAtom<TBio> {
 
   group: AtomGroupType;
 
-  _aaid: string | null;
+  _aaid: number | null;
 
   new(p: IPoint, elem: string, bio?: IBio<TBio>): IAtom<TBio>;
+  //constructor(p: IPoint, elem: string, bio?: IBio<TBio>): IAtom<TBio>;
+
   biotype(): TBio;
   cast(obj: any): IAtom<TBio>;
   drawAlias(...args: any[]): void;
@@ -402,7 +406,10 @@ export type JSDraw2ModuleType<TBio> = {
   Bond: IBond<TBio>;
   Bracket: IBracket<TBio>;
   Drawer: any;
+
   Editor: IEditor<TBio>;
+  MolHandler: IParserMolHandler<TBio>;
+
   Group: any;
   Mol: IMol<TBio>;
   Point: IPoint;

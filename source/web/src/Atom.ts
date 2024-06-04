@@ -19,7 +19,7 @@ declare const dojox: DojoxType;
 declare const scil: ScilModuleType;
 declare const JSDraw2: JSDraw2ModuleType<any>;
 
-declare const org: OrgType;
+declare const org: OrgType<any>;
 /**
  * Atom class
  * @class scilligence.JSDraw2.Atom

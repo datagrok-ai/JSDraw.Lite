@@ -1,5 +1,11 @@
+export type DojoConfigType = {
+  afterOnLoad: boolean;
+}
 export type DojoType = {
+  config: DojoConfigType;
+
   clone<T>(src: T): T;
+  require(id: string): (callback: () => void) => void;
 }
 
 export type DojoxMatrixType = {
@@ -13,4 +19,9 @@ export type DojoxGfxType = {
 
 export type DojoxType = {
   gfx: DojoxGfxType;
+}
+
+export type DojoWindow = {
+  dojo: DojoType;
+  dojox: DojoxType;
 }

@@ -1,3 +1,5 @@
+import {IOrgWebEditor} from './org';
+
 export type IndexType = { prefix: string, index: number | null };
 
 export interface IDebug {
@@ -7,16 +9,22 @@ export interface IDebug {
 }
 
 interface IScilUtils {
-  alert: (s: string) => void; // to override
   get isOpera(): boolean;
+
+  alert: (s: string) => void; // to override
+  beep(): void;
+  eval(expression: string): any | null;
+
+  listOptions(select: any, items: { [p: string]: string }, selected: string, removeall: boolean, sortitems: boolean): void;
+  json2str(v: {}, readable: boolean, restrict: boolean): string;
+  parseXml(s: string): any;
+
   areListEq<T>(list1: T[], list2: T[]): boolean;
   isNullOrEmpty(s: string): boolean;
 
-  eval(expression: string): any | null;
-
-  json2str(v: {}, readable: boolean, restrict: boolean): string;
   arrayContainsArray<T = any>(superset: T[], subset: T[]): boolean;
   array2str(list: string[], sep: string | null): string;
+  delFromArray<T = any>(list: T[], a: T): number;
   removeArrayItem<T = any>(list: T[], item: T): boolean;
   removeArrayItems<T = any>(list: T[], items: T[]): number;
   cloneArray<T>(list: T[]): T[];
@@ -35,15 +43,24 @@ interface IScilUtils {
   rtrim(s: string | null): string | null;
   parseIndex(s: string | null): IndexType | null;
 
+  getInnerText(e: HTMLElement): string;
   getFirstElement(parent: HTMLElement, tagName: string): HTMLElement;
   getElements(parent: HTMLElement, tagName: string): HTMLElement[];
+  getParent(obj: HTMLElement | null, tag: string): HTMLElement | null;
+}
+
+interface IForm {
+  [pName: string]: any;
 }
 
 export type ScilModuleType = {
   apply<T>(dest: T, atts: Partial<T>, defaults?: Partial<T>): void;
   Utils: IScilUtils;
+  Form: IForm;
 
+  helm: IOrgWebEditor<any>;
   _base: any;
+  //extend<T>(base: any, obj: T): T;
   extend(base: any, obj: any): any;
 
   clone<T>(src: T): T;

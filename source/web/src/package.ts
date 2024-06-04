@@ -1,49 +1,50 @@
 import {errInfo, timeout} from './dg-utils/index';
 import {JSDraw2Window} from './types';
+import {DojoType, DojoWindow} from './types/dojo';
+
+declare const window: Window & DojoWindow & JSDraw2Window;
+declare const dojo: DojoType;
 
 export async function initJsDrawLite(): Promise<void> {
   const logPrefix: string = 'JSDrawLite: _package.initJsDrawLite()';
   console.debug(`${logPrefix}, start`);
+  window.jsDraw2$ = window.jsDraw2$ || {};
+  if (!window.jsDraw2$.initPromise) {
+    window.jsDraw2$.initPromise = (async () => {
+      console.debug(`${logPrefix}, IN`);
 
-  console.debug(`${logPrefix}, dojo.ready(), before`);
-  await timeout<void>(new Promise<void>((resolve, reject) => {
-    try {
-      // @ts-ignore
-      if (window.dojo.config.afterOnLoad) {
-        console.debug(`${logPrefix}, dojo.config.afterOnLoad already`);
-        resolve();
-      }
+      console.debug(`${logPrefix}, dojo.ready(), before`);
+      await timeout<void>(new Promise<void>((resolve, reject) => {
+        try {
+          if (window.dojo.config.afterOnLoad) {
+            console.debug(`${logPrefix}, dojo.config.afterOnLoad already`);
+            resolve();
+          }
 
-      // @ts-ignore
-      dojo.require('dojo/ready')(() => {
-        console.debug(`${logPrefix}, dojo.ready(), callback`);
-        resolve();
-      });
+          dojo.require('dojo/ready')(() => {
+            console.debug(`${logPrefix}, dojo.ready(), callback`);
+            resolve();
+          });
+        } catch (err: any) {
+          reject(err);
+        }
+      }), 5000, 'dojo.ready() callback timeout 5000 ms');
 
-      // // @ts-ignore
-      // window.dojo.ready(() => {
-      //   _package.logger.debug(`${logPrefix}, dojo.ready(), callback`);
-      //   resolve();
-      // });
-    } catch (err: any) {
-      reject(err);
-    }
-  }), 5000, 'dojo.ready() callback timeout 5000 ms');
+      console.debug(`${logPrefix}, loadModules(), before`);
+      await loadModules();
+      console.debug(`${logPrefix}, loadModules(), after`);
 
-  console.debug(`${logPrefix}, loadModules(), before`);
-  await loadModules();
-  console.debug(`${logPrefix}, loadModules(), after`);
-  // const [errMsg, errStack] = errInfo(err);
-  // grok.shell.error(`Package 'JsDrawLite' init error:\n${errMsg}`);
-  // const errRes = new Error(`${logPrefix} error:\n  ${errMsg}\n${errStack}`);
-  // errRes.stack = errStack;
-  // throw errRes;
+      console.debug(`${logPrefix}, OUT`);
+    })();
+  }
+
   console.debug(`${logPrefix}, end`);
+  return window.jsDraw2$.initPromise;
 }
 
 async function loadModules(): Promise<void> {
   // Based on _merge.lite.bat
-  require('./Core.js');
+  require('./Core.js'); // defines window.scilligence (scil)
   require('./Utils.js');
   require('./JSDraw.Core.js');
   require('./JSDraw.Lite.js');
@@ -67,6 +68,7 @@ async function loadModules(): Promise<void> {
   require('./IDGenerator.js');
   require('./Skin.js');
   require('./JSDraw.Editor.js');
+  await import(/* webpackMode: "eager" */ './JSDraw.MolHandler');
   require('./JSDraw.Table.js');
   // require('./Bracket.js'); // File not found
   require('./Group.js');
@@ -112,8 +114,6 @@ async function loadModules(): Promise<void> {
 // export async function ensureLoadJsDrawLite(): Promise<void> {
 //   _package.logger.debug(`Package '${_package.friendlyName}' ensure load.`);
 // }
-
-declare const window: Window & JSDraw2Window;
 
 window.jsDraw2$ = window.jsDraw2$ || {};
 window.jsDraw2$.initPromise = (async () => {
