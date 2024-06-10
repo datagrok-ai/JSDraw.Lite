@@ -22,24 +22,9 @@
     "webpack-cli": "^4.9.1"
   },
   "scripts": {
-    "link-all": "",
-    "debug-jsdrawlite": "webpack && grok publish",
-    "release-jsdrawlite": "webpack && grok publish --release",
-    "build-jsdrawlite": "webpack",
     "build": "webpack",
-    "debug-jsdrawlite-dev": "webpack && grok publish dev",
-    "release-jsdrawlite-dev": "webpack && grok publish dev --release",
-    "debug-jsdrawlite-public": "webpack && grok publish public",
-    "release-jsdrawlite-public": "webpack && grok publish public --release",
-    "debug-jsdrawlite-local": "webpack && grok publish local",
-    "release-jsdrawlite-local": "webpack && grok publish local --release",
-    "debug-jsdrawlite-test": "webpack && grok publish test",
-    "release-jsdrawlite-test": "webpack && grok publish test --release",
-    "debug-jsdrawlite-release": "webpack && grok publish release",
-    "release-jsdrawlite-release": "webpack && grok publish release --release",
     "lint": "eslint src --ext .ts",
-    "lint-fix": "eslint src --ext .ts --fix",
-    "test": "grok test"
+    "lint-fix": "eslint src --ext .ts --fix"
   },
   "canEdit": [
     "Developers"

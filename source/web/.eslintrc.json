@@ -11,13 +11,14 @@
     "sourceType": "module"
   },
   "rules": {
-    "indent": ["warn", 2, {"SwitchCase": 1}],
+    "indent": ["warn", 2, {"SwitchCase": 0}],
     "camelcase": "off",
     "eol-last": ["warn"],
     "quotes": [0],
     "max-len": ["off", 120],
     "no-unused-vars": "off",
     "no-var": "off",
+    "new-cap": "off",
     "object-curly-spacing": "warn",
     "key-spacing": "warn",
     "@typescript-eslint/no-unused-vars": ["warn", { "varsIgnorePattern": "^(_|ui$|grok$|DG$)", "argsIgnorePattern": "^_"}],

@@ -1,4 +1,4 @@
-import {IAtom, IMol} from './jsdraw2';
+import {IAtom, IOrgPlugin} from './jsdraw2';
 
 export const enum MonomerTypes {
   BACKBONE = 'Backbone',
@@ -56,16 +56,27 @@ export interface IOrgWebEditorMonomer {
   smiles?: string;
 }
 
+export type MonomerSetType = { [key: string]: IOrgWebEditorMonomer };
+
 export interface IOrgMonomers<TBio> {
   getMonomer(a: IAtom<TBio> | TBio, elem?: string): IOrgWebEditorMonomer | null;
+  getMonomerSet(biotype: string): MonomerSetType;
+  getMonomerList(a: IAtom<TBio> | TBio): any;
 }
 
+/** scil.helm */
 export type IOrgWebEditor<TBio> = {
   HELM: typeof HelmTypes;
   Interface: any;
   Monomers: IOrgMonomers<TBio>;
+  Plugin: IOrgPlugin<TBio>;
+  MolViewer: any;
+  MonomerExplorer: any;
+
   isHelmNode(a: any): boolean;
   symbolCase(s: string): string;
+
+  about(): void;
 }
 
 export type OrgHelmType<TBio> = {
@@ -75,4 +86,3 @@ export type OrgHelmType<TBio> = {
 export type OrgType<TBio> = {
   helm: OrgHelmType<TBio>;
 }
-

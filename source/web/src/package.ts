@@ -67,7 +67,7 @@ async function loadModules(): Promise<void> {
   require('./Language.js');
   require('./IDGenerator.js');
   require('./Skin.js');
-  require('./JSDraw.Editor.js');
+  await import(/* webpackMode: "eager" */ './JSDraw.Editor');
   await import(/* webpackMode: "eager" */ './JSDraw.MolHandler');
   require('./JSDraw.Table.js');
   // require('./Bracket.js'); // File not found

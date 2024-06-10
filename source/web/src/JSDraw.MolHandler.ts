@@ -1,5 +1,5 @@
 import {IMol, JSDraw2ModuleType} from './types/jsdraw2';
-import {IParserMolHandler, MolHandlerOptions, defaultMolHandlerOptions} from './types/parser-mol-handler';
+import {IMolHandler, MolHandlerOptions, defaultMolHandlerOptions} from './types/mol-handler';
 import {ScilModuleType} from './types';
 
 declare const JSDraw2: JSDraw2ModuleType<any>;

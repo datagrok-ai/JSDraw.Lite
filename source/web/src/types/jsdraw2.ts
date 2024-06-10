@@ -1,5 +1,4 @@
-import {MonomerTypes} from './org';
-import {IParserMolHandler} from './parser-mol-handler';
+import {IMolHandler} from './mol-handler';
 
 export const enum BondTypes {
   UNKNOWN = 0,
@@ -31,6 +30,10 @@ export const enum RxnCenterTypes {
   CHANGE = 8,
   BREAKANDCHANGE = 12
 }
+
+export const MoleculeTypes = ["SmallMolecule", "Polymer", "Peptide", "DNA", "RNA", "ADC", "ChemicalReagent"];
+
+export const TextKeywords = ["°C", "rt", "reflux", "hr", "min", "sec", "psi", "atm", "overnight", "microwave", "Δ"];
 
 // export type BondType = `${BondTypes}`;
 
@@ -77,40 +80,6 @@ export interface ICast<T> {
   cast(obj: any): T;
 }
 
-export interface IEditorOptions {
-  width: number;
-  height: number;
-  skin: string;
-  viewonly: boolean;
-}
-
-export interface IEditorPoint {
-  get x(): number;
-
-  get y(): number;
-}
-
-export interface IAtomBio {
-  type: 'HELM_BASE' | 'HELM_SUGAR' | 'HELM_LINKER' | 'HELM_AA' | 'HELM_CHEM' | 'HELM_BLOB' |
-    /* type as in Pistoia.HELM-uncompressed.js */'HELM_NUCLETIDE';
-
-}
-
-export interface IBond<TBio = any> extends ICast<IBond<TBio>> {
-  get a1(): IAtom<TBio>;
-  get a2(): IAtom<TBio>;
-
-  ratio1: number;
-  ratio2: number;
-
-  ring: boolean;
-  f: number;
-  tag: string;
-
-  get type(): number;
-  new(a1: IAtom<TBio>, a2: IAtom<TBio>, bt: BondTypes): IBond<TBio>;
-}
-
 export interface IGraphics {
   rect(): IRect;
 }
@@ -127,6 +96,7 @@ export interface IBracket<TBio> extends IGraphics, ICast<IBracket<TBio>> {
 
   new(ty: string, r: IRect | null): IBracket<TBio>;
 
+  getTexts(m: IMol<TBio>): any;
   getType(): string;
   getXbonds(m: IMol<TBio>): any;
   getTypeNum(): string;
@@ -149,26 +119,111 @@ export interface IMol<TBio> {
   new(showimplicithydrogens?: boolean): IMol<TBio>;
 
   isEmpty(): boolean;
-  clone(selectedOnly: boolean): IMol<TBio>;
+  clone(selectedOnly?: boolean): IMol<TBio>;
   getSgroupTexts(br: IBracket<TBio>): string;
-  setXml(el: HTMLElement): any;
-  setMolV3000(linses: string[], start: number, rxn: any, pos?: any, endtoken?: any): void;
 
+  getXml(width: number | null, height: number | null, viewonly: boolean | null, svg: any | null, len: number): string;
+  setXml(el: HTMLElement | string): any;
+  setMolV3000(linses: string[], start: number, rxn: any, pos?: any, endtoken?: any): void;
+  setJdx(data: any, bondlength: number): IMol<TBio>;
+
+  setMolfile(molfile: string): IMol<TBio>;
   addGraphics(G: IGraphics): IGraphics;
+  getFragment(a: IAtom<TBio>, parent: IMol<TBio>): IMol<TBio>;
+  mergeMol(m: IMol<TBio>): void;
+
+  addAtom(a: IAtom<TBio>): IAtom<TBio> | null;
+  addBond(b: IBond<TBio>, resetcharge?: boolean, add2group?: boolean): IBond<TBio> | null;
+  setAtomType(a: IAtom<TBio>, elem: string, setCharge?: boolean): boolean;
+  setHCount(a: IAtom<TBio>): void;
+  setAtomAlias(a: IAtom<TBio>, alias: string, len?: number): boolean;
+  setBondLength(bondlength: number): void;
+
   _addAtom(a1: IAtom<TBio>, parent?: IMol<TBio>): void;
   _addBond(b1: IBond<TBio>, parent?: IMol<TBio>): void;
   _addGraphics(g1: any): void;
   _setParent(parent: IMol<TBio>): void;
 
+  offset(dx: number, dy: number, selectedOnly?: boolean): void;
+  getNeighborAtoms(a: IAtom<TBio>, oa: IAtom<TBio>, excludeDummyBond?: boolean): IAtom<TBio>[];
   getMaxRIndex(index: number): number;
 }
 
-export interface IEditor<TBio> extends IParserMolHandler<TBio> {
+type ColorArrayType = [number, number, number, number];
+
+export interface IOrgPlugin<TBio> {
+  new(jsd: IMolHandler<TBio>): IOrgPlugin<TBio>;
+}
+
+export interface IEditorOptions {
+  xdraw: string;
+  popupwidth: string;
+  popupheight: string;
+  popupxdraw: boolean;
+  jdrawpath: string;
+
+  query: boolean;
+  rxn: boolean;
+  biology: boolean;
+  sendquery: boolean;
+  showtoolbar: boolean;
+  showcustomtemplates: boolean;
+  usechemdraw: boolean;
+
+  showcarbon: boolean;
+  pastechemdraw: boolean;
+  removehydrogens: boolean;
+
+  width: number;
+  height: number;
+  viewonly: boolean;
+
+  ondatachange: any;
+  data: string;
+  dataformat: string;
+
+  showimplicithydrogens: boolean;
+  inktools: boolean;
+  highlighterrors: boolean;
+  skin: string;
+
+  monocolor: boolean;
+  fullscreen: boolean;
+
+  buttonshape: string;
+  scale: number;
+
+  and_enantiomer: boolean;
+  delheteroatom: boolean;
+  minautowidth1: number;
+  minautowidth2: number;
+  minautowidth3: number;
+
+  suggestcount: number;
+
+  atomlist: any;
+  textlist: any;
+
+  tlc: any;
+}
+
+export interface IEditor<TBio> extends IMolHandler<TBio> {
   BONDLENGTH: number;
   ANGLESTOP: number;
   LINEWIDTH: number;
   TOR: number;
   FONTSIZE: number;
+
+  COLORCURRENT: ColorArrayType;
+  COLORSELECTED: ColorArrayType;
+
+  dblclickdelay: number;
+  helm: IOrgPlugin<TBio>;
+
+  _id: number | null;
+  _allitems: {};
+
+  undoGestureTime: number;
 
   get options(): IEditorOptions;
 
@@ -176,32 +231,53 @@ export interface IEditor<TBio> extends IParserMolHandler<TBio> {
 
   get m(): IMol<TBio>;
 
+  about: any | null;
+  jsd: any | null;
+  periodictable: any | null;
+  popupdlg: any | null;
+  openfiledlg: any | null;
+  savefiledlg: any | null;
+
   new(host: HTMLElement, options?: Partial<IEditorOptions>): IEditor<TBio>;
 
+  initNoDelay(): void;
+  destroy(): void;
+  setSize(w: number, h: number): void;
   resize(width: number, height: number): void;
 
   /** Clear all contents */ clear(redraw: boolean, fireevents: boolean): void;
-
   /** Resets and clears undo and redo buffers */ reset(): void;
-
   setData(data: string, format: string): void;
-
   setHelm(helm: string): void;
 
-  setSize(w: number, h: number): void;
+  getClipboard(): IMol<TBio>;
+  setClipboard(m: IMol<TBio>, bondlength: number): void;
 
   getMolfile(): string;
+  setMolfile(m: IMol<TBio>): void;
 
   getFormula(b: boolean): string;
-
   getMolWeight(): number;
-
   getExtinctionCoefficient(): number;
+
+  showPopup(title: string, btnText: string, btnFn: Function, value?: any, zindex?: number): any;
+  showAbout(): void;
+
+  get(id: string): IEditor<TBio>;
+  onPT(elem: HTMLElement): void;
+  onSaveFile(): void;
+
+  [p: string]: any;
 }
 
 export interface IPoint {
   x: number;
   y: number;
+
+  tm: number;
+
+  clientX: number;
+  clientY: number;
 
   new(x: number, y: number): IPoint;
   fromString(pointStr: string): IPoint;
@@ -209,6 +285,7 @@ export interface IPoint {
   clone(): IPoint;
   isValid(): boolean;
   intersect(p1: IPoint, q1: IPoint, p2: IPoint, q2: IPoint): boolean;
+  offset(dx: number, dy: number): IPoint;
   rotate(deg: number): any;
 
   _orientation(p: IPoint, q: IPoint, r: IPoint): number;
@@ -234,11 +311,13 @@ export interface IRect {
   center(): IPoint;
 
   set(p1: IPoint, p2: IPoint): IRect;
+
+  offset(dx: number, dy: number): IRect;
   union(r: IRect): IRect;
 }
 
 export interface IStack<T = any> {
-  new<T = any>(): IStack<T>;
+  new<T = any>(length?: number): IStack<T>;
   push(item: T): void;
   pop(): T | null;
   popHead(): T | null;
@@ -316,7 +395,7 @@ export interface IAtom<TBio = any> extends IJsAtom<TBio> {
   color: string;
   tag: string;
   alias: string;
-  superatom: IMol<TBio> | null;
+  superatom: IMol<TBio>;//ISuperAtoms<TBio> | null;
   attachpoints: any[];
   atommapid: number;
   rgroup: IRGroup<TBio>;
@@ -333,12 +412,14 @@ export interface IAtom<TBio = any> extends IJsAtom<TBio> {
   group: AtomGroupType;
 
   _aaid: number | null;
+  _parent: IMol<TBio>;
 
-  new(p: IPoint, elem: string, bio?: IBio<TBio>): IAtom<TBio>;
+  new(p: IPoint, elem?: string, bio?: IBio<TBio>): IAtom<TBio>;
   //constructor(p: IPoint, elem: string, bio?: IBio<TBio>): IAtom<TBio>;
 
   biotype(): TBio;
   cast(obj: any): IAtom<TBio>;
+  getLabel(): string;
   drawAlias(...args: any[]): void;
   isValidChiral(c: string): boolean;
   isStereo(c: string): boolean;
@@ -346,7 +427,34 @@ export interface IAtom<TBio = any> extends IJsAtom<TBio> {
   match2(e1: string, e2: string): boolean;
 }
 
-export interface IRGroup<TBio = any> {
+export interface IBond<TBio = any> extends ICast<IBond<TBio>> {
+  get a1(): IAtom<TBio>;
+  get a2(): IAtom<TBio>;
+
+  apo1: number;
+  apo2: number;
+
+  ratio1: number;
+  ratio2: number;
+
+  ring: boolean;
+  selected: boolean;
+  type: number;
+  tag: string;
+  f: number;
+
+  _parent: IMol<TBio>;
+
+  new(a1: IAtom<TBio>, a2: IAtom<TBio>, bt?: BondTypes): IBond<TBio>;
+
+  isBio(): boolean;
+  angle(): number;
+  bondLength(): number;
+
+  reverse(): void;
+}
+
+export interface IRGroup<TBio = any> extends ICast<IRGroup<TBio>> {
   position: IPoint;
   mols: IMol<TBio>[];
 
@@ -360,6 +468,8 @@ export type SruGenType = 'SRU' | 'GEN' | 'MUL';
 export interface ISGroup {
   fieldtypes: any[];
   stys: SruGenType[];
+
+  getDisplayTypes(): any;
 }
 
 export interface ISuperAtoms<TBio> {
@@ -371,18 +481,12 @@ export interface ISuperAtoms<TBio> {
   expandRepeat(m: IMol<TBio>, br: IBracket<TBio>): void;
 
   _getFirstAttachAtom(m: any): any;
-  _alignMol(dest: IMol<TBio>, a: any, src: IMol<TBio>, a0: any, len: number): void;
-}
+  _alignMol(dest: IMol<TBio>, a: IAtom<TBio>, src: IMol<TBio>, a0: IAtom<TBio>, len?: number): boolean;
 
-export interface IDefaultOptions {
-  xdraw: string;
-  popupwidth: string;
-  popupheight: string;
-  popupxdraw: boolean;
-  jdrawpath: string;
-  monocolor: boolean;
-
-  and_enantiomer: boolean;
+  getAA(name: string): IMol<TBio>;
+  getRNA(name: string): IMol<TBio>;
+  getDNA(name: string): IMol<TBio>;
+  [p: string]: any;
 }
 
 export interface ISpeedup {
@@ -393,7 +497,12 @@ export interface ISpeedup {
 }
 
 export type JSDraw2ModuleType<TBio> = {
-  defaultoptions: IDefaultOptions;
+  defaultoptions: Partial<IEditorOptions>;
+  version: string;
+
+  __currentactived: any;
+
+
   speedup: ISpeedup;
 
   ALIGN: typeof AlignTypes;
@@ -401,6 +510,8 @@ export type JSDraw2ModuleType<TBio> = {
   BIO: typeof BioTypes;
   BONDTYPES: typeof BondTypes;
   RXNCENTER: typeof RxnCenterTypes;
+  MOLECULETYPES: typeof MoleculeTypes;
+  TEXTKEYWORDS: typeof TextKeywords;
 
   Atom: IAtom<TBio>;
   Bond: IBond<TBio>;
@@ -408,7 +519,7 @@ export type JSDraw2ModuleType<TBio> = {
   Drawer: any;
 
   Editor: IEditor<TBio>;
-  MolHandler: IParserMolHandler<TBio>;
+  MolHandler: IMolHandler<TBio>;
 
   Group: any;
   Mol: IMol<TBio>;
@@ -418,9 +529,17 @@ export type JSDraw2ModuleType<TBio> = {
   Shape: any;
   Text: any;
   Lasso: any;
+  Skin: any;
+  Security: any;
 
+  AssayCurve: any;
+  Spectrum: any;
   Stack: IStack;
   PT: any;
+  TLC: any;
+  Base64: any;
+  JSDrawIO: any;
+  Symbol: any;
 
   RGroup: IRGroup<TBio>;
   SGroup: ISGroup;
@@ -428,5 +547,32 @@ export type JSDraw2ModuleType<TBio> = {
 
   BA: any;
   IDGenerator: any;
+  ChemDraw: any;
+  ChemdrawPopup: any;
   FormulaParser: any;
+  Fullscreen: any;
+  CustomTemplates: any;
+  TLCTemplates: any;
+  Language: any;
+  SequenceBuilder: any;
+  Ink: any;
+
+  Arrow: any;
+  Curve: any;
+  ContextMenu: any;
+  Dialog: any;
+  Menu: any;
+  Toolbar: any;
+
+  needPro(): void;
+}
+
+export type JSDraw2Window = {
+  navigator: {
+    msPointerEnabled: boolean,
+  }
+}
+
+export type JSDraw2Document = {
+  body: { style: { msContentZooming: string } }
 }
