@@ -23,7 +23,6 @@ declare const JSDrawServices: any;
 
 declare const window: JSDraw2Window & Window;
 declare const document: JSDraw2Document & Document;
-declare let JSDraw: any;
 
 /**
  * Editor class - define an Editor object.
@@ -6668,4 +6667,4 @@ scilligence.mstouch = {
 };
 
 //@ts-ignore
-JSDraw = JSDraw2.Editor;
+var JSDraw = JSDraw2.Editor;

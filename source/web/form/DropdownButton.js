@@ -16,7 +16,7 @@
 *    &lt;button id='d'&gt;Select City&lt;/button&gt;
 *    &lt;script type="text/javascript"&gt;
 *        scil.ready(function () {
-*            new scil.DropdownButton('d', { items: ["Boston", "New York", "London"], 
+*            new scil.DropdownButton('d', { items: ["Boston", "New York", "London"],
 *                callback: function (city) { alert(city); } });
 *        });
 *    &lt;/script&gt;
@@ -29,6 +29,7 @@ scilligence.DropdownButton = scilligence.extend(scilligence._base, {
     * @param {dict} options - { items: [], callback: function(item) {} }
     */
     constructor: function (button, options) {
+        this.T = "DROPDOWN_BUTTON";
         this.auto = null;
         this.options = options == null ? {} : options;
 

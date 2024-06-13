@@ -86,6 +86,8 @@ export interface IGraphics {
 
 export interface IBracket<TBio> extends IGraphics, ICast<IBracket<TBio>> {
   atoms: IAtom<TBio>[];
+  color: string;
+  shape: IShape;
   conn: string | null;
   expandedatoms: any | null;
   sgrouptexts: string;
@@ -94,16 +96,19 @@ export interface IBracket<TBio> extends IGraphics, ICast<IBracket<TBio>> {
 
   _rect: IRect;
 
-  new(ty: string, r: IRect | null): IBracket<TBio>;
+  new(type: string, rect: IRect | null, shape?: IShape): IBracket<TBio>;
+
+  clone(): IBracket<TBio>;
 
   getTexts(m: IMol<TBio>): any;
   getType(): string;
+  getSubscript(m: IMol<TBio>): string;
   getXbonds(m: IMol<TBio>): any;
   getTypeNum(): string;
   createSubscript(mol: IMol<TBio>, repeat?: string): void;
 }
 
-export interface IMol<TBio> {
+export interface IMol<TBio = any> {
   atoms: IAtom<TBio>[];
   bonds: IBond<TBio>[];
   graphics: IGraphics[];
@@ -122,7 +127,7 @@ export interface IMol<TBio> {
   clone(selectedOnly?: boolean): IMol<TBio>;
   getSgroupTexts(br: IBracket<TBio>): string;
 
-  getXml(width: number | null, height: number | null, viewonly: boolean | null, svg: any | null, len: number): string;
+  getXml(width?: number, height?: number, viewonly?: boolean, svg?: any, len?: number): string;
   setXml(el: HTMLElement | string): any;
   setMolV3000(linses: string[], start: number, rxn: any, pos?: any, endtoken?: any): void;
   setJdx(data: any, bondlength: number): IMol<TBio>;
@@ -147,6 +152,8 @@ export interface IMol<TBio> {
   offset(dx: number, dy: number, selectedOnly?: boolean): void;
   getNeighborAtoms(a: IAtom<TBio>, oa: IAtom<TBio>, excludeDummyBond?: boolean): IAtom<TBio>[];
   getMaxRIndex(index: number): number;
+
+  [p: string]: any;
 }
 
 type ColorArrayType = [number, number, number, number];
@@ -296,6 +303,8 @@ export interface IPlus {
   new(p: IPoint): IPlus;
 }
 
+export type IShape = any;
+
 export interface IRect {
   left: number;
   top: number;
@@ -413,6 +422,7 @@ export interface IAtom<TBio = any> extends IJsAtom<TBio> {
 
   _aaid: number | null;
   _parent: IMol<TBio>;
+  _helmgroup: any;
 
   new(p: IPoint, elem?: string, bio?: IBio<TBio>): IAtom<TBio>;
   //constructor(p: IPoint, elem: string, bio?: IBio<TBio>): IAtom<TBio>;

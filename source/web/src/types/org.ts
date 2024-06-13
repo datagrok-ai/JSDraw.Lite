@@ -1,4 +1,4 @@
-import {IAtom, IOrgPlugin} from './jsdraw2';
+import {IAtom, IEditor, IOrgPlugin, IPoint} from './jsdraw2';
 
 export const enum MonomerTypes {
   BACKBONE = 'Backbone',
@@ -64,10 +64,15 @@ export interface IOrgMonomers<TBio> {
   getMonomerList(a: IAtom<TBio> | TBio): any;
 }
 
+export interface IOrgInterface {
+  drawMonomer(surface: SVGSVGElement, a: IAtom, p: IPoint, fontsize: number, linewidth: number, color: string): void;
+  onContextMenu<TBio = any>(ed: IEditor<TBio>, e: Event, viewonly: boolean): any[];
+}
+
 /** scil.helm */
 export type IOrgWebEditor<TBio> = {
   HELM: typeof HelmTypes;
-  Interface: any;
+  Interface: IOrgInterface;
   Monomers: IOrgMonomers<TBio>;
   Plugin: IOrgPlugin<TBio>;
   MolViewer: any;

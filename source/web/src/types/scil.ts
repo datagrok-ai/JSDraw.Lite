@@ -95,7 +95,31 @@ interface IScilUtils {
   [p: string]: any;
 }
 
+export type PageTreeType = {
+  caption: string;
+  marginBottom: string;
+  marginTop: string;
+  onresizetree: Function;
+  onrender: (div: HTMLDivElement) => void;
+};
+
+export type PageFormsType = {
+  resizable: boolean;
+  leftwidth: number;
+}
+
+export interface IPage {
+  new(parent: HTMLElement, tree: PageTreeType, forms: PageFormsType, middle?: any, onRefreshReceivers?: Function): IPage;
+}
+
+interface IFormOptions {
+  viewonly: boolean;
+  lang: string;
+}
+
 interface IForm {
+
+  new(options?: Partial<IFormOptions> | boolean): IForm;
   [pName: string]: any;
 }
 
@@ -110,6 +134,7 @@ export type ScilModuleType = {
   Clipboard: any;
   Dialog: any;
   DropdownInput: any;
+  Page: IPage;
   Form: IForm;
   XDraw: any;
 
@@ -122,6 +147,6 @@ export type ScilModuleType = {
 
   byId(id: string): HTMLElement;
   clone<T>(src: T): T;
-  connect(node: Node, event: string, callback: Function): any;
+  connect(node: Node | Window, event: string, callback: Function): any;
   onload(handler: Function): void;
 }

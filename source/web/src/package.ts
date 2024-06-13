@@ -70,7 +70,7 @@ async function loadModules(): Promise<void> {
   await import(/* webpackMode: "eager" */ './JSDraw.Editor');
   await import(/* webpackMode: "eager" */ './JSDraw.MolHandler');
   require('./JSDraw.Table.js');
-  // require('./Bracket.js'); // File not found
+  await import(/* webpackMode: "eager" */ './Bracket'); // File not found
   require('./Group.js');
   require('./Text.js');
 
