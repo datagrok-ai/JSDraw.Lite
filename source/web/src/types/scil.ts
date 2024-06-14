@@ -29,12 +29,12 @@ interface IScilUtils {
   beep(): void;
   eval(expression: string): any | null;
 
-  listOptions(select: any, items: { [p: string]: string }, selected: string, removeall: boolean, sortitems: boolean): void;
-  json2str(v: {}, readable: boolean, restrict: boolean): string;
+  listOptions(select: any, items: { [p: string]: string }, selected?: string | null, removeall?: boolean, sortitems?: boolean): void;
+  json2str(v: any, readable?: boolean, restrict?: boolean): string;
   parseXml(s: string): any;
 
   areListEq<T>(list1: T[], list2: T[]): boolean;
-  isNullOrEmpty(s: string): boolean;
+  isNullOrEmpty(s: string | null): boolean;
   isNumber(s: any, allowoperator?: boolean): boolean;
 
   arrayContainsArray<T = any>(superset: T[], subset: T[]): boolean;
@@ -54,15 +54,18 @@ interface IScilUtils {
   formatStr(value: number, width: number, d?: number): string;
   padLeft(s: string, n: number, c: string): string;
   padRight(s: string, n: number, c: string): string;
-  trim(s: string | null): string | null;
-  rtrim(s: string | null): string | null;
+  trim(s: string): string;
+  rtrim(s: string): string;
   parseIndex(s: string | null): IndexType | null;
 
   createCookie(name: string, value: string, days?: number, ignoreStore?: boolean): void;
   readCookie(name: string): string | null;
 
-  createTable(parent?: HTMLElement, cellspacing?: number, cellpadding?: number, styles?: Partial<CSSStyleDeclaration>, border?: string): HTMLTableElement;
-  createElement(parent: HTMLElement, tag: string, html?: string, styles?: Partial<CSSStyleDeclaration>, attributes?: any, onclick?: Function): HTMLElement;
+  createTable(parent?: HTMLElement, cellspacing?: number, cellpadding?: number, styles?: Partial<CSSStyleDeclaration> | null, border?: string): HTMLTableElement;
+  createElement(parent: HTMLElement | null, tag: string, html?: string | null, styles?: Partial<CSSStyleDeclaration> | null, attributes?: any, onclick?: Function): HTMLElement;
+  createElement(parent: HTMLElement | null, tag: 'div', html?: string | null, styles?: Partial<CSSStyleDeclaration> | null, attributes?: any, onclick?: Function): HTMLDivElement;
+  createElement(parent: HTMLElement | null, tag: 'input', html?: string | null, styles?: Partial<CSSStyleDeclaration> | null, attributes?: any, onclick?: Function): HTMLInputElement;
+  createElement(parent: HTMLElement | null, tag: 'select', html?: string | null, styles?: Partial<CSSStyleDeclaration> | null, attributes?: any, onclick?: Function): HTMLSelectElement;
   isAttTrue(e: HTMLElement, att: string): boolean;
   isAttFalse(e: HTMLElement, att: string): boolean;
   getInnerText(e: HTMLElement): string;
@@ -83,7 +86,7 @@ interface IScilUtils {
   disableContextMenu(element: HTMLElement, doc?: string): void;
   isTouchDblClick(e: TouchEvent): boolean;
 
-  imgTag(b: string, label: string, extra?: string): string;
+  imgTag(b: string, label?: string, extra?: string): string;
   imgSrc(button: string, wrapasinurl?: boolean): string;
   download(url: string, callback: Function): void;
 
@@ -91,6 +94,8 @@ interface IScilUtils {
 
   getFileExt(filename: string | null): string | null;
   isChemFile(ext: string): boolean;
+
+  getDictKeys(dict: {}): string[];
 
   [p: string]: any;
 }
@@ -108,7 +113,16 @@ export type PageFormsType = {
   leftwidth: number;
 }
 
+export interface IPageExplorerForm {
+  kHeaderStyle: any;
+  kToolbarStyle: any;
+  kAreaStyle: any;
+  new(parent: HTMLElement, options?: any): IPageExplorerForm;
+}
+
 export interface IPage {
+  ExplorerForm: IPageExplorerForm;
+
   new(parent: HTMLElement, tree: PageTreeType, forms: PageFormsType, middle?: any, onRefreshReceivers?: Function): IPage;
 }
 
@@ -123,20 +137,41 @@ interface IForm {
   [pName: string]: any;
 }
 
+export interface IFavorite {
+  new(key: string, onAddFavorite?: Function): IFavorite;
+}
+
+export type DnDOptions = {
+  onstartdrag: Function, oncreatecopy: Function, ondrop: Function, oncancel: Function
+}
+
+export interface IDnD {
+  src: HTMLElement;
+  floatingbox: HTMLDivElement | null;
+
+  new(src: HTMLElement, options: DnDOptions): IDnD;
+}
+
 export type ScilModuleType = {
   eln: any;
+  DnD: IDnD;
   DnDFile: any;
+  Favorite: IFavorite;
 
   apply<T>(dest: T, atts: Partial<T>, defaults?: Partial<T>): void;
   Utils: IScilUtils;
 
   App: any;
   Clipboard: any;
+  ContextMenu: any;
   Dialog: any;
   DropdownInput: any;
   Page: IPage;
   Form: IForm;
+  Tabs: any;
   XDraw: any;
+  Resizable: any;
+  Lang: any;
 
   mstouch: any;
   helm: IOrgWebEditor<any>;

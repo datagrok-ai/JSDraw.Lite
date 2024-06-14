@@ -10,7 +10,7 @@ export type DojoType = {
   ready(handler: Function): void;
 
   attr(node: HTMLElement | string, att: string, value?: any): any;
-  byId(dv): HTMLElement;
+  byId(id: string): HTMLElement;
   clone<T>(src: T): T;
 
   connect(obj: Object | null, event: string, method: string | Function, dontFix?: boolean): any;

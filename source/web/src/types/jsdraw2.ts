@@ -212,6 +212,11 @@ export interface IEditorOptions {
   textlist: any;
 
   tlc: any;
+
+  popup: boolean | null;
+  appmode: any;
+  btnsize: number;
+  movingresolution: any;
 }
 
 export interface IEditor<TBio> extends IMolHandler<TBio> {

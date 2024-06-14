@@ -101,7 +101,7 @@ async function loadModules(): Promise<void> {
   require('../page/Page.js');
   require('../page/Page.Custom.js');
   require('../page/Page.Explorer.js');
-  require('../page/Page.ExplorerForm.js');
+  await import(/* webpackMode: "eager" */ '../page/Page.ExplorerForm');
   require('../page/Page.Form.js');
   require('../page/Page.Tab.js');
   require('../page/Page.Table.js');

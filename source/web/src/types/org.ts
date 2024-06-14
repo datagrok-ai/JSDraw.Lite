@@ -37,11 +37,12 @@ export type HelmType = `${HelmTypes}`
 
 export type WebEditorRGroups = { [group: string]: string };
 
-export interface IMonomer {
-
+/** */
+export interface IOrgMonomer {
+  id: string;
 }
 
-export interface IOrgWebEditorMonomer {
+export interface IOrgWebEditorMonomer extends IOrgMonomer {
   /** symbol */ id: string;
   /** name */ n?: string;
   /** natural analog */ na?: string;
