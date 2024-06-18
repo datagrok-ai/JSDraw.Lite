@@ -8,10 +8,24 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
+// @ts-nocheck
+
 import {JSDraw2ModuleType, ScilModuleType} from './types';
 import {DojoType, DojoxType} from './types/dojo';
 import {OrgType} from './types/org';
-import {JSDraw2Document, JSDraw2Window} from './types/jsdraw2';
+import {
+  ColorArray, IContextMenu, IDialog, IEditorOptions, IOrgPlugin, IStack,
+  JSDraw2Document, JSDraw2Window, ShapeType, ShapeTypes
+} from './types/jsdraw2';
+import {IMolHandler} from './types/mol-handler';
+import {Point} from './Point';
+import {Atom} from './Atom';
+import {Mol} from './Mol';
+
+type EventPoint<TBio = any> = Point & { tm: number, clientX: number, clientY: number, atom: Atom<TBio> }
+type EditorClone<TBio = any> = {
+  mol: Mol<TBio>, bondlength: number, tor: number, linewidth: number, fontsize: number, angleStop: number
+}
 
 declare const dojo: DojoType;
 declare const dojox: DojoxType;
@@ -52,7 +66,7 @@ declare const document: JSDraw2Document & Document;
  * </pre>
  * @class scilligence.JSDraw2.Editor
  */
-JSDraw2.Editor = scilligence.extend(scilligence._base, {
+export class EditorInt<TBio = any> implements IMolHandler<TBio> {
   /**
    @property {Mol} atoms Mol object
    */
@@ -66,6 +80,70 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {Editor} editor this Editor
    * @return null
    */
+
+    // -- IMolHandler --
+  public bondlength: number;
+  public m: Mol<TBio>;
+
+  private readonly T: string;
+  private disableundo: boolean;
+  public options: any;
+  private readonly chiral: any;
+  private ptElement: any; // TODO: ?
+  private connectHandlers: any[];
+  private maintable: any;
+  public div: HTMLDivElement;
+  private readonly id: string;
+  private readonly movingresolution: number;
+  private readonly dimension: Point;
+  public readonly helm: IOrgPlugin<TBio>;
+  private readonly undocapacity: number;
+  private texteditor: any;
+  private toolbar: any;
+  private surface: any;
+  private readonly loaded: boolean;
+
+  private angleStop: number;
+  private tor: number;
+  private linewidth: number;
+  private fontsize: number;
+
+  private activated: boolean;
+  private status: any;
+  private modified: boolean;
+  private touching: boolean;
+  private start: any;
+  private lastmove: any;
+  private end: any;
+  public curObject: any;
+  private curButton: any;
+  private movingClone: any;
+  private resizing: any;
+  private rotating: any;
+  private mousedownPoint: Point;
+  private _lastMousedownTm: any;
+  private lassolast: any;
+  private chaintool: any;
+  private ink: any;
+
+  private frozen: boolean;
+  private lastaction: any;
+  private _undostack: IStack<any>;
+  private _redostack: IStack<any>;
+  private erasercache: any;
+
+  private contextmenu: IContextMenu;
+  private viewoffset: Point;
+  private _clearing: boolean;
+  private simpledraw: boolean;
+
+  private arrowtool: any;
+  private groupPropDlg!: IDialog;
+  private _keypresschar: string;
+  private popuplocked: boolean;
+  private _testdeactivation: Function | null = null;
+  private _msContentZooming: string;
+  private _overflow: string;
 
   /**
    * Constructor a JSDraw Editor
@@ -101,7 +179,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * <li>width</li>
    * </ul>
    */
-  constructor: function(dv, options) {
+  constructor(dv: HTMLDivElement | string, options?: Partial<IEditorOptions>) {
     this.disableundo = JSDraw2.speedup.disableundo;
 
     this.T = "DRAW";
@@ -117,14 +195,14 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     ++JSDraw2.Editor._id;
     if ((typeof dv) == "string")
-      dv = dojo.byId(dv);
+      dv = dojo.byId(dv as string) as HTMLDivElement;
     if (dv == null)
       return;
 
     this.ptElement = null;
     this.connectHandlers = [];
     this.maintable = null;
-    this.div = dv;
+    this.div = dv as HTMLDivElement;
     if (this.div.id == null || this.div.id.length == 0)
       this.div.id = "__JSDraw_" + JSDraw2.Editor._id;
     this.id = this.div.id;
@@ -389,16 +467,16 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         this.connectHandlers.push(dojo.connect(this.div, 'ontouchend', function(e) { return me.touchEnd(e); }));
       } else {
         this.activate(false, false);
-        this.connectHandlers.push(dojo.connect(document, 'onmousedown', function(e) { return me.bodyMouseDown(e); }));
+        this.connectHandlers.push(dojo.connect(document, 'onmousedown', function(e: MouseEvent) { return me.bodyMouseDown(e); }));
         //this.connectHandlers.push(dojo.connect(document, 'onclick', function (e) { me.bodyClick(e); }));
-        this.connectHandlers.push(dojo.connect(document, 'onkeydown', function(e) { me.keydown(e); }));
-        this.connectHandlers.push(dojo.connect(this.div, 'onmousedown', function(e) { me.mousedown(e); }));
-        this.connectHandlers.push(dojo.connect(this.div, 'onmousemove', function(e) { me.mousemove(e); }));
-        this.connectHandlers.push(dojo.connect(this.div, 'onmouseup', function(e) { me.mouseup(e); }));
+        this.connectHandlers.push(dojo.connect(document, 'onkeydown', function(e: KeyboardEvent) { me.keydown(e); }));
+        this.connectHandlers.push(dojo.connect(this.div, 'onmousedown', function(e: MouseEvent) { me.mousedown(e); }));
+        this.connectHandlers.push(dojo.connect(this.div, 'onmousemove', function(e: MouseEvent) { me.mousemove(e); }));
+        this.connectHandlers.push(dojo.connect(this.div, 'onmouseup', function(e: MouseEvent) { me.mouseup(e); }));
         if (scil.Utils.isFirefox)
-          this.connectHandlers.push(dojo.connect(this.div, 'onwheel', function(e) { me.mousewheel(e); }));
+          this.connectHandlers.push(dojo.connect(this.div, 'onwheel', function(e: WheelEvent) { me.mousewheel(e); }));
         else
-          this.connectHandlers.push(dojo.connect(this.div, 'onmousewheel', function(e) { me.mousewheel(e); }));
+          this.connectHandlers.push(dojo.connect(this.div, 'onmousewheel', function(e: WheelEvent) { me.mousewheel(e); }));
       }
 
       dojo.attr(this.div, '__ajaxform', '1');
@@ -419,13 +497,13 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       }
 
       if (!scil.Utils.isTouch) {
-        this.connectHandlers.push(dojo.connect(this.div, 'onmousedown', function(e) { me.mousedown(e, true); }));
-        this.connectHandlers.push(dojo.connect(this.div, 'onmousemove', function(e) { me.mousemove(e, true); }));
-        this.connectHandlers.push(dojo.connect(this.div, 'onmouseup', function(e) { me.mouseup(e, true); }));
+        this.connectHandlers.push(dojo.connect(this.div, 'onmousedown', function(e: MouseEvent) { me.mousedown(e, true); }));
+        this.connectHandlers.push(dojo.connect(this.div, 'onmousemove', function(e: MouseEvent) { me.mousemove(e, true); }));
+        this.connectHandlers.push(dojo.connect(this.div, 'onmouseup', function(e: MouseEvent) { me.mouseup(e, true); }));
         if (scil.Utils.isFirefox)
-          this.connectHandlers.push(dojo.connect(this.div, 'DOMMouseScroll', function(e) { me.mousewheel(e); }));
+          this.connectHandlers.push(dojo.connect(this.div, 'DOMMouseScroll', function(e: WheelEvent) { me.mousewheel(e); }));
         else
-          this.connectHandlers.push(dojo.connect(this.div, 'onmousewheel', function(e) { me.mousewheel(e, true); }));
+          this.connectHandlers.push(dojo.connect(this.div, 'onmousewheel', function(e: WheelEvent) { me.mousewheel(e, true); }));
       }
     }
     this.connectHandlers.push(dojo.connect(this.div, 'onresize', function() { if (!me._clearing) me.onResize(); }));
@@ -442,14 +520,16 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this._hideElements(parents);
     }
 
-    if (scil.Utils.isSilverlight == null)
-      scil.Utils.isSilverlight = this.div.firstChild != null && this.div.firstChild.type == "application/x-silverlight";
+    if (scil.Utils.isSilverlight == null) {
+      // @ts-ignore
+      scil.Utils.isSilverlight = this.div.firstChild != null && this.div.type == "application/x-silverlight";
+    }
 
     if (scil.Utils.isSilverlight) {
       if (this.options.popup) {
         // this.connectHandlers.push(dojo.connect(this.div, 'onmousedown', function (e) { me.mousedown2(e); e.preventDefault(); }));
         this.div.style.position = "relative";
-        let zindex = parseInt(this.div.zIndex + "");
+        let zindex = parseInt(this.div.style.zIndex + "");
         if (isNaN(zindex))
           zindex = 0;
         scil.Utils.createElement(this.div, "div", null, {
@@ -489,9 +569,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     } else {
       this.doCmd("moveview");
     }
-  },
+  }
 
-  doPaste: function(s) {
+  doPaste(s) {
     if (!this.activated)
       return false;
 
@@ -543,9 +623,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     if (ret)
       this.refresh();
     return true;
-  },
+  }
 
-  _showAllParents: function(e) {
+  _showAllParents(e) {
     const ret = {display: [], visibility: [], visvalues: []};
     while (e != null && e.style != null) {
       if (e.style.display == "none") {
@@ -560,18 +640,18 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       e = e.parentNode;
     }
     return ret;
-  },
+  }
 
-  _hideElements: function(ret) {
+  _hideElements(ret) {
     if (ret == null)
       return;
     for (let i = 0; i < ret.display.length; ++i)
       ret.display[i].style.display = "none";
     for (let i = 0; i < ret.visibility.length; ++i)
       ret.visibility[i].style.visibility = ret.visvalues[i];
-  },
+  }
 
-  reset: function() {
+  reset() {
     this.clear(true);
     this._undostack.clear();
     this._redostack.clear();
@@ -580,14 +660,14 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.doCmd("tlc");
     else
       this.doCmd("select");
-  },
+  }
 
   /**
    * Push the current status into undo stack
    * @function pushundo
    * @returns null
    */
-  pushundo: function(m, action) {
+  pushundo(m?: EditorClone<TBio>, action?: any) {
     if (this.disableundo)
       return;
 
@@ -597,14 +677,14 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     this.lastaction = action;
     this._redostack.clear();
     this._undostack.push(m == null ? this.clone() : m);
-  },
+  }
 
   /**
    * Undo once
    * @function undo
    * @returns null
    */
-  undo: function() {
+  undo() {
     if (this.disableundo)
       return;
 
@@ -616,12 +696,12 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     this.restoreClone(m);
     this.setModified(true);
     return true;
-  },
+  }
 
-  restoreClone: function(m) {
+  restoreClone(m) {
     this._setmol(m.mol);
     this.resetScale(m);
-  },
+  }
 
 
   /**
@@ -629,7 +709,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @function redo
    * @returns null
    */
-  redo: function() {
+  redo() {
     if (this.disableundo)
       return;
 
@@ -642,14 +722,14 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     this.resetScale(m);
     this.setModified(true);
     return true;
-  },
+  }
 
   /**
    * Copy
    * @function copy
    * @returns null
    */
-  copy: function(m) {
+  copy(m?: Mol<TBio>) {
     if (m == null) {
       m = this.m.clone(true);
       m.bondlength = this.bondlength;
@@ -662,19 +742,19 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     return false;
-  },
+  }
 
   /**
    * Cut
    * @function cut
    * @returns null
    */
-  cut: function() {
+  cut() {
     if (!this.copy())
       return false;
     this.pushundo();
     return this.delSelected() > 0;
-  },
+  }
 
   /**
    * Paste
@@ -682,10 +762,10 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {Point} pos - place the pasted structure to this location
    * @returns the Mol
    */
-  paste: function(pos) {
+  paste(pos?: number) {
     const m = JSDraw2.Editor.getClipboard();
     return this.pasteMol(m);
-  },
+  }
 
   /**
    * Paste a mol
@@ -694,7 +774,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {Point} pos - place the pasted structure to this location
    * @returns the Mol
    */
-  pasteMol: function(m, pos, clear) {
+  pasteMol(m, pos?: Point, clear?: string): boolean {
     if (m == null)
       return false;
 
@@ -707,7 +787,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     const empty = this.m.isEmpty();
     this.pushundo();
 
-    if (clear == true)
+    if (!!clear)
       this.clear(null, true);
 
     let len = null;
@@ -796,26 +876,26 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     this.setModified(true);
     return true;
-  },
+  }
 
   /**
    * Reset scaling
    * @function resetScale
    * @returns null
    */
-  resetScale: function(s) {
+  resetScale(s?: EditorClone): void {
     this.bondlength = s == null ? JSDraw2.Editor.BONDLENGTH : s.bondlength;
     this.tor = s == null ? JSDraw2.Editor.TOR : s.tor;
     this.linewidth = s == null ? JSDraw2.Editor.LINEWIDTH : s.linewidth;
     this.fontsize = s == null ? JSDraw2.Editor.FONTSIZE : s.fontsize;
     this.angleStop = s == null ? JSDraw2.Editor.ANGLESTOP : s.angleStop;
-  },
+  }
 
-  clone: function() {
+  clone(): EditorClone {
     return {mol: this.m.clone(), bondlength: this.bondlength, tor: this.tor, linewidth: this.linewidth, fontsize: this.fontsize, angleStop: this.angleStop};
-  },
+  }
 
-  showTextEditor: function(obj, p, str) {
+  showTextEditor(obj: any, p?: Point, str?: string) {
     const text = this.texteditor.text = JSDraw2.Text.cast(obj);
     if (text != null && text.readonly)
       return;
@@ -827,7 +907,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         return;
     }
 
-    const a = this.texteditor.atom = JSDraw2.Atom.cast(obj);
+    const a = this.texteditor.atom = JSDraw2.Atom.cast<TBio>(obj);
     const t = JSDraw2.Text.cast(obj);
     const shp = this.texteditor.shape = JSDraw2.Shape.cast(obj);
     const br = t != null && t.anchors != null && t.anchors.length == 1 ? JSDraw2.Bracket.cast(t.anchors[0]) : null;
@@ -937,15 +1017,15 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     this.texteditor.ed.input.style.display = "";
     this.texteditor.ed.input.focus();
     this.texteditor.showtime = new Date().getTime();
-  },
+  }
 
-  filterAtomType: function(q) {
+  filterAtomType(q) {
     if (this.texteditor.atom == null)
       return;
     return JSDraw2.SuperAtoms.filter(q, JSDraw2.defaultoptions.suggestcount > 0 ? JSDraw2.defaultoptions.suggestcount : 10);
-  },
+  }
 
-  createImageTo: function(parent) {
+  createImageTo(parent) {
     if (!scil.Utils.serviceAvailable() || parent == null)
       return;
 
@@ -956,9 +1036,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     scil.Utils.ajax(JSDrawServices.url + "?cmd=jsdraw2img", function(ret) {
       scil.Utils.createElement(parent, "img", null, null, {src: ret.src, jsdraw: JSDraw2.Base64.encode(jsdraw)});
     }, {jsdraw: jsdraw});
-  },
+  }
 
-  clickTextItem: function(s) {
+  clickTextItem(s) {
     if (this.texteditor.atom != null) {
       if (s == "...") {
         this.hideTextEditor(true);
@@ -975,9 +1055,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     } else {
       this.txtAutosize();
     }
-  },
+  }
 
-  insertSymbol: function(symbol) {
+  insertSymbol(symbol) {
     if (this.texteditor.ed == null || this.texteditor.ed.input.style.display == "none")
       return false;
     this.texteditor.ed.input.focus();
@@ -993,9 +1073,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
     this.txtAutosize();
     return false;
-  },
+  }
 
-  hideTextEditor: function(cancel) {
+  hideTextEditor(cancel?: boolean) {
     if (this.texteditor.ed == null || this.texteditor.ed.input.style.display == "none")
       return;
 
@@ -1080,20 +1160,20 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         this.refresh(true);
       }
     }
-  },
+  }
 
-  showTemplatesDlg: function() {
+  showTemplatesDlg() {
     JSDraw2.CustomTemplates.show(false, this);
-  },
+  }
 
-  showSymbolDlg: function() {
+  showSymbolDlg() {
     const input = this.texteditor == null || this.texteditor.ed == null ? null : this.texteditor.ed.input;
     const pt = input == null || input.style.display == "none" ? null : {x: input.offsetLeft, y: input.offsetTop + input.offsetHeight + 5};
     const me = this;
     JSDraw2.Symbol.show(false, function(s) { return me.insertSymbol(s); }, pt);
-  },
+  }
 
-  txtKeypress: function(e) {
+  txtKeypress(e) {
     if ((e.keyCode == 40 || e.keyCode == 38) && (e.ctrlKey || e.metaKey) && JSDraw2.Symbol != null) {
       if (e.keyCode == 40)
         this.showSymbolDlg();
@@ -1110,22 +1190,22 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       return false;
     }
     this.txtAutosize();
-  },
+  }
 
-  txtAutosize: function() {
+  txtAutosize() {
     const w = scil.Utils.textWidth(this.texteditor.ed.input.value) * this.fontsize * 0.6 + this.fontsize * 3;
     this.texteditor.ed.input.style.width = (w < 100 ? 100 : w) + "px";
     this.texteditor.ed.updateDropdownSize();
-  },
+  }
 
-  _setmol: function(m) {
+  _setmol(m) {
     this.m = m;
     this.m.showimplicithydrogens = this.options.showimplicithydrogens;
     this.start = null;
     this.end = null;
     this.status = null;
     this.curObject = null;
-  },
+  }
 
   /**
    * Scale the molecule
@@ -1134,7 +1214,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {Point} origin - the scaling origin
    * @returns null
    */
-  scale: function(s, origin) {
+  scale(s, origin?: Point) {
     if (s <= 0 || s == 1.0)
       return;
 
@@ -1149,7 +1229,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     if (origin == null)
       this.moveCenter();
-  },
+  }
 
   /**
    * Set modified flag
@@ -1157,7 +1237,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {bool} f - true or false
    * @returns null
    */
-  setModified: function(f) {
+  setModified(f) {
     this.modified = f;
     if (f == false)
       return;
@@ -1172,7 +1252,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         }
       }
     }
-  },
+  }
 
   /**
    * Refresh the display
@@ -1180,43 +1260,43 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {bool} modified - modified flag
    * @returns null
    */
-  refresh: function(modified) {
+  refresh(modified?: boolean): void {
     this.m.stats = null;
     if (modified == true || modified == false)
       this.setModified(modified);
     this.redraw();
-  },
+  }
 
-  calcTextRect: function() {
+  calcTextRect() {
     if (this.surface == null || scil.Utils.isIE8Lower && this.surface.rawNode == null)
       return;
 
     const g = this.createGroup();
     this.m.draw(g, this.linewidth, this.fontsize, true, null, null, true);
     this.surface.remove(g);
-  },
+  }
 
-  createGroup: function(parent) {
+  createGroup(parent?: any) {
     const g = (parent == null ? this.surface : parent).createGroup();
     if (dojox.gfx.renderer == "svg")
       g.rawNode.setAttribute("__surface_parentid", this.id);
     return g;
-  },
+  }
 
-  moveview: function(p) {
+  moveview(p) {
     this.viewoffset = p;
     if (this.viewoffset != null)
       this.surface.rootgroup.setTransform([dojox.gfx.matrix.translate(this.viewoffset.x, this.viewoffset.y)]);
     else
       this.surface.rootgroup.setTransform([dojox.gfx.matrix.translate(0, 0)]);
-  },
+  }
 
   /**
    * Redraw the molecule
    * @function redraw
    * @returns null
    */
-  redraw: function(extraOnly) {
+  redraw(extraOnly?: boolean) {
     if (this.surface == null || scil.Utils.isIE8Lower && this.surface.rawNode == null)
       return;
 
@@ -1336,7 +1416,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         .setFont({family: "Arial", size: "14px", weight: "normal"})
         .setFill("#000");
     }
-  },
+  }
 
   /**
    * Fit the molecule to the view window
@@ -1344,7 +1424,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {number} maxBondLength - maximum bond length
    * @returns null
    */
-  fitToWindow: function(maxBondLength) {
+  fitToWindow(maxBondLength?: number) {
     const rect = this.m.rect();
     if (rect == null)
       return;
@@ -1374,38 +1454,38 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.moveCenter();
     else
       this.scale(1.0 / s);
-  },
+  }
 
   /**
    * Move the structure to center of the view window
    * @function moveCenter
    * @returns null
    */
-  moveCenter: function() {
+  moveCenter() {
     this.m.moveCenter(this.dimension.x, this.dimension.y);
-  },
+  }
 
-  updateGroupRect: function() {
+  updateGroupRect() {
     for (let i = 0; i < this.m.graphics.length; ++i) {
       const g = JSDraw2.Group.cast(this.m.graphics[i]);
       if (g != null)
         g._updateRect(this.m, this.bondlength);
     }
-  },
+  }
 
   /**
    * Clean up reaction
    * @function cleanupRxn
    * @returns true if it is a reaction
    */
-  cleanupRxn: function() {
+  cleanupRxn(bondlength: number) {
     const f = this.m.cleanupRxn(this.bondlength);
     if (f)
       this.fitToWindow(this.bondlength);
     return f;
-  },
+  }
 
-  setRxn: function(rxn, redraw, bondlength, addlabel) {
+  setRxn(rxn: any, redraw: boolean, bondlength?: number, addlabel?: boolean) {
     this.pushundo();
     if (bondlength != null)
       this.bondlength = bondlength;
@@ -1431,7 +1511,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     this.fitToWindow(this.bondlength);
     if (redraw != false)
       this.redraw();
-  },
+  }
 
   /**
    * Clear all contents
@@ -1439,7 +1519,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {bool} redraw - indicate if redrawing the view wndow
    * @returns null
    */
-  clear: function(redraw, fireevents) {
+  clear(redraw?: boolean, fireevents?: boolean) {
     const isempty = this.m.isEmpty();
 
     this.m.clear();
@@ -1456,22 +1536,22 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       if (fireevents && this.options.onClear != null)
         this.options.onClear();
     }
-  },
+  }
 
-  toggleAtom: function(p) {
+  toggleAtom(p) {
     return this.m.toggleAtom(p, this.simpledraw ? JSDraw2.Editor.TOR : this.tor);
-  },
+  }
 
-  toggle: function(p) {
+  toggle(p) {
     return this.m.toggle(p, this.simpledraw ? JSDraw2.Editor.TOR : this.tor);
-  },
+  }
 
-  fixWedgeDir: function(b) {
+  fixWedgeDir(b) {
     const atoms1 = this.m.getNeighborAtoms(b.a1, b.a2);
     const atoms2 = this.m.getNeighborAtoms(b.a2, b.a1);
     if ((atoms1.length == 0 || atoms1.length == 1) && atoms1.length < atoms2.length)
       b.reverse();
-  },
+  }
 
   /**
    * Get the fragment containing a given atom
@@ -1479,14 +1559,14 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {Atom} a - the given atom
    * @returns the fragement as a Mol object
    */
-  getFragment: function(a) {
+  getFragment(a) {
     const frags = this.m.splitFragments();
     for (let i = 0; i < frags.length; ++i) {
       if (frags[i].containsAtom(a))
         return frags[i];
     }
     return null;
-  },
+  }
 
   /**
    * Get the center of a set of atoms
@@ -1494,7 +1574,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {array} atoms - an array of atoms
    * @returns a Point object
    */
-  getCenter: function(atoms) {
+  getCenter(atoms?: Atom<TBio>[]) {
     let x = 0;
     let y = 0;
     if (atoms == null)
@@ -1509,7 +1589,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     return new JSDraw2.Point(x / atoms.length, y / atoms.length);
-  },
+  }
 
   /**
    * Rotate atoms around a point
@@ -1519,7 +1599,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {deg} atoms - rotating degree
    * @returns null
    */
-  rotate: function(atoms, origin, deg) {
+  rotate(atoms, origin, deg) {
     if (atoms == null)
       atoms = this.m.atoms;
 
@@ -1530,9 +1610,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       atoms[i].p.rotateAround(origin, deg);
 
     return true;
-  },
+  }
 
-  //    mousedown2: function (e) {
+  //    mousedown2(e) {
   //        // silverlight - simulate double-click
   //        if (this.options.popup) {
   //            const tm = new Date().getTime();
@@ -1542,7 +1622,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
   //        }
   //    },
 
-  startResize: function(obj, p, ctrl, cmd) {
+  startResize(obj, p, ctrl, cmd) {
     if (obj.resize == null)
       return;
 
@@ -1554,9 +1634,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       if (br != null)
         this.resizing.texts = br.getTexts(this.m);
     }
-  },
+  }
 
-  getConnectingAtomBonds: function(list) {
+  getConnectingAtomBonds(list, notused?: boolean) {
     const links = [];
     if (list != null && list.length > 0) {
       const m = list[0]._parent;
@@ -1571,9 +1651,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       }
     }
     return links;
-  },
+  }
 
-  mousewheel: function(e, viewonly) {
+  mousewheel(e: WheelEvent, viewonly?: boolean) {
     if (!this.activated && !viewonly)
       return;
 
@@ -1581,7 +1661,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     if (cmd != "moveview")
       return;
 
-    let delta = (e.wheelDelta || -e.detail || (Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX));
+    let delta = (-e.detail || (Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX));
     if (scil.Utils.isFirefox)
       delta *= 20.0;
 
@@ -1601,9 +1681,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       e.stopPropagation();
     }
     e.preventDefault();
-  },
+  }
 
-  mousedown: function(e, viewonly) {
+  mousedown(e: MouseEvent, viewonly?: boolean) {
     if (!this.activated) {
       this.mousedownPoint = new JSDraw2.Point(e.clientX, e.clientY);
       if (viewonly && e.button == 0)
@@ -1639,7 +1719,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       return;
     }
 
-    const p = this.eventPoint(e);
+    const p = this.eventPoint(e) as EventPoint<TBio>;
     if (cmd == "moveview") {
       this.start = p;
       this.viewoffset = null;
@@ -1690,8 +1770,8 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
           const g = null;
           let br;
           if (cmd == "selfrag") {
-            a = JSDraw2.Atom.cast(obj);
-            const b = JSDraw2.Bond.cast(obj);
+            a = JSDraw2.Atom.cast<TBio>(obj);
+            const b = JSDraw2.Bond.cast<TBio>(obj);
             const g = JSDraw2.Group.cast(obj);
             br = JSDraw2.Bracket.cast(obj);
             if (b != null)
@@ -1727,7 +1807,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
             }
           } else {
             obj.selected = true;
-            const b = JSDraw2.Bond.cast(obj);
+            const b = JSDraw2.Bond.cast<TBio>(obj);
             if (b != null)
               b.a1.selected = b.a2.selected = true;
             else
@@ -1748,7 +1828,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       }
     }
 
-    const a1 = JSDraw2.Atom.cast(obj);
+    const a1 = JSDraw2.Atom.cast<TBio>(obj);
     if (a1 != null) {
       p.x = a1.p.x;
       p.y = a1.p.y;
@@ -1823,9 +1903,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       if (!e.shiftKey && this.m.setSelected() > 0)
         this.redraw();
     }
-  },
+  }
 
-  selectCurrent: function(obj, e) {
+  selectCurrent(obj, e) {
     if (this.curObject == obj)
       return false;
 
@@ -1836,10 +1916,10 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     if (this.options.showhelmpopup)
       this.onHelmSelectCurrent(e, obj);
     return true;
-  },
+  }
 
-  onHelmSelectCurrent: function(e, obj) {
-    const a = JSDraw2.Atom.cast(obj);
+  onHelmSelectCurrent(e, obj) {
+    const a = JSDraw2.Atom.cast<TBio>(obj);
     if (a == null || this.start != null || this.contextmenu != null && this.contextmenu.isVisible()) {
       org.helm.webeditor.MolViewer.hide();
       return;
@@ -1851,9 +1931,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     const s = a == null ? null : a.elem;
     const m = set == null ? null : set[s.toLowerCase()];
     org.helm.webeditor.MolViewer.show(e, type, m, s, this, a);
-  },
+  }
 
-  mousemove: function(e, viewonly) {
+  mousemove(e: MouseEvent, viewonly?: boolean) {
     if (!this.activated) {
       //this.mousedownPoint = null;
       if (viewonly && this.start != null && !this.frozen) {
@@ -1977,7 +2057,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         }
       } else if (scil.Utils.startswith(cmd, "spot-")) {
       } else {
-        if (JSDraw2.Atom.cast(this.curObject) != null)
+        if (JSDraw2.Atom.cast<TBio>(this.curObject) != null)
           this.end = this.curObject.p.clone();
         else
           this.end = this._guessBond(this.start, p);
@@ -1987,9 +2067,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     if (f != false && !(this.start != null && p.tm - this.start.tm < JSDraw2.Editor.undoGestureTime))
       this.redraw(f != "all");
-  },
+  }
 
-  mouseup: function(e, viewonly) {
+  mouseup(e: MouseEvent, viewonly?: boolean) {
     this.holding.end();
 
     let b;
@@ -2387,9 +2467,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     // atom properties
     if (cmd == "&#9679;") {
       let a;
-      if ((a = JSDraw2.Atom.cast(this.curObject)) != null)
+      if ((a = JSDraw2.Atom.cast<TBio>(this.curObject)) != null)
         this.showAtomDlg(a);
-      else if ((a = JSDraw2.Bond.cast(this.curObject)) != null)
+      else if ((a = JSDraw2.Bond.cast<TBio>(this.curObject)) != null)
         this.showBondDlg(a);
       return;
     }
@@ -2408,7 +2488,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       }
 
       let a;
-      if ((a = JSDraw2.Atom.cast(this.curObject)) != null) {
+      if ((a = JSDraw2.Atom.cast<TBio>(this.curObject)) != null) {
         const e = JSDraw2.PT[cmd];
         if (cmd == "antibody" || cmd == "protein" || cmd == "gene")
           f = this.m.setAtomType(a, cmd);
@@ -2429,7 +2509,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         }
       }
 
-      if ((b = JSDraw2.Bond.cast(this.curObject)) != null) {
+      if ((b = JSDraw2.Bond.cast<TBio>(this.curObject)) != null) {
         switch (cmd) {
         case "double":
           f = this.m.setBondType(b, JSDraw2.BONDTYPES.DOUBLE);
@@ -2499,7 +2579,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         if (bondtype != null) {
           const a1 = this.m.addAtom(new JSDraw2.Atom(p2));
           const p = p2.clone().offset(this.bondlength, 0).rotateAround(p2, -30);
-          let a2 = JSDraw2.Atom.cast(this.toggle(p));
+          let a2 = JSDraw2.Atom.cast<TBio>(this.toggle(p));
           if (a2 == null)
             a2 = this.m.addAtom(new JSDraw2.Atom(p));
           this.m.addBond(new JSDraw2.Bond(a1, a2));
@@ -2514,13 +2594,13 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         if (e != null && e.a > 0 || cmd == "antibody" || cmd == "protein" || cmd == "gene" || this.helm != null && this.helm.isHelmCmd(cmd)) {
           const a = this.m.addAtom(new JSDraw2.Atom(p2));
           if (cmd == "antibody") {
-            a.bio = {type: JSDraw2.BIO.ANTIBODY};
+            a.bio = {type: JSDraw2.BIO.ANTIBODY as TBio};
             a.elem = "X";
           } else if (cmd == "protein") {
-            a.bio = {type: JSDraw2.BIO.PROTEIN};
+            a.bio = {type: JSDraw2.BIO.PROTEIN as TBio};
             a.elem = "X";
           } else if (cmd == "gene") {
-            a.bio = {type: JSDraw2.BIO.GENE};
+            a.bio = {type: JSDraw2.BIO.GENE as TBio};
             a.elem = "X";
           } else if (this.helm != null && this.helm.createIsolatedMonomer(cmd, a)) {
             ;
@@ -2538,8 +2618,8 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       return;
     }
 
-    let a1 = JSDraw2.Atom.cast(p1.atom != null ? p1.atom : this.toggle(p1));
-    let a2 = JSDraw2.Atom.cast(this.toggle(p2));
+    let a1 = JSDraw2.Atom.cast<TBio>(p1.atom != null ? p1.atom : this.toggle(p1));
+    let a2 = JSDraw2.Atom.cast<TBio>(this.toggle(p2));
     if (a1 != null && a2 != null) {
       if (a1._parent != a2._parent) {
         scil.Utils.alert("Cannot create bond between the two atoms");
@@ -2660,9 +2740,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     this.start = null;
     this.refresh(b != null);
-  },
+  }
 
-  _bracketReselectAtoms: function() {
+  _bracketReselectAtoms() {
     const br = JSDraw2.Bracket.cast(this.curObject);
     if (br == null)
       return;
@@ -2670,9 +2750,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     const list = this.m.bracketSelect(br.rect());
     if (list != null && list.length > 0)
       br.atoms = list;
-  },
+  }
 
-  _addNewAtomInExistingGroup: function(olda, atoms) {
+  _addNewAtomInExistingGroup(olda, atoms) {
     if (olda == null)
       return;
 
@@ -2695,9 +2775,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
           br.atoms.push(a);
       }
     }
-  },
+  }
 
-  mousedblclick: function(e) {
+  mousedblclick(e) {
     if (this.options.viewonly)
       return;
 
@@ -2706,9 +2786,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     if (obj == null)
       return;
 
-    let a = JSDraw2.Atom.cast(obj);
+    let a = JSDraw2.Atom.cast<TBio>(obj);
     if (a == null) {
-      const b = JSDraw2.Bond.cast(obj);
+      const b = JSDraw2.Bond.cast<TBio>(obj);
       if (b != null)
         a = b.a1;
     }
@@ -2724,9 +2804,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       m.bonds[i].selected = true;
 
     this.refresh(false);
-  },
+  }
 
-  endMove: function(e, viewonly) {
+  endMove(e, viewonly) {
     if (this.start == null)
       return;
 
@@ -2744,9 +2824,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       else
         this.refresh(true);
     }
-  },
+  }
 
-  isIsolatedShape: function(n) {
+  isIsolatedShape(n) {
     if (n.froms.length > 0)
       return false;
 
@@ -2757,9 +2837,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     return true;
-  },
+  }
 
-  isShapeConnected: function(from, to) {
+  isShapeConnected(from, to) {
     if (from == null || to == null)
       return false;
 
@@ -2768,9 +2848,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         return true;
     }
     return false;
-  },
+  }
 
-  _countAABonds: function(a) {
+  _countAABonds(a) {
     if (a == null || a.biotype() != JSDraw2.BIO.AA)
       return null;
 
@@ -2793,9 +2873,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       }
     }
     return ret;
-  },
+  }
 
-  addTlcPlate: function(tlc) {
+  addTlcPlate(tlc) {
     if (tlc == null || !(tlc.spots.length > 0))
       return;
 
@@ -2824,14 +2904,14 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.options.onAddTLC(tlc);
 
     this.moveCenter();
-  },
+  }
 
-  hideChirarlities: function(selectonly) {
+  hideChirarlities(selectonly?: boolean) {
     const texts = [];
     for (let i = 0; i < this.m.graphics.length; ++i) {
       const t = JSDraw2.Text.cast(this.m.graphics[i]);
       if (t != null && t.anchors != null && t.anchors.length == 1 && t.fieldtype == "CHIRAL") {
-        const a = JSDraw2.Atom.cast(t.anchors[0]);
+        const a = JSDraw2.Atom.cast<TBio>(t.anchors[0]);
         if (!selectonly || a.selected)
           texts.push(t);
       }
@@ -2843,9 +2923,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.pushundo();
       this.refresh(true);
     }
-  },
+  }
 
-  detectChiralities: function(selectonly) {
+  detectChiralities(selectonly?: boolean) {
     const me = this;
     JSDraw2.JSDrawIO.callWebservice("mol.getchiralatoms", {mol: this.getXml(), format: "xml"}, function(ret) {
       let n = 0;
@@ -2861,9 +2941,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         me.refresh(true);
       }
     });
-  },
+  }
 
-  increaseNum: function(a, delta) {
+  increaseNum(a, delta) {
     if (delta != 1 && delta != -1)
       return false;
     let f = false;
@@ -2883,9 +2963,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       f = a._parent.setAtomCharge(a, a.charge + delta);
     }
     return f;
-  },
+  }
 
-  mergeOverlaps: function() {
+  mergeOverlaps() {
     const overlaps = [];
     for (let i = 0; i < this.m.atoms.length; ++i) {
       if (this.m.atoms[i].selected) {
@@ -2936,9 +3016,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.m.delAtom(overlaps[i].a1, false);
 
     return bonds.length + overlaps.length;
-  },
+  }
 
-  onDel: function() {
+  onDel() {
     if (this.texteditor.ed != null && this.texteditor.ed.input.style.display != "none")
       return false;
 
@@ -2953,9 +3033,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     return false;
-  },
+  }
 
-  showContextMenu: function(e, viewonly) {
+  showContextMenu(e, viewonly?: boolean) {
     if (this.options.showcontextmenu == false)
       return;
 
@@ -2969,9 +3049,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     const scrolloffset = scil.Utils.scrollOffset();
     this.contextmenu.show(e.clientX + scrolloffset.x, e.clientY + scrolloffset.y, this.curObject, items);
     this.contextmenu.pos = this.eventPoint(e);
-  },
+  }
 
-  menuSetStereochemistry: function(cmd) {
+  menuSetStereochemistry(cmd) {
     if (cmd == "abs")
       cmd = null;
 
@@ -2981,9 +3061,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     else
       this.m.chiral = cmd;
     this.refresh(true);
-  },
+  }
 
-  menuCallback: function(cmd, obj) {
+  menuCallback(cmd, obj) {
     let modified = false;
     const cloned = this.clone();
     switch (cmd) {
@@ -3061,7 +3141,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       break;
     case "atom_prop": {
       let a;
-      if ((a = JSDraw2.Atom.cast(obj)) != null)
+      if ((a = JSDraw2.Atom.cast<TBio>(obj)) != null)
         this.showAtomDlg(a);
       break;
     }
@@ -3121,7 +3201,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.hideChirarlities();
       break;
     case "bond_prop": {
-      const b = JSDraw2.Bond.cast(obj);
+      const b = JSDraw2.Bond.cast<TBio>(obj);
       if (b != null)
         this.showBondDlg(b);
       break;
@@ -3139,7 +3219,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.rgroupDefine(obj);
       break;
     case "rgroup_remove": {
-      const a = JSDraw2.Atom.cast(obj);
+      const a = JSDraw2.Atom.cast<TBio>(obj);
       if (a != null && a.rgroup != null) {
         a.rgroup = null;
         modified = true;
@@ -3241,9 +3321,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.pushundo(cloned);
       this.refresh(modified);
     }
-  },
+  }
 
-  overlayCurves2: function(curve) {
+  overlayCurves2(curve) {
     curve = JSDraw2.AssayCurve.cast(curve);
     if (curve == null)
       return;
@@ -3255,9 +3335,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         list.push(c);
     }
     this.overlayCurves(list, curve);
-  },
+  }
 
-  overlayCurves: function(list, curve) {
+  overlayCurves(list, curve) {
     if (scil.Utils.indexOf(list, curve) < 0)
       return;
 
@@ -3273,9 +3353,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     this.refresh(true);
-  },
+  }
 
-  setGroupProperties: function(obj) {
+  setGroupProperties(obj) {
     const g = JSDraw2.Group.cast(obj);
     if (g == null)
       return;
@@ -3289,9 +3369,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     this.groupPropDlg.show();
     this.groupPropDlg.form.setData({ratio: g.ratio, tag: g.tag});
     this.groupPropDlg.g = g;
-  },
+  }
 
-  setGroupProperties2: function() {
+  setGroupProperties2() {
     const data = this.groupPropDlg.form.getData();
     const g = this.groupPropDlg.g;
     if (data.ratio != "" && this.hasGroupBond(g))
@@ -3304,14 +3384,14 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.groupPropDlg.hide();
       this.refresh(true);
     }
-  },
+  }
 
-  hasGroupBond: function(g) {
+  hasGroupBond(g) {
     const list = g.a == null ? null : this.m.getAllBonds(g.a);
     return list != null && list.length > 0;
-  },
+  }
 
-  copyAs: function(fmt) {
+  copyAs(fmt) {
     let s = null;
     switch (fmt) {
     case "molfile":
@@ -3334,25 +3414,25 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     scil.Clipboard.copy(s);
-  },
+  }
 
-  pasteAs: function(fmt) {
-  },
+  pasteAs(fmt) {
+  }
 
-  rgroupDefine: function(obj) {
+  rgroupDefine(obj) {
     JSDraw2.needPro();
-  },
+  }
 
-  createMulticenter: function() {
+  createMulticenter() {
     JSDraw2.needPro();
-  },
+  }
 
-  viewLarge: function() {
+  viewLarge() {
     const label = this.options.viewonly ? "Dismiss" : "Save";
     JSDraw2.Editor.showPopup("View Structure", label, null, {value: this.clone(), format: "clone"});
-  },
+  }
 
-  removeAtomValues: function() {
+  removeAtomValues() {
     let cloned = null;
     for (let i = 0; i < this.m.atoms.length; ++i) {
       const a = this.m.atoms[i];
@@ -3368,81 +3448,81 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.refresh(true);
     }
     return cloned != null;
-  },
+  }
 
   /**
    * Select all object
    * @function selectAll
    * @returns true or false
    */
-  selectAll: function() {
+  selectAll() {
     const f = this.m.setSelected(true) > 0;
     if (this.options.onselectionchanged != null)
       this.options.onselectionchanged(this);
     return f;
-  },
+  }
 
-  addRgroupStructure: function(rgroup) {
+  addRgroupStructure(rgroup) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuTLCSetSpotShape: function(obj, shape, size) {
+  menuTLCSetSpotShape(obj, shape, size) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuTLCSetSpotSize: function(obj, size) {
+  menuTLCSetSpotSize(obj, size) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuTLCLabel: function(obj, cmd) {
+  menuTLCLabel(obj, cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuTLCSetLabel: function(obj, cmd) {
+  menuTLCSetLabel(obj, cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuTLCFill: function(obj, cmd) {
+  menuTLCFill(obj, cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuShapeType: function(obj, cmd) {
+  menuShapeType(obj, cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuAlignShapes: function(obj, cmd) {
+  menuAlignShapes(obj, cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuShapeFill: function(obj, cmd) {
+  menuShapeFill(obj, cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuAntiboyType: function(obj, cmd) {
+  menuAntiboyType(obj, cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  showSequences: function(obj) {
+  showSequences(obj) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuSetFontsize: function(cmd, obj) {
+  menuSetFontsize(cmd, obj) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuSetColor: function(cmd, obj) {
+  menuSetColor(cmd, obj) {
     JSDraw2.needPro();
-  },
+  }
 
-  addTag: function(obj, p, s, edit) {
+  addTag(obj, p, s, edit?: any) {
     JSDraw2.needPro();
-  },
+  }
 
-  setBracketData: function(br, fieldtype, prefix, ypos) {
+  setBracketData(br, fieldtype, prefix, ypos) {
     JSDraw2.needPro();
-  },
+  }
 
-  setBracketSubscription: function(br) {
+  setBracketSubscription(br) {
     if (br == null)
       return;
 
@@ -3450,50 +3530,50 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     if (t == null)
       t = br.createSubscript(this.m, "#");
     this.showTextEditor(t, null, t.text);
-  },
+  }
 
-  setBracketRatio: function(br) {
+  setBracketRatio(br) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuBracket: function(cmd, sub, checked, obj) {
+  menuBracket(cmd, sub, checked, obj) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuSetTextField: function(cmd, txt) {
+  menuSetTextField(cmd, txt) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuSetAttachPoint: function(cmd, obj) {
+  menuSetAttachPoint(cmd, obj) {
     JSDraw2.needPro();
-  },
+  }
 
-  lockAtomConnection: function(f) {
+  lockAtomConnection(f) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuSetAtomQuery: function(cmd, sub, checked, obj) {
+  menuSetAtomQuery(cmd, sub, checked, obj) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuSetAtomQuery2: function(key, val) {
+  menuSetAtomQuery2(key, val) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuSetAtomType: function(cmd, obj) {
+  menuSetAtomType(cmd, obj) {
     if (cmd == "..." || cmd == "more") {
       const me = this;
       this.showPT(function(elem) { me.menuSetAtomType2(elem, obj); });
     } else {
       this.menuSetAtomType2(cmd, obj);
     }
-  },
+  }
 
-  menuSetAtomType2: function(elem, obj) {
+  menuSetAtomType2(elem, obj?: any) {
     let n = 0;
     const cloned = this.clone();
 
-    const a = JSDraw2.Atom.cast(obj);
+    const a = JSDraw2.Atom.cast<TBio>(obj);
     if (a != null && !a.selected) {
       if (a._parent.setAtomType(a, elem))
         ++n;
@@ -3510,9 +3590,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.pushundo(cloned);
       this.refresh(true);
     }
-  },
+  }
 
-  menuSetAtomCharges: function(cmd) {
+  menuSetAtomCharges(cmd) {
     const charges = parseInt(cmd);
     if (isNaN(charges))
       return;
@@ -3531,46 +3611,47 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.pushundo(cloned);
       this.refresh(true);
     }
-  },
+  }
 
-  menuSetAtomIsotope: function(cmd) {
+  menuSetAtomIsotope(cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuSetAtomRadical: function(cmd) {
+  menuSetAtomRadical(cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuSetEhnStereochemistry: function(cmd) {
+  menuSetEhnStereochemistry(cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuSetBondTop: function(cmd) {
+  menuSetBondTop(cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuSetRxnCenter: function(cmd) {
+  menuSetRxnCenter(cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  menuSetBondType: function(cmd) {
+  menuSetBondType(cmd) {
     JSDraw2.needPro();
-  },
+  }
 
-  getAllTlcPlates: function(sorting) {
+  // @ts-ignore
+  getAllTlcPlates(sorting): any[] {
     JSDraw2.needPro();
-  },
+  }
 
-  numberTlcPlates: function() {
+  numberTlcPlates() {
     JSDraw2.needPro();
-  },
+  }
 
-  expandSuperatom: function() {
+  expandSuperatom() {
     if (!this.helm.expandSuperAtom(this.curObject))
       JSDraw2.needPro();
-  },
+  }
 
-  _setSelectedBondType: function(bt) {
+  _setSelectedBondType(bt) {
     let n = 0;
     const bonds = this.m.allBonds();
     for (let i = 0; i < bonds.length; ++i) {
@@ -3579,13 +3660,13 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         ++n;
     }
     return n;
-  },
+  }
 
-  doRxnMap: function(curobj) {
+  doRxnMap(curobj) {
     JSDraw2.needPro();
-  },
+  }
 
-  Cmd2BondType: function(cmd) {
+  Cmd2BondType(cmd) {
     switch (cmd) {
     case "single":
       return JSDraw2.BONDTYPES.SINGLE;
@@ -3613,9 +3694,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       return JSDraw2.BONDTYPES.HASH;
     }
     return null;
-  },
+  }
 
-  delObject: function(obj) {
+  delObject(obj) {
     if (obj == null)
       return false;
 
@@ -3640,7 +3721,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     if (rgroup != null)
       return false;
 
-    const a = JSDraw2.Atom.cast(obj);
+    const a = JSDraw2.Atom.cast<TBio>(obj);
     if (a != null) {
       if (this.delAA(a))
         return true;
@@ -3662,9 +3743,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     return f;
-  },
+  }
 
-  delSelected: function() {
+  delSelected() {
     let hasTcl = false;
     for (let i = 0; i < this.m.graphics.length; ++i) {
       if (JSDraw2.TLC.cast(this.m.graphics[i]) != null) {
@@ -3673,14 +3754,14 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       }
     }
 
-    const n = this.m.delSelected();
+    const n: number = this.m.delSelected();
     if (n > 0 && hasTcl)
       this.numberTlcPlates();
     return n;
-  },
+  }
 
-  hasSelected: function() {
-    const n = this.m.hasSelected();
+  hasSelected() {
+    const n = this.m.hasSelected() as any as number;
     if (n > 0) {
       for (let i = 0; i < this.m.graphics.length; ++i) {
         if (JSDraw2.TLC.cast(this.m.graphics[i]) != null) {
@@ -3691,9 +3772,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     return n;
-  },
+  }
 
-  lassoSelect: function(last) {
+  lassoSelect(last) {
     if (this.start == null || this.end == null)
       return;
 
@@ -3703,15 +3784,15 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     JSDraw2.Drawer.drawLine(extra, last, this.end, "#aaf", this.linewidth / 2);
     this.m.lassoSelect(extra, this.start, this.end, last, this.linewidth, this.tor / 8);
-  },
+  }
 
-  selectInRect: function(r) {
+  selectInRect(r) {
     return this.m.selectInRect(r);
-  },
+  }
 
-  addTemplate: function(key, obj, p) {
-    const a = JSDraw2.Atom.cast(obj);
-    const b = JSDraw2.Bond.cast(obj);
+  addTemplate(key, obj, p) {
+    const a = JSDraw2.Atom.cast<TBio>(obj);
+    const b = JSDraw2.Bond.cast<TBio>(obj);
 
     const m2 = key == "[custom]" ? JSDraw2.CustomTemplates.get(key) : JSDraw2.SuperAtoms.getTemplate(key);
     if (m2 == null)
@@ -3756,7 +3837,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     for (let i = 0; i < m.atoms.length; ++i) {
       const a0 = m.atoms[i];
-      const a2 = JSDraw2.Atom.cast(this.toggle(a0.p));
+      const a2 = JSDraw2.Atom.cast<TBio>(this.toggle(a0.p));
       if (a2 != null && a != a0)
         m.replaceAtom(a0, a2);
     }
@@ -3777,9 +3858,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       parent.mergeMol(m);
     else
       this.m.mergeMol(m);
-  },
+  }
 
-  _caclBondDir: function(m, b) {
+  _caclBondDir(m, b) {
     let n = 0;
     let atoms = m.getNeighborAtoms(b.a1, b.a2);
     for (let i = 0; i < atoms.length; ++i) {
@@ -3798,9 +3879,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     return n;
-  },
+  }
 
-  keydown: function(e) {
+  keydown(e) {
     if (!this.activated)
       return;
 
@@ -3876,7 +3957,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       return;
     }
 
-    const a = JSDraw2.Atom.cast(this.curObject);
+    const a = JSDraw2.Atom.cast<TBio>(this.curObject);
     if (e.keyCode == 8 || e.keyCode == 46) { // del
       if (this.onDel())
         e.preventDefault();
@@ -4107,7 +4188,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       return;
     }
 
-    const b = JSDraw2.Bond.cast(this.curObject);
+    const b = JSDraw2.Bond.cast<TBio>(this.curObject);
     if (b != null) {
       if (b.isBio()) {
         let f = false;
@@ -4213,9 +4294,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         }
       }
     }
-  },
+  }
 
-  toCharArray: function(s, m) {
+  toCharArray(s, m?: number) {
     if (!(m > 0))
       m = 1;
 
@@ -4223,9 +4304,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     for (let i = 0; i < s.length; ++i)
       ss.push(s.substr(i, m));
     return ss;
-  },
+  }
 
-  splitString: function(s, pat) {
+  splitString(s, pat) {
     const ss = [];
 
     const re = new RegExp("^" + pat);
@@ -4238,9 +4319,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       s = s.substr(c.length);
     }
     return null;
-  },
+  }
 
-  createAA2: function(s, biotype, expand, asrxn, nterminal, cterminal, selected) {
+  createAA2(s, biotype, expand, asrxn, nterminal, cterminal, selected) {
     if (scil.Utils.isNullOrEmpty(s))
       return;
 
@@ -4338,9 +4419,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     //        }
 
     return true;
-  },
+  }
 
-  _createCollapsedAA: function(ss, biotype, nterminal, cterminal) {
+  _createCollapsedAA(ss, biotype, nterminal, cterminal) {
     if (nterminal == null || nterminal == "")
       nterminal = "H";
     if (cterminal == null || cterminal == "")
@@ -4474,27 +4555,27 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     if (circle == null || circle.length == 1) {
       let last = null;
-      this.layoutAtoms(head, "line", this.bondlength, last);
+      this.layoutAtoms(head, ShapeTypes.LINE, this.bondlength, last);
       if (head.length > 0)
         last = head[head.length - 1];
       if (circle != null) {
-        this.layoutAtoms(circle, "line", this.bondlength, last);
+        this.layoutAtoms(circle, ShapeTypes.LINE, this.bondlength, last);
         if (circle.length > 0)
           last = circle[circle.length - 1];
         if (tail != null)
-          this.layoutAtoms(tail, "line", this.bondlength, last);
+          this.layoutAtoms(tail, ShapeTypes.LINE, this.bondlength, last);
       }
     } else {
       const center = new JSDraw2.Point(0, 0);
-      this.layoutAtoms(circle, "circle", this.bondlength, center.clone().offset(1, 0), center);
+      this.layoutAtoms(circle, ShapeTypes.CIRCLE, this.bondlength, center.clone().offset(1, 0), center);
       if (head.length > 0) {
         head.push(null);
         head.reverse();
-        this.layoutAtoms(head, "line", this.bondlength, circle[0].p, center);
+        this.layoutAtoms(head, ShapeTypes.LINE, this.bondlength, circle[0].p, center);
       }
       if (tail != null && tail.length > 0) {
         tail.splice(0, 0, null);
-        this.layoutAtoms(tail, "line", this.bondlength, circle[circle.length - 1].p, center);
+        this.layoutAtoms(tail, ShapeTypes.LINE, this.bondlength, circle[circle.length - 1].p, center);
       }
     }
 
@@ -4523,9 +4604,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     return m;
-  },
+  }
 
-  _createExpandedAA: function(ss, biotype, nterminal, cterminal) {
+  _createExpandedAA(ss, biotype, nterminal, cterminal) {
     if (nterminal == null || nterminal == "")
       nterminal = "H";
     if (cterminal == null || cterminal == "")
@@ -4607,9 +4688,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       }
     }
     return mol;
-  },
+  }
 
-  layoutAtoms: function(atoms, shape, d, p1, p2) {
+  layoutAtoms(atoms: Atom<TBio>[], shape: ShapeType, d: number, p1: Point, p2?: Point) {
     if (atoms == null || atoms.length == 0)
       return;
 
@@ -4641,9 +4722,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       break;
     }
     }
-  },
+  }
 
-  createAA: function(p, c, biotype) {
+  createAA(p, c, biotype) {
     if (p == null)
       return;
 
@@ -4672,9 +4753,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     this.curObject = a;
     this.refresh(true);
-  },
+  }
 
-  delAA: function(a) {
+  delAA(a) {
     if (a == null || a.biotype() != JSDraw2.BIO.AA && a.biotype() != JSDraw2.BIO.BASE_DNA && a.biotype() != JSDraw2.BIO.BASE_RNA)
       return false;
 
@@ -4697,9 +4778,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     a._parent.delAtom(a);
 
     return true;
-  },
+  }
 
-  _setSuperatom: function(a) {
+  _setSuperatom(a) {
     a.superatom = null;
     const c = a.elem;
     switch (a.biotype()) {
@@ -4713,9 +4794,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       a.superatom = JSDraw2.SuperAtoms.getAA(c);
       break;
     }
-  },
+  }
 
-  insertAA: function(a, c) {
+  insertAA(a, c) {
     if (a == null || !a.bio)
       return;
 
@@ -4749,9 +4830,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     this.curObject = na;
     this.refresh(true);
-  },
+  }
 
-  findNextAA: function(a, forinsert) {
+  findNextAA(a, forinsert) {
     const bonds = this.m.getNeighborBonds(a);
     if (bonds.length == 0)
       return null;
@@ -4798,9 +4879,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     return ret;
-  },
+  }
 
-  findNextAAs: function(a, right) {
+  findNextAAs(a, right) {
     const list = [];
     while (a != null) {
       const r = this._findNextAA(a, right);
@@ -4812,9 +4893,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       }
     }
     return list;
-  },
+  }
 
-  _findNextAA: function(a, right) {
+  _findNextAA(a, right) {
     const bonds = this.m.bonds;
     for (let i = 0; i < bonds.length; ++i) {
       const oa = bonds[i].otherAtom(a);
@@ -4822,7 +4903,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         return {b: bonds[i], a: oa};
     }
     return null;
-  },
+  }
 
   /**
    * Set the view window size
@@ -4831,7 +4912,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {number height - new height
    * @returns null
    */
-  setSize: function(width, height) {
+  setSize(width, height) {
     if (this.maintable != null) {
       if (width > 0)
         this.maintable.style.width = width + "px";
@@ -4845,17 +4926,17 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     } else {
       this.resize(width, height);
     }
-  },
+  }
 
-  onResize: function(width, height) {
+  onResize(width?: number, height?: number): void {
     if (this.options.onresize != null) {
       if (this.options.onresize())
         return;
     }
     this.resize(width > 0 ? width : this.div.offsetWidth, height > 0 ? height : this.div.offsetHeight);
-  },
+  }
 
-  resize: function(width, height) {
+  resize(width: number, height: number): void {
     if (scil.Utils.isIpad) {
       // this one cause ELN problem on iPad
       if (scil.eln != null /* ELN 2.0 */ || scil.App != null && scil.App.AccountTypes != null /* ELN 1.x */)
@@ -4865,9 +4946,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       if (this.isSkinW8() && this.toolbar != null)
         this.toolbar.recreateTopToolbar();
     }
-  },
+  }
 
-  _setSurfaceSize: function(sz) {
+  _setSurfaceSize(sz) {
     if (Math.abs(sz.x - this.dimension.x) < 6 && Math.abs(sz.y - this.dimension.y) < 6)
       return false;
 
@@ -4882,9 +4963,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     this.fitToWindow();
     this.redraw();
     return true;
-  },
+  }
 
-  dblclick: function() {
+  dblclick() {
     if (this.popuplocked) {
       scil.Utils.alert("Editing is currently locked");
       return false;
@@ -4899,9 +4980,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         me.options.onpopupsaved(me);
     };
     JSDraw2.Editor.showPopup("JSDraw2 Popup Editor", "Save", fn, {value: this.clone(), format: "clone"});
-  },
+  }
 
-  _makeChain: function(chain, end) {
+  _makeChain(chain, end) {
     if (chain == null || chain.end != null && chain.end.distTo(end) < this.tor)
       return false;
     if (end.distTo(chain.start) < this.bondlength * 2)
@@ -4948,9 +5029,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       d2 = chain.start.distTo(p2);
     }
     return true;
-  },
+  }
 
-  _guessAutoBond: function(a, end) {
+  _guessAutoBond(a, end?: Point) {
     if (a == null)
       return null;
     if (end == null)
@@ -4980,9 +5061,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       p = a1.p.clone().rotateAround(a.p, mid - ang1 + 180);
     }
     return p;
-  },
+  }
 
-  _addAutoBond: function(a, cmd) {
+  _addAutoBond(a, cmd) {
     const m = a._parent;
     const p = this._guessAutoBond(a);
     if (p == null)
@@ -5002,7 +5083,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         return false;
     }
 
-    let na = JSDraw2.Atom.cast(this.toggle(p));
+    let na = JSDraw2.Atom.cast<TBio>(this.toggle(p));
     if (na != null) {
       if (na._parent != a._parent)
         na = null;
@@ -5023,9 +5104,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     const nb = new JSDraw2.Bond(a, na, bondtype);
     m.addBond(nb, null, true);
     return true;
-  },
+  }
 
-  _guessBond: function(p1, p2, notor) {
+  _guessBond(p1: Point, p2: Point, notor?: boolean): Point {
     if (!notor && p1.distTo(p2) < this.tor)
       return null;
 
@@ -5037,9 +5118,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       a = -(-a - m + (m > (this.angleStop / 2) ? this.angleStop : 0));
 
     return new JSDraw2.Point(this.bondlength, 0).rotate(a).offset(p1.x, p1.y);
-  },
+  }
 
-  guessArrow: function(p1, p2) {
+  guessArrow(p1, p2) {
     if (p1.distTo(p2) < this.bondlength)
       return null;
 
@@ -5057,45 +5138,46 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       return p2;
 
     return p2.clone().rotateAround(p1, s);
-  },
+  }
 
-  frameoffset: {x: 0, y: 0},
-  setFrameoffset: function(x, y) {
+  frameoffset: Point = new JSDraw2.Point(0, 0);
+
+  setFrameoffset(x, y) {
     this.frameoffset.x = x;
     this.frameoffset.y = y;
-  },
+  }
 
-  eventPoint: function(e) {
+  eventPoint(e): EventPoint {
     const f = true;
     //if (scil.Utils.isIpad)
     //    f = false;
     const objoffset = scil.Utils.getOffset(this.div, f);
     //objoffset = new JSDraw2.Point(0, 0);
-    const pt = new JSDraw2.Point(e.clientX - objoffset.x - this.frameoffset.x, e.clientY - objoffset.y - this.frameoffset.y);
+    const pt = new JSDraw2.Point(e.clientX - objoffset.x - this.frameoffset.x, e.clientY - objoffset.y - this.frameoffset.y) as EventPoint;
     pt.tm = new Date().getTime();
     pt.clientX = e.clientX;
     pt.clientY = e.clientY;
     return pt;
-  },
+  }
 
-  getCmd: function(td) {
+  getCmd(td?: any) {
     if (td == null)
       td = this.curButton;
     let s = td == null ? "select" : td.getAttribute('cmd');
     if (s.length > 2 && s.substr(0, 2) == "e-")
       s = s.substr(2);
     return s;
-  },
+  }
 
-  onSelBtn: function(e) {
-    let td = e.target || e.srcElement;
+  onSelBtn(e: MouseEvent): void {
+    let td = (e.target || e.srcElement) as HTMLTableCellElement;
     if (td.getAttribute('cmd') != null) {
       this.onCmd(td);
       return;
     }
 
     for (let i = 0; i < 5; ++i) {
-      td = td.parentNode;
+      td = td.parentElement as HTMLTableCellElement;
       if (td == null || td.tagName != "TD")
         return;
 
@@ -5104,7 +5186,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         return;
       }
     }
-  },
+  }
 
   /**
    * Do a toolbar command
@@ -5112,7 +5194,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {string} cmd - the command name
    * @returns null
    */
-  doCmd: function(cmd) {
+  doCmd(cmd) {
     if (this.toolbar == null)
       return;
 
@@ -5126,9 +5208,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         break;
       }
     }
-  },
+  }
 
-  onCmd: function(td) {
+  onCmd(td) {
     let useonce = true;
     this.start = null;
     const cmd = this.getCmd(td);
@@ -5183,8 +5265,10 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         this.options.filesave(this);
       else if (scil.Utils.serviceAvailable())
         JSDraw2.JSDrawIO.jsdFileSave(this);
-      else
+      else {
+        // @ts-ignore
         this.onShowSaveFileDlg();
+      }
       break;
     case "open":
       if (this.options.fileopen != null)
@@ -5343,9 +5427,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     if (!useonce)
       this.onCmd2(td);
-  },
+  }
 
-  onCmd2: function(td) {
+  onCmd2(td) {
     const cmd = this.getCmd(td);
     if (cmd == "rxnmap") {
       const rxn = this.m.parseRxn();
@@ -5386,9 +5470,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       }
       this.curButton = td;
     }
-  },
+  }
 
-  flip: function(dir) {
+  flip(dir) {
     if (this.m.isEmpty())
       return;
 
@@ -5476,9 +5560,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     this._invertStereoBonds(list);
 
     this.refresh(true);
-  },
+  }
 
-  _invertStereoBonds: function(list) {
+  _invertStereoBonds(list) {
     const all = list.length == this.m.atoms.length;
     for (let i = 0; i < this.m.bonds.length; ++i) {
       const b = this.m.bonds[i];
@@ -5488,9 +5572,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         }
       }
     }
-  },
+  }
 
-  sendQuery: function(cmd) {
+  sendQuery(cmd) {
     const smiles = this.getSmiles();
     if (smiles == null || smiles == "") {
       scil.Utils.alert("No query structure drawn");
@@ -5515,9 +5599,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
     url += escape(smiles);
     window.open(url, "_blank");
-  },
+  }
 
-  onShowOpenFileDlg: function() {
+  onShowOpenFileDlg() {
     const me = JSDraw2.Editor;
     if (me.openfiledlg == null) {
       let fileformats = null;
@@ -5526,7 +5610,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
           fileformats = {helm: "HELM", xhelm: "xHELM"};
         else
           fileformats = {mol: "Mol File", smiles: "SMILES"};
-      } else if (this.jsd.options.tlcplate) // TODO: check jsd
+      } else if (me.openfiledlg?.jsd.options.tlcplate) // TODO: check jsd
         fileformats = JSDraw2.JSDrawIO.jsdFiles2;
       else
         fileformats = JSDraw2.JSDrawIO.jsdFiles;
@@ -5537,9 +5621,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     me.openfiledlg.show();
     me.openfiledlg.form.setData({});
     me.openfiledlg.jsd = this;
-  },
+  }
 
-  onShowSaveFileDlg: function() {
+  onShowSaveFileDl(): void {
     const me = JSDraw2.Editor;
     if (me.savefiledlg == null) {
       let fileformats = null;
@@ -5548,7 +5632,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
           fileformats = {helm: "HELM", xhelm: "xHELM"};
         else
           fileformats = {mol: "Mol File", smiles: "SMILES"};
-      } else if (this.jsd.options.tlcplate) // TODO: check jsd
+      } else
+        // @ ts-ignore
+      if (me.savefiledlg?.jsd.options.tlcplate) // TODO: check jsd
         fileformats = JSDraw2.JSDrawIO.jsdFiles2;
       else
         fileformats = JSDraw2.JSDrawIO.jsdFiles;
@@ -5563,47 +5649,48 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     me.savefiledlg.show();
     me.savefiledlg.form.setData({});
     me.savefiledlg.jsd = this;
-  },
+  }
 
-  onPT: function(elem) {
+
+  onPT(elem): void {
     JSDraw2.Editor.periodictable.hide();
     if (elem != null)
-      this.ptElement = elem;
-  },
+      this.ptElement = elem; // TODO: ?
+  }
 
-  showPT: function(callback) {
+  showPT(callback?: Function) {
     JSDraw2.needPro();
-  },
+  }
 
-  showAtomDlg: function(a) {
+  showAtomDlg(a) {
     JSDraw2.needPro();
-  },
+  }
 
-  setAtomProps: function(a) {
+  setAtomProps(a) {
     JSDraw2.needPro();
-  },
+  }
 
-  showBondDlg: function(b) {
+  showBondDlg(b) {
     JSDraw2.needPro();
-  },
+  }
 
-  setBondProps: function(b) {
+  setBondProps(b) {
     JSDraw2.needPro();
-  },
+  }
 
   /**
    * Set Secptrum JDX data
    * @function setJdx
    * @param {string} data - JDX string
    */
-  setJdx: function(data) {
+  setJdx(data) {
     const m = new JSDraw2.Mol();
     m.setJdx(data, this.bondlength);
 
     this.setMol(m);
-  },
+  }
 
-  getData: function(format) {
+  getData(format) {
     if (format == "mol")
       return this.getMolfile();
     else if (format == "mol3000")
@@ -5626,11 +5713,11 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       return this.getXHelm();
     else
       return null;
-  },
+  }
 
-  setData: function(data, format) {
+  setData(data, format) {
     this.setFile(data, format);
-  },
+  }
 
   /**
    * Load file data
@@ -5639,7 +5726,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {string} filetype - the file type: mol, rxn, xml.  Other file types can be loaded with JSDraw.WebServices
    * @returns the Mol object loaded
    */
-  setFile: function(data, filetype) {
+  setFile(data, filetype) {
     let m = null;
     if (filetype == "mol")
       m = this.m.setMolfile(data);
@@ -5665,7 +5752,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     this.setMol(m);
     return this.m;
-  },
+  }
 
   /**
    * Load a Mol object
@@ -5673,7 +5760,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {Mol} mol - the Mol object to be loaded
    * @returns true or false
    */
-  setMol: function(mol) {
+  setMol(mol) {
     if (mol != null && typeof (mol) == "object" && mol.T == "MOL") {
       this.m = mol;
       this.m.showimplicithydrogens = this.options.showimplicithydrogens;
@@ -5687,7 +5774,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       return true;
     }
     return false;
-  },
+  }
 
   /**
    * Load a molfile
@@ -5695,9 +5782,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {string} molfile - the mol file contents
    * @returns null
    */
-  setMolfile: function(molfile) {
+  setMolfile(molfile) {
     this.setFile(molfile, "mol");
-  },
+  }
 
   /**
    * Load a rxnfile
@@ -5705,9 +5792,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {string} rxnfile - the rxn file contents
    * @returns null
    */
-  setRxnfile: function(rxnfile) {
+  setRxnfile(rxnfile) {
     this.setFile(rxnfile, "rxn");
-  },
+  }
 
   /**
    * Get molfile data
@@ -5715,17 +5802,17 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {bool} v3000 - indicate if rendering it in mol v3000 format
    * @returns the molfile string
    */
-  getMolfile: function(v3000, excludeDummyBonds) {
+  getMolfile(v3000?: boolean, excludeDummyBonds?: boolean): string {
     this.m.bondlength = this.bondlength;
     return this.m.getMolfile(false, v3000, excludeDummyBonds);
-  },
+  }
 
   /**
    * Get SVG data
    * @function getSvg
    * @returns the svg string
    */
-  getSvg: function() {
+  getSvg() {
     const g = dojox.gfx;
     if (g.renderer != "svg")
       return null;
@@ -5741,7 +5828,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     xml = xml.replace(/ width="[0-9]+"/, " width=\"" + Math.round(r.width) + "\"");
     xml = xml.replace(/ height="[0-9]+"/, " height=\"" + Math.round(r.height) + "\"");
     return xml;
-  },
+  }
 
   /**
    * Get JSDraw Xml data
@@ -5751,7 +5838,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {bool} viewonly - indicate if it is viewonly mode
    * @returns a string
    */
-  getXml: function(width, height, viewonly, withsvg) {
+  getXml(width?: number, height?: number, viewonly?: boolean, withsvg?: boolean) {
     let svg = null;
     try {
       svg = withsvg ? this.getSvg() : null;
@@ -5760,31 +5847,31 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
 
     this.m.bondlength = this.bondlength;
     return this.m.getXml(width > 0 ? width : this.dimension.x, height > 0 ? height : this.dimension.y, viewonly, svg, this.bondlength);
-  },
+  }
 
-  getHtml: function(width, height, viewonly, withsvg) {
+  getHtml(width, height, viewonly, withsvg) {
     return this.getXml(width, height, viewonly, withsvg);
-  },
+  }
 
-  getSequence: function(highlightselection) {
+  getSequence(highlightselection) {
     return this.helm == null ? null : this.helm.getSequence(highlightselection);
-  },
+  }
 
-  getHelm: function(highlightselection) {
+  getHelm(highlightselection?: boolean) {
     return this.helm == null ? null : this.helm.getHelm(highlightselection);
-  },
+  }
 
-  setHelm: function(s) {
+  setHelm(s) {
     return this.helm == null ? null : this.helm.setHelm(s);
-  },
+  }
 
-  getXHelm: function() {
+  getXHelm() {
     return this.helm == null ? null : this.helm.getXHelm();
-  },
+  }
 
-  setXHelm: function(s) {
+  setXHelm(s) {
     return this.helm == null ? null : this.helm.setXHelm(s);
-  },
+  }
 
   /**
    * Set JSDraw Xml data
@@ -5792,7 +5879,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {string} xml - the JSDraw Xml string
    * @returns the Mol object loaded
    */
-  setXml: function(xml, setmodified) {
+  setXml(xml: string | Node, setmodified?: boolean) {
     const doc = typeof (xml) == "string" ? scil.Utils.parseXml(xml) : xml;
     if (doc == null) {
       if (typeof (xml) == "string" && xml.indexOf("M  END") > 0)
@@ -5824,11 +5911,11 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     this._setmol(this.m);
     this.refresh(setmodified == null ? true : setmodified);
     return this.m;
-  },
+  }
 
-  setHtml: function(xml) {
+  setHtml(xml) {
     return this.setXml(xml);
-  },
+  }
 
   /**
    * Get Rxnfile
@@ -5837,35 +5924,35 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {bool} v3000 - indicate if rendering in v3000 format
    * @returns a string
    */
-  getRxnfile: function(groupbyplus, v3000) {
+  getRxnfile(groupbyplus?: boolean, v3000?: boolean) {
     return this.m.getRxnfile(groupbyplus, v3000);
-  },
+  }
 
   /**
    * Get SMILES
    * @function getSmiles
    * @returns a string
    */
-  getSmiles: function() {
+  getSmiles(notused?: boolean) {
     return this.m.getSmiles();
-  },
+  }
 
-  setMolbase64: function(molfile) {
+  setMolbase64(molfile) {
     const s = JSDraw2.Base64.decode(molfile);
     this.setMolfile(s);
-  },
+  }
 
-  setRxnbase64: function(rxnfile) {
+  setRxnbase64(rxnfile) {
     const s = JSDraw2.Base64.decode(rxnfile);
     this.setRxnfile(s);
-  },
+  }
 
-  getMolbase64: function() {
+  getMolbase64() {
     const s = this.m.getMolfile();
     return JSDraw2.Base64.encode(s);
-  },
+  }
 
-  hasHelmNodes: function() {
+  hasHelmNodes() {
     if (this.helm == null)
       return false;
 
@@ -5875,7 +5962,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     return false;
-  },
+  }
 
   /**
    * Get Formula
@@ -5883,47 +5970,47 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {bool} html - indicate if rendering Formula in HTML format
    * @returns a string
    */
-  getFormula: function(html) {
+  getFormula(html) {
     if (this.hasHelmNodes())
       return this.helm.getMF(html);
     else
       return this.m.getFormula(html);
-  },
+  }
 
   /**
    * Get molecular weight
    * @function getMolWeight
    * @returns a number
    */
-  getMolWeight: function() {
+  getMolWeight() {
     if (this.hasHelmNodes())
       return this.helm.getMW();
     else
       return this.m.getMolWeight();
-  },
+  }
 
   /**
    * Get Extinction Coefficient
    * @function getExtinctionCoefficient
    * @returns a number
    */
-  getExtinctionCoefficient: function() {
+  getExtinctionCoefficient() {
     if (this.hasHelmNodes())
       return this.helm.getExtinctionCoefficient();
     else
       return null;
-  },
+  }
 
   /**
    * Get exact mass
    * @function getExactMass
    * @returns a number
    */
-  getExactMass: function() {
+  getExactMass() {
     return this.m.getExactMass();
-  },
+  }
 
-  setAny: function(s, fmt) {
+  setAny(s, fmt) {
     if (!scil.Utils.serviceAvailable() || s == null || s.length == 0)
       return;
 
@@ -5932,7 +6019,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       url: scil.Utils.scriptUrl() + "Service.aspx?cmd=tomolfile",
       postData: "input=" + escape(s) + "&fmt=" + escape(fmt),
       handleAs: "json",
-      load: function(ret) {
+      load(ret) {
         if (ret.success) {
           me.pushundo(me.clone());
           me.setMolfile(ret.result);
@@ -5940,13 +6027,13 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
           scil.Utils.alert(ret.error);
         }
       },
-      error: function(ret) {
+      error(ret) {
         scil.Utils.alert(ret.message);
       }
     };
 
     const deferred = dojo.rawXhrPost(xhrArgs);
-  },
+  }
 
   /**
    * Highlight a query structure
@@ -5954,7 +6041,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {string or Mol} query - the query structure
    * @returns true or false
    */
-  highlight: function(query) {
+  highlight(query) {
     let q = null;
     if (typeof query == "string")
       q = new JSDraw2.Mol(this.options.showimplicithydrogens).setMolfile(query);
@@ -5967,7 +6054,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     const map = q.aamap(target.m, false, true);
     target.redraw();
     return map != null;
-  },
+  }
 
   /**
    * Perform a sub-structure search using this molecule as the query
@@ -5975,19 +6062,19 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {Editor} target - the target structure
    * @returns true or false
    */
-  sss: function(target) {
+  sss(target) {
     return target.highlight(this);
-  },
+  }
 
-  res: function(s) {
+  res(s) {
     return JSDraw2.Language.res(s);
-  },
+  }
 
-  isSkinW8: function() {
+  isSkinW8(): boolean {
     return this.options.skin == "w8" || this.options.skin == "si";
-  },
+  }
 
-  download: function(url, filetype) {
+  download(url, filetype) {
     const me = this;
     const callback = function(data) {
       if (data.ret != null)
@@ -5996,7 +6083,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         me.setFile(data, filetype);
     };
     scil.Utils.download(url, callback);
-  },
+  }
 
   /**
    * Write the current structure into a cookie, so it can be reloaded next time
@@ -6005,14 +6092,14 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {number} days - cookie valid days
    * @returns null
    */
-  writeCookie: function(name, days) {
+  writeCookie(name, days) {
     if (name == null || name.length == 0)
       name = "__jsdraw_cookie_structure";
     if (!(days > 0))
       days = 30;
     const html = this.getXml();
     scil.Utils.createCookie(name, html, days);
-  },
+  }
 
   /**
    * Read the structure from a saved cookie
@@ -6020,18 +6107,18 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {string} name - cookie name
    * @returns null
    */
-  readCookie: function(name) {
+  readCookie(name) {
     if (name == null || name.length == 0)
       name = "__jsdraw_cookie_structure";
     const html = scil.Utils.readCookie(name);
     this.setXml(html);
-  },
+  }
 
   /**
    * Destory the editor
    * @returns null
    */
-  destroy: function() {
+  destroy() {
     this.div = null;
     this.curObject = null;
     this.curButton = null;
@@ -6051,9 +6138,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     for (let i = 0; i < this.connectHandlers.length; ++i)
       dojo.disconnect(this.connectHandlers[i]);
     this.connectHandlers = null;
-  },
+  }
 
-  bodyMouseDown: function(e) {
+  bodyMouseDown(e) {
     const src = e.target || e.srcElement;
     if (this.texteditor.ed != null && this.texteditor.ed.isVisible() && !(this.texteditor.ed.isChildOf(src) || JSDraw2.Symbol != null && JSDraw2.Symbol.isFrom(src))) {
       this.hideTextEditor();
@@ -6081,16 +6168,16 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       if (f)
         this.activate(true);
     }
-  },
+  }
 
-  isFromSvgGroup: function(src) {
+  isFromSvgGroup(src) {
     if (dojox.gfx.renderer != "svg")
       return false;
     const g = scil.Utils.getParent(src, "g");
     return g != null && g.getAttribute("__surface_parentid") == this.id;
-  },
+  }
 
-  bodyTouchStart: function(e) {
+  bodyTouchStart(e) {
     if (this.activated && e.touches.length > 0) {
       const te = e.touches[0];
       const src = te.target || te.srcElement;
@@ -6098,21 +6185,21 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
         this.activate(false);
     }
     this.bodyMouseDown(e);
-  },
+  }
 
-  //    bodyClick: function (e) {
-  //    },
+//    bodyClick (e) {
+//    },
 
-  touchClick: function(e) {
+  touchClick(e) {
     if (!this.activated) {
       this.activate(true);
       e.preventDefault();
       return false;
     }
-  },
+  }
 
-  touch: {
-    reset: function(jsd) {
+  private touch: any = {
+    reset: function(jsd: any) {
       if (this.cloned != null) {
         jsd.pushundo(this.cloned);
         jsd.setModified(true);
@@ -6127,21 +6214,22 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.scale = null;
       this.cloned = null;
     }
-  },
+  };
 
-  resetGesture: function() {
+  resetGesture() {
     this.touch.reset(this);
-  },
+  }
 
-  holding: {
-    delay: 1000,
-    tor: 2,
-    e: null,
-    tm: null,
-    timer: null,
-    jsd: null,
+  private holding = new class {
+    delay: number = 1000;
+    tor: number = 2;
+    e: any = null;
+    tm: any = null;
+    timer: any = null;
+    '';
+    jsd: Editor<TBio> = null;
 
-    start: function(e, jsd) {
+    start(e, jsd) {
       if (!scil.Utils.isTouch && !window.navigator.msPointerEnabled)
         return;
       this.end();
@@ -6150,32 +6238,32 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       this.jsd = jsd;
       const me = this;
       this.timer = setTimeout(function() { me.timeout(); }, this.delay);
-    },
+    }
 
-    end: function() {
+    end() {
       if (this.timer == null)
         return;
       this.e = null;
       this.tm = null;
       clearTimeout(this.timer);
       this.timer = null;
-    },
+    }
 
-    timeout: function() {
+    timeout() {
       if (this.e != null) {
         this.jsd.start = null;
         this.jsd.showContextMenu(this.e, this.jsd.options.viewonly);
       }
       this.end();
-    },
+    }
 
-    move: function(e) {
+    move(e) {
       if (this.e != null && (Math.abs(e.clientX - this.e.clientX) > this.tor || Math.abs(e.clientY - this.e.clientY) > this.tor))
         this.end();
     }
-  },
+  }();
 
-  touchStart: function(e) {
+  touchStart(e) {
     if (!this.activated)
       return;
 
@@ -6200,9 +6288,9 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
       e.preventDefault();
       return false;
     }
-  },
+  }
 
-  touchMove: function(e) {
+  touchMove(e) {
     if (!this.activated)
       return;
 
@@ -6300,16 +6388,16 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     }
 
     this.resetGesture();
-  },
+  }
 
-  touchEnd: function(e) {
+  touchEnd(e) {
     if (!this.activated)
       return;
 
     this.resetGesture();
     this.mouseup(e);
     return false;
-  },
+  }
 
   /**
    * Activate the editor and set focus
@@ -6318,7 +6406,7 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
    * @param {bool} show - indicate if redrawing the structure
    * @returns null
    */
-  activate: function(f, show) {
+  activate(f: boolean, show?: boolean) {
     if (this.activated == f || this.maintable == null)
       return;
 
@@ -6361,17 +6449,28 @@ JSDraw2.Editor = scilligence.extend(scilligence._base, {
     if (this.options.onfocus != null)
       this.options.onfocus(f);
   }
-});
+}
 
-scilligence.apply(JSDraw2.Editor, {
-  __xcode: 91,
-  undoGestureTime: 300,
-  dblclickdelay: 300,
-  BONDLENGTH: 30.0,
-  ANGLESTOP: 30.0,
-  LINEWIDTH: 2.0,
-  TOR: 10.0,
-  FONTSIZE: 14.0,
+export class Editor<TBio = any> extends EditorInt<TBio> {
+  static _id: number;
+  static _allitems: any;
+
+  static __xcode: number = 91;
+  static undoGestureTime: number = 300;
+  static dblclickdelay: number = 300;
+  static BONDLENGTH: number = 30.0;
+  static ANGLESTOP: number = 30.0;
+  static LINEWIDTH: number = 2.0;
+  static TOR: number = 10.0;
+  static FONTSIZE: number = 14.0;
+
+  static COLORCURRENT: ColorArray;
+  static COLORSELECTED: ColorArray;
+  static popupdlg: any;
+  static openfiledlg: IDialog;
+  static savefiledlg: IDialog;
+  static periodictable: IDialog;
+  static about: IDialog;
 
   /**
    * Get the Editor object by its ID
@@ -6379,13 +6478,13 @@ scilligence.apply(JSDraw2.Editor, {
    * @param {string} id - the Editor ID
    * @returns the Editor object
    */
-  get: function(id) {
+  static get(id) {
     if (JSDraw2.Editor._allitems == null)
       JSDraw2.Editor._allitems = {};
     return id == null ? null : JSDraw2.Editor._allitems[id];
-  },
+  }
 
-  getClipboard: function() {
+  static getClipboard() {
     let data = scil.Utils.readCookie("__jsdrawclipboard");
     if (data == null || data == "")
       return null;
@@ -6397,9 +6496,9 @@ scilligence.apply(JSDraw2.Editor, {
 
     //scil.Utils.createCookie("__jsdrawclipboard", "");
     return m;
-  },
+  }
 
-  setClipboard: function(m, bondlength) {
+  static setClipboard(m, bondlength) {
     if (m != null && !m.isEmpty()) {
       scil.Utils.createCookie("__jsdrawclipboard", JSDraw2.Base64.encode(m.getXml(null, null, null, null, bondlength)));
       return true;
@@ -6407,14 +6506,14 @@ scilligence.apply(JSDraw2.Editor, {
 
     scil.Utils.alert("Nothing placed on clipboard.");
     return false;
-  },
+  }
 
   /**
    * Show JSDraw About box
    * @function {static} showAbout
    * @returns null
    */
-  showAbout: function() {
+  static showAbout() {
     if (JSDraw2.Editor.about == null) {
       const div = scil.Utils.createElement(null, "div", null, {width: "430px", color: "black"});
       scil.Utils.createElement(div, "img", null, null, {src: scil.Utils.imgSrc("img/jsdraw2.jpg")});
@@ -6443,31 +6542,31 @@ scilligence.apply(JSDraw2.Editor, {
       });
     }
     JSDraw2.Editor.about.show();
-  },
+  }
 
-  onClickPT: function(elem, id) {
+  static onClickPT(elem, id) {
     JSDraw2.Editor.get(id).onPT(elem);
-  },
+  }
 
-  onSaveFile: function() {
+  static onSaveFile() {
     const fields = JSDraw2.Editor.savefiledlg.form.fields;
     const fmt = fields.filetype.value;
     const txt = fields.contents;
     txt.value = JSDraw2.Editor.savefiledlg.jsd.getData(fmt);
     txt.select();
     txt.focus();
-  },
+  }
 
-  onOpenFile: function() {
+  static onOpenFile() {
     const fields = JSDraw2.Editor.openfiledlg.form.fields;
 
     const s = fields.contents.value;
     const fmt = fields.filetype.value;
     JSDraw2.Editor.openfiledlg.jsd.setData(s, fmt);
     JSDraw2.Editor.openfiledlg.hide();
-  },
+  }
 
-  initNoDelay: function() {
+  static initNoDelay() {
     const list = document.getElementsByTagName("div");
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
@@ -6476,7 +6575,7 @@ scilligence.apply(JSDraw2.Editor, {
         dojo.removeClass(e, 'JSDraw');
       }
     }
-  },
+  }
 
   /**
    * Initialize all DIV HTML elements and their class marked as JSDraw, and convert all of them into JSDraw Editor<br>
@@ -6484,11 +6583,11 @@ scilligence.apply(JSDraw2.Editor, {
    * new JSDraw2.Editor() can only be used in or after document.onload().
    * @function {static} init
    */
-  init: function() {
+  static init() {
     scil.onload(function() {
       JSDraw2.Editor.initNoDelay();
     });
-  },
+  }
 
   /**
    * Create a JSDraw Editor<br>
@@ -6498,22 +6597,22 @@ scilligence.apply(JSDraw2.Editor, {
    * @param {string or DOM} id - the ID of DIV placehold, or the DIV DOM object
    * @param {dictonary} options - creating options. Please check Editor contructor for details
    */
-  create: function(id, options) {
+  static create(id, options) {
     dojo.ready(function() { new JSDraw2.Editor(id, options); });
-  },
+  }
 
-  write: function(id, options) {
+  static write(id, options) {
     document.writeln("<div id='" + id + "'></div>");
     scil.onload(function() { new JSDraw2.Editor(id, options); });
-  },
+  }
 
-  showPopupIframe: function(title, btnText, btnFn, value) {
+  static showPopupIframe(title, btnText, btnFn, value) {
     const newcreated = false;
     const parentWindow: any = scil.Utils.getTopWindow();
     parentWindow.JSDraw2.Editor.showPopup(title, btnText, btnFn, value);
-  },
+  }
 
-  getPopupSize: function(win) {
+  static getPopupSize(win?: any) {
     const args = {width: 800, height: 400};
     if (JSDraw2.defaultoptions != null) {
       const w = JSDraw2.defaultoptions.popupwidth;
@@ -6531,7 +6630,7 @@ scilligence.apply(JSDraw2.Editor, {
         args.height = h;
     }
     return args;
-  },
+  }
 
   /**
    * Show JSDraw Poup Editor<br>
@@ -6541,7 +6640,7 @@ scilligence.apply(JSDraw2.Editor, {
    * @param {function(editor)} btnFn - the callback function when user clicks on the button
    * @param {number} zindex - the zIndex of the dialog DOM
    */
-  showPopup: function(title, btnText, btnFn, value, zindex) {
+  static showPopup(title: string, btnText: string, btnFn: Function, value, zindex?: number) {
     let args = null;
     if (JSDraw2.Editor.popupdlg == null) {
       args = this.getPopupSize();
@@ -6596,9 +6695,9 @@ scilligence.apply(JSDraw2.Editor, {
     JSDraw2.Editor.popupdlg.callback = btnFn;
 
     return JSDraw2.Editor.popupdlg.jsd;
-  },
+  }
 
-  _loadPopupData: function(value) {
+  static _loadPopupData(value) {
     if (value == null) {
       JSDraw2.Editor.popupdlg.jsd.clear(true);
       return;
@@ -6618,53 +6717,61 @@ scilligence.apply(JSDraw2.Editor, {
 
     JSDraw2.Editor.popupdlg.jsd.refresh();
   }
-});
+}
 
-scilligence.mstouch = {
-  pointers: {},
+export class MSTouch {
+  static pointers: {};
 
-  down: function(e) {
+  static down(e) {
+    const me = MSTouch;
     this.pointers[e.pointerId] = {clientX: e.clientX, clientY: e.clientY, target: e.target, button: e.button, pointerId: e.pointerId, _tm: new Date().getTime()};
-    e.touches = this.toTouches();
+    e.touches = me.toTouches();
     //dojo.byId("DEBUG").value = "down: " + e.touches.length + "\r\n";
     return e;
-  },
+  }
 
-  move: function(e) {
+  static move(e) {
+    const me = MSTouch;
     const t = this.pointers[e.pointerId];
     if (t == null)
       return;
     t.clientX = e.clientX;
     t.clientY = e.clientY;
     t._tm = new Date().getTime();
-    e.touches = this.toTouches();
+    e.touches = me.toTouches();
     //dojo.byId("DEBUG").value += "move: " + e.touches.length + "\r\n";
     return e;
-  },
+  }
 
-  up: function(e) {
-    delete this.pointers[e.pointerId];
+  static up(e) {
+    const me = MSTouch;
+    delete me.pointers[e.pointerId];
     e.touches = this.toTouches();
     //dojo.byId("DEBUG").value += "up: " + e.touches.length + "\r\n";
     return e;
-  },
+  }
 
-  toTouches: function() {
+  static toTouches() {
+    const me = MSTouch;
     const touches = [];
     const tm = new Date().getTime();
     const list = [];
-    for (const k in this.pointers) {
-      if (this.pointers[k]._tm > tm - 5000)
-        touches.push(this.pointers[k]);
+    for (const k in me.pointers) {
+      if (me.pointers[k]._tm > tm - 5000)
+        touches.push(me.pointers[k]);
       else
         list.push(k);
     }
     for (let i = 0; i < list.length; ++i)
-      delete this.pointers[list[i]];
+      delete me.pointers[list[i]];
     touches.sort(function(a, b) { return a.pointerId - b.pointerId; });
     return touches;
   }
-};
+}
+
+scilligence.mstouch = MSTouch;
+JSDraw2.Editor = Editor;
 
 //@ts-ignore
 var JSDraw = JSDraw2.Editor;
+

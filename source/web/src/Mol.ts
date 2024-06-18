@@ -8,13 +8,27 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
+// @ts-nocheck
+
 import {IndexType, ScilModuleType, IDebug} from './types/scil';
-import {BondTypes, IAtom, IBond, IMol, IPlus, IRect, JSDraw2ModuleType} from './types/jsdraw2';
+import {BondTypes, IGraphics, JSDraw2ModuleType} from './types/jsdraw2';
+import {Atom} from './Atom';
+import {Bond} from './Bond';
+import {Rect} from './Rect';
+import {Plus, Point} from './Point';
 
 declare const JSDraw2: JSDraw2ModuleType<any>;
 declare const scil: ScilModuleType;
 
 declare const DEBUG: IDebug;
+
+export enum ChiralTypes {
+  AND = 'and',
+  OR = 'or',
+}
+
+export type ChiralType = typeof ChiralTypes[keyof typeof ChiralTypes];
+
 
 /**
  * Mol class - define a Molecule object
@@ -36,7 +50,7 @@ declare const DEBUG: IDebug;
  * </pre>
  * @class scilligence.JSDraw2.Mol
  */
-JSDraw2.Mol = scil.extend(scil._base, {
+export class Mol<TBio = any> {
   /**
    @property {array} atoms Array of Atom Objects
    */
@@ -47,10 +61,24 @@ JSDraw2.Mol = scil.extend(scil._base, {
    @property {array} graphics Array of Graphics (not Atom and Bond) Objects
    */
 
+  private readonly T: string;
+  private name: string;
+  public atoms: Atom<TBio>[];
+  public bonds: Bond<TBio>[];
+  public graphics: IGraphics[];
+  public stats: any;
+  public showimplicithydrogens: boolean;
+  private props: any;
+  public bondlength: number;
+  public chiral: ChiralType | boolean | null;
+  private mw: number;
+  private attachpoints: any[] | null;
+  public _addRxnLabel: Function;
+
   /**
    * @constructor Mol
    */
-  constructor: function(showimplicithydrogens) {
+  constructor(showimplicithydrogens?: boolean) {
     this.T = 'MOL';
     this.name = null;
     this.atoms = [];
@@ -59,76 +87,78 @@ JSDraw2.Mol = scil.extend(scil._base, {
     this.stats = null;
     this.showimplicithydrogens = showimplicithydrogens != false;
     this.props = null;
-  },
+  }
 
-  _addAtom: function(a, parent) {
+  _addAtom(a: Atom<TBio>, parent?: Mol<TBio>) {
     this.atoms.push(a);
     a._parent = parent != null ? parent : this;
-  },
-  _addBond: function(a, parent) {
+  }
+
+  _addBond(a: Bond<TBio>, parent?: Mol<TBio>) {
     this.bonds.push(a);
     a._parent = parent != null ? parent : this;
-  },
-  _addGraphics: function(a, parent) {
+  }
+
+  _addGraphics(a: IGraphics, parent?: Mol<TBio>) {
     this.graphics.push(a);
     a._parent = parent != null ? parent : this;
-  },
+  }
 
   /**
    * Reset object IDs including atoms, bonds, and other graphics
    * @function resetIds
    * @returns null
    */
-  resetIds: function(keepoldid) {
-    var idg = new JSDraw2.IDGenerator(keepoldid ? this._getMaxID() : 0);
+  resetIds(keepoldid?: boolean) {
+    const idg = new JSDraw2.IDGenerator(keepoldid ? this._getMaxID() : 0);
 
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a: Atom<TBio> = this.atoms[i];
       a.id = idg.next(a.id);
       a.atomid = i + 1;
     }
 
     for (let i = 0; i < this.bonds.length; ++i) {
-      var a = this.bonds[i];
+      const a: Bond<TBio> = this.bonds[i];
       a.id = idg.next(a.id);
       a.bondid = i + 1;
     }
 
     for (let i = 0; i < this.graphics.length; ++i) {
-      var a = this.graphics[i];
+      const a: IGraphics = this.graphics[i];
       a.id = idg.next(a.id);
       a.graphicsid = i + 1;
     }
 
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a = this.atoms[i];
       if (a.rgroup != null)
         a.rgroup.id = idg.next(a.rgroup.id);
     }
-  },
+  }
 
-  _getMaxID: function() {
-    var max = 0;
+  _getMaxID() {
+    let max = 0;
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a = this.atoms[i];
       if (a.id > max)
         max = a.id;
     }
 
     for (let i = 0; i < this.bonds.length; ++i) {
-      var a = this.bonds[i];
+      const a = this.bonds[i];
       if (a.id > max)
         max = a.id;
     }
 
     for (let i = 0; i < this.graphics.length; ++i) {
-      var a = this.graphics[i];
+      const a = this.graphics[i];
       if (a.id > max)
         max = a.id;
     }
 
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a = this.atoms[i];
       if (a.rgroup != null) {
         if (a.rgroup.id > max)
           max = a.rgroup.id;
@@ -136,9 +166,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return max;
-  },
+  }
 
-  getObjectById: function(id) {
+  getObjectById(id) {
     for (let i = 0; i < this.atoms.length; ++i) {
       if (this.atoms[i].id == id)
         return this.atoms[i];
@@ -151,7 +181,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
       if (this.graphics[i].id == id)
         return this.graphics[i];
     }
-  },
+  }
 
   /**
    * Clone the Mol object
@@ -159,8 +189,8 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {boolean} selectedOnly - indicate if cloning only selected objects
    * @return a new Mol object
    */
-  clone: function(selectedOnly) {
-    var m = new JSDraw2.Mol();
+  clone(selectedOnly?: boolean) {
+    const m = new JSDraw2.Mol();
     m.bondlength = this.bondlength;
     m.name = this.name;
     m.chiral = this.chiral;
@@ -169,14 +199,14 @@ JSDraw2.Mol = scil.extend(scil._base, {
     m.mw = this.mw;
     m.attachpoints = this.attachpoints;
 
-    var map = [];
+    const map: (Atom<TBio> | Bond<TBio> | IGraphics)[] = [];
     this.resetIds(true);
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a = this.atoms[i];
       if (selectedOnly && !a.selected)
         continue;
 
-      var a1 = a.clone(selectedOnly);
+      const a1 = a.clone(selectedOnly);
       if (selectedOnly)
         a1.atommapid = null;
       m._addAtom(a1);
@@ -184,48 +214,48 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (selectedOnly && !(b.selected && b.a1.selected && b.a2.selected))
         continue;
 
-      var b1 = b.clone();
+      const b1 = b.clone();
       m._addBond(b1);
       map[b.id] = b1;
     }
 
     for (let i = 0; i < this.graphics.length; ++i) {
-      var g = this.graphics[i];
+      const g = this.graphics[i];
       if (selectedOnly && !g.selected)
         continue;
 
-      var g1 = g.clone(map);
+      const g1 = g.clone(map);
       m._addGraphics(g1);
       map[g.id] = g1;
     }
 
     // fix references
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
-      var b1 = map[b.id];
+      const b = this.bonds[i];
+      const b1 = map[b.id] as Bond<TBio>;
       if (b1 == null)
         continue;
-      b1.a1 = map[b.a1.id];
-      b1.a2 = map[b.a2.id];
+      b1.a1 = map[b.a1.id] as Atom<TBio>;
+      b1.a2 = map[b.a2.id] as Atom<TBio>;
       if (b1.a1 == null || b.a2 == null)
         i = i;
     }
 
     for (let i = 0; i < this.graphics.length; ++i) {
-      var g = this.graphics[i];
-      var g1 = map[g.id];
+      const g = this.graphics[i];
+      const g1 = map[g.id] as IGraphics;
       if (g1 == null)
         continue;
 
       if (JSDraw2.Group.cast(g) != null) {
         for (let j = 0; j < this.atoms.length; ++j) {
-          var a = this.atoms[j];
+          const a = this.atoms[j];
           if (a.group == g)
-            map[a.id].group = g1;
+            (map[a.id] as Atom<TBio>).group = g1;
         }
         if (g.a != null)
           g1.a = map[g.a.id];
@@ -245,21 +275,21 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     m._setParent(m);
     return m;
-  },
+  }
 
-  _getMappedArray: function(list, map) {
-    var ret = [];
+  _getMappedArray(list, map) {
+    const ret = [];
     for (let i = 0; i < list.length; ++i) {
-      var d = list[i];
+      const d = list[i];
       if (d != null && map[d.id] != null)
         ret.push(map[d.id]);
     }
     return ret;
-  },
+  }
 
-  guessBond: function(a, len, extra) {
-    var p = a.p.clone();
-    var bonds = this.getAllBonds(a);
+  guessBond(a: Atom<TBio>, len: number, extra: number) {
+    let p = a.p.clone();
+    const bonds = this.getAllBonds(a);
     switch (bonds.length + (extra > 0 ? extra : 0)) {
     case 0:
       p.offset(1, 0);
@@ -267,10 +297,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
     case 1:
       p = bonds[0].otherAtom(a).p.clone().rotateAround(a.p, 120);
       break;
-    case 2:
-      var p1 = bonds[0].otherAtom(a).p;
-      var p2 = bonds[1].otherAtom(a).p;
-      var angle = a.p.angleAsOrigin(p1, p2);
+    case 2: {
+      const p1 = bonds[0].otherAtom(a).p;
+      const p2 = bonds[1].otherAtom(a).p;
+      const angle = a.p.angleAsOrigin(p1, p2);
       if (Math.abs(angle - 180) <= 1) {
         p = p1.clone();
         p.rotateAround(a.p, 90);
@@ -280,13 +310,14 @@ JSDraw2.Mol = scil.extend(scil._base, {
         p.rotateAround(a.p, 180);
       }
       break;
-    case 3:
-      var p1 = bonds[0].otherAtom(a).p;
-      var p2 = bonds[1].otherAtom(a).p;
-      var p3 = bonds[2].otherAtom(a).p;
-      var a1 = p.angleAsOrigin(p1, p2);
-      var a2 = p.angleAsOrigin(p2, p3);
-      var a3 = p.angleAsOrigin(p3, p1);
+    }
+    case 3: {
+      const p1 = bonds[0].otherAtom(a).p;
+      const p2 = bonds[1].otherAtom(a).p;
+      const p3 = bonds[2].otherAtom(a).p;
+      let a1 = p.angleAsOrigin(p1, p2);
+      let a2 = p.angleAsOrigin(p2, p3);
+      let a3 = p.angleAsOrigin(p3, p1);
       if (a1 > 180)
         a1 = 360 - a1;
       if (a2 > 180)
@@ -301,19 +332,20 @@ JSDraw2.Mol = scil.extend(scil._base, {
         p = p2.clone();
       p.rotateAround(a.p, 180);
       break;
+    }
     default:
       return null;
     }
     p.setLength(len, a.p);
     return p;
-  },
+  }
 
-  getMaxRIndex: function(index: number | null): number | null {
+  getMaxRIndex(index: number | null): number | null {
     if (index == null)
       index = 0;
 
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a = this.atoms[i];
       if (a.elem != 'R')
         continue;
       const r: IndexType = scil.Utils.parseIndex(a.alias);
@@ -331,7 +363,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
     return index;
-  },
+  }
 
   /**
    * Set color to all objects
@@ -340,10 +372,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {bool} selectedOnly - indicate if only set the color to selected objects
    * @returns null
    */
-  setColor: function(color, selectedOnly) {
-    var n = 0;
+  setColor(color, selectedOnly) {
+    let n = 0;
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a = this.atoms[i];
       if (a.color != color && (!selectedOnly || a.selected)) {
         a.color = color;
         ++n;
@@ -359,14 +391,14 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (b.color != color && (!selectedOnly || b.selected)) {
         b.color = color;
         ++n;
       }
     }
     for (let i = 0; i < this.graphics.length; ++i) {
-      var g = this.graphics[i];
+      const g = this.graphics[i];
       if (g.color != color && (!selectedOnly || g.selected)) {
         g.color = color;
         ++n;
@@ -374,29 +406,29 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return n;
-  },
+  }
 
   /**
    * Remove all object
    * @function clear
    * @returns null
    */
-  clear: function() {
+  clear() {
     this.name = null;
     this.chiral = null;
     this.atoms = [];
     this.bonds = [];
     this.graphics = [];
-  },
+  }
 
   /**
    * Test if the Mol object is empty - without any atom, bond, or graphics
    * @function isEmpty
    * @returns true or false
    */
-  isEmpty: function() {
+  isEmpty() {
     return this.atoms.length == 0 && this.bonds.length == 0 && this.graphics.length == 0;
-  },
+  }
 
   /**
    * Set selecting flags to all objects
@@ -404,13 +436,13 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {bool} f - true or false
    * @returns null
    */
-  setSelected: function(f) {
+  setSelected(f?: boolean) {
     if (f == null)
       f = false;
 
-    var n = 0;
+    let n = 0;
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a = this.atoms[i];
       if (a.selected != f) {
         a.selected = f;
         ++n;
@@ -426,7 +458,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (b.selected != f) {
         b.selected = f;
         ++n;
@@ -434,7 +466,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < this.graphics.length; ++i) {
-      var g = this.graphics[i];
+      const g = this.graphics[i];
       if (g.selected != f) {
         g.selected = f;
         ++n;
@@ -442,17 +474,17 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return n;
-  },
+  }
 
-  lassoSelect: function(extra, start, end, last, linewidth, tor) {
+  lassoSelect(extra, start, end, last, linewidth, tor) {
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a = this.atoms[i];
       if (a.p.inTriangle(start, end, last))
         extra.lasso.hit(a);
 
       if (a.rgroup != null) {
-        var g = a.rgroup;
-        var r2 = g.rect();
+        const g = a.rgroup;
+        const r2 = g.rect();
         if (r2.center().inTriangle(start, end, last))
           extra.lasso.hit(g);
         for (let j = 0; j < a.rgroup.mols.length; ++j)
@@ -461,40 +493,40 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (b.center().inTriangle(start, end, last))
         extra.lasso.hit(b);
     }
 
     for (let i = 0; i < this.graphics.length; ++i) {
-      var g = this.graphics[i];
-      var r2 = g.rect();
+      const g = this.graphics[i];
+      const r2 = g.rect();
       if (r2.center().inTriangle(start, end, last))
         extra.lasso.hit(g);
     }
 
     extra.lasso.endHits(start, end);
-  },
+  }
 
-  getSelectedAtomInMol: function() {
-    var list = [];
+  getSelectedAtomInMol() {
+    const list = [];
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a = this.atoms[i];
       if (a.selected) {
         list.push(a);
       } else if (a.rgroup != null) {
         for (let j = 0; j < a.rgroup.mols.length; ++j) {
-          var r = a.rgroup.mols[j].getSelectedAtomInMol();
+          const r = a.rgroup.mols[j].getSelectedAtomInMol();
           if (r.length > 0)
             return r;
         }
       }
     }
     return list;
-  },
+  }
 
-  bracketSelect: function(r) {
-    var ret = [];
+  bracketSelect(r) {
+    let ret: Atom<TBio>[] = [];
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (r.contains(a.p))
@@ -502,12 +534,12 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     // find open connected bonds
-    const xbonds: { b: IBond, a: IAtom }[] = [];
+    const xbonds: { b: Bond<TBio>, a: Atom<TBio> }[] = [];
     const bonds = scil.clone(this.bonds);
     for (let i = this.bonds.length - 1; i >= 0; --i) {
-      var b: IBond = this.bonds[i];
-      var f1 = scil.Utils.indexOf(ret, b.a1) >= 0;
-      var f2 = scil.Utils.indexOf(ret, b.a2) >= 0;
+      const b: Bond<TBio> = this.bonds[i];
+      const f1 = scil.Utils.indexOf(ret, b.a1) >= 0;
+      const f2 = scil.Utils.indexOf(ret, b.a2) >= 0;
       if (f1 != f2) {
         if (JSDraw2.Point.intersect(b.a1.p, b.a2.p, r.topleft(), r.bottomleft()) ||
           JSDraw2.Point.intersect(b.a1.p, b.a2.p, r.topright(), r.bottomright())) {
@@ -519,9 +551,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     // only handle one or two open connected bonds
     if (xbonds.length == 2 || xbonds.length == 1) {
-      var oldbonds = this.bonds;
+      const oldbonds = this.bonds;
       this.bonds = bonds;
-      var frags = this.splitFragments();
+      const frags = this.splitFragments();
       this.bonds = oldbonds;
 
       if (frags.length > 1) {
@@ -541,10 +573,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
     for (let i = 0; i < ret.length; ++i)
       ret[i].selected = true;
     return ret;
-  },
+  }
 
-  selectInRect: function(r) {
-    var n = 0;
+  selectInRect(r) {
+    let n = 0;
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (r.contains(a.p)) {
@@ -553,8 +585,8 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
 
       if (a.rgroup != null) {
-        var g = a.rgroup;
-        var r2 = g.rect();
+        const g = a.rgroup;
+        const r2 = g.rect();
         if (r2 != null && r.contains(r2.center())) {
           g.selected = true;
           ++n;
@@ -566,7 +598,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (r.contains(b.center())) {
         b.selected = true;
         ++n;
@@ -574,41 +606,41 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < this.graphics.length; ++i) {
-      var g = this.graphics[i];
-      var r2 = g.rect();
+      const g = this.graphics[i] as IGraphics;
+      const r2 = g.rect();
       if (r2 != null && r.contains(r2.center())) {
         g.selected = true;
         ++n;
       }
     }
     return n;
-  },
+  }
 
-  hasAtom: function(a) {
+  hasAtom(a) {
     for (let i = 0; i < this.atoms.length; ++i) {
       if (this.atoms[i] == a)
         return true;
     }
     return false;
-  },
+  }
 
-  hasGraphics: function(g) {
+  hasGraphics(g) {
     for (let i = 0; i < this.graphics.length; ++i) {
       if (this.graphics[i] == g)
         return true;
     }
     return false;
-  },
+  }
 
-  hasBond: function(b) {
+  hasBond(b) {
     for (let i = 0; i < this.bonds.length; ++i) {
       if (this.bonds[i] == b)
         return true;
     }
     return false;
-  },
+  }
 
-  calcHCount: function(recalc) {
+  calcHCount(recalc?: boolean) {
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (recalc || a.hcount == null)
@@ -619,14 +651,14 @@ JSDraw2.Mol = scil.extend(scil._base, {
           a.rgroup.mols[j].calcHCount(recalc);
       }
     }
-  },
+  }
 
-  setHCount: function(a) {
+  setHCount(a) {
     a.hcount = null;
     if (this.showimplicithydrogens == false || a.bio)
       return;
 
-    var error = false;
+    let error = false;
     let v = null;
 
     if (a.elem != 'R' && a.alias != null && a.alias != '') {
@@ -634,7 +666,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
         if (a.elem != '#')
           error = true;
       } else if (a.superatom != null) {
-        var bonds = this.getNeighborBonds(a, true);
+        const bonds = this.getNeighborBonds(a, true);
         if (bonds.length > a.superatom.attachpoints) {
           if (a.superatom.atoms.length > 0)
             error = true;
@@ -650,13 +682,13 @@ JSDraw2.Mol = scil.extend(scil._base, {
     } else if (a.hs > 0) {
       v = a.hs - 1;
     } else {
-      var e = JSDraw2.PT[a.elem];
+      const e = JSDraw2.PT[a.elem];
       if (e != null && e.v != null && e.e != null) {
-        var bonds = this.getNeighborBonds(a);
-        var sum = 0;
-        var naromatic = 0;
+        const bonds = this.getNeighborBonds(a);
+        let sum = 0;
+        let naromatic = 0;
         for (let i = 0; i < bonds.length; ++i) {
-          var val = bonds[i].valence();
+          const val = bonds[i].valence();
           if (val == null)
             return;
           if (val == 1.5) {
@@ -678,9 +710,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
         }
 
         // charges
-        var extra = 0;
-        var pair_e = e.e <= 4 ? 0 : e.e % 4;
-        var single_e = e.e <= 4 ? e.e : 4 - (e.e % 4);
+        let extra = 0;
+        const pair_e = e.e <= 4 ? 0 : e.e % 4;
+        const single_e = e.e <= 4 ? e.e : 4 - (e.e % 4);
         if (a.charge > 0) {
           if (pair_e > 0) {
             if (pair_e >= a.charge)
@@ -730,25 +762,25 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     a.hasError = error;
     return a.hcount = v;
-  },
+  }
 
-  hasError: function() {
+  hasError() {
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (a.hasError)
         return true;
     }
     return false;
-  },
+  }
 
-  hasGenericAtom: function() {
+  hasGenericAtom() {
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (a.elem == 'R' && a.bio == null || a.superatom != null && a.superatom.atoms.length == 0)
         return true;
     }
     return false;
-  },
+  }
 
   /**
    * Find a bond
@@ -757,14 +789,14 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {Atom} a2 - the second atom
    * @returns the bond
    */
-  findBond: function(a1, a2) {
+  findBond(a1, a2) {
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (b.a1 == a1 && b.a2 == a2 || b.a1 == a2 && b.a2 == a1)
         return b;
     }
     return null;
-  },
+  }
 
   /**
    * Move all objects to the center
@@ -773,42 +805,42 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {number} height - the height of the view
    * @returns null
    */
-  moveCenter: function(width, height) {
+  moveCenter(width, height) {
     if (this.isEmpty())
       return;
 
-    var center = this.center();
+    const center = this.center();
     this.offset(width > 0 ? (width / 2 - center.x) : 0,
       height > 0 ? (height / 2 - center.y) : 0);
-  },
+  }
 
   /**
    * Clean up the reaction, and make it looks nicer
    * @function cleanupRxn
    * @returns null
    */
-  cleanupRxn: function(defaultbondlength) {
-    var rxn = this.parseRxn(true);
+  cleanupRxn(defaultbondlength) {
+    const rxn = this.parseRxn(true);
     if (rxn == null || rxn.reactants.length == 1 && rxn.products.length == 0 && rxn.arrow == null)
       return false;
 
-    var bondlength = this.medBondLength();
+    let bondlength = this.medBondLength();
     if (!(bondlength > 0))
       bondlength = defaultbondlength > 0 ? defaultbondlength : JSDraw2.Editor.BONDLENGTH;
     return this._layoutRxn(rxn, bondlength);
-  },
+  }
 
-  _layoutRxn: function(rxn, bondlength) {
-    var pluses: IPlus[] = [];
+  _layoutRxn(rxn, bondlength) {
+    const pluses: Plus[] = [];
     for (let i = 0; i < this.graphics.length; ++i) {
       if (this.graphics[i].T == 'PLUS')
-        pluses.push(this.graphics[i]);
+        pluses.push(this.graphics[i] as unknown as Plus);
     }
 
-    var x = null;
-    var y = null;
+    let x = null;
+    let y = null;
     for (let i = 0; i < rxn.reactants.length; ++i) {
-      var r = rxn.reactants[i].rect();
+      const r = rxn.reactants[i].rect();
       if (r.width == 0)
         r.inflate(bondlength, 0);
       if (r.height == 0)
@@ -820,10 +852,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
       } else {
         x += bondlength;
         if (pluses.length > 0) {
-          var plus = pluses.pop();
+          const plus = pluses.pop();
           plus.p = new JSDraw2.Point(x, y);
         } else {
-          var plus = new JSDraw2.Plus(new JSDraw2.Point(x, y));
+          const plus = new JSDraw2.Plus(new JSDraw2.Point(x, y));
           this._addGraphics(plus);
         }
 
@@ -833,11 +865,11 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
 
-    var arrow = rxn.arrow;
+    const arrow = rxn.arrow;
     if (arrow != null) {
-      var ang = arrow.p2.angleTo(arrow.p1);
+      const ang = arrow.p2.angleTo(arrow.p1);
       arrow.p2.rotateAround(arrow.p1, -ang);
-      var r = arrow.rect();
+      const r = arrow.rect();
       if (x == null) {
         x = r.right();
         y = r.center().y;
@@ -848,10 +880,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
 
       // adjust arrow width
-      var width = 0;
+      let width = 0;
       if (rxn.above != null) {
         for (let i = 0; i < rxn.above.length; ++i) {
-          var w = rxn.above[i]._rect.width;
+          const w = rxn.above[i]._rect.width;
           if (w > width)
             width = w;
         }
@@ -874,7 +906,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
       const center = arrow.rect().center();
 
       if (rxn.above != null) {
-        var y1 = center.y - d * 2;
+        let y1 = center.y - d * 2;
         for (let i = rxn.above.length - 1; i >= 0; --i) {
           const t = rxn.above[i];
           t.offset(center.x - t._rect.center().x, y1 - t._rect.bottom());
@@ -893,7 +925,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < rxn.products.length; ++i) {
-      var r = rxn.products[i].rect();
+      const r = rxn.products[i].rect();
       if (r.width == 0)
         r.inflate(bondlength, 0);
       if (r.height == 0)
@@ -906,10 +938,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
         if (i > 0) {
           x += bondlength;
           if (pluses.length > 0) {
-            var plus = pluses.pop();
+            const plus = pluses.pop();
             plus.p = new JSDraw2.Point(x, y);
           } else {
-            var plus = new JSDraw2.Plus(new JSDraw2.Point(x, y));
+            const plus = new JSDraw2.Plus(new JSDraw2.Point(x, y));
             this._addGraphics(plus);
           }
         }
@@ -924,16 +956,16 @@ JSDraw2.Mol = scil.extend(scil._base, {
       this.delObject(pluses[i]);
 
     return true;
-  },
+  }
 
   /**
    * Return the center coorindate of all objects
    * @function center
    * @returns the center as a Point object
    */
-  center: function() {
+  center() {
     return this.rect().center();
-  },
+  }
 
   /**
    * Return the Rect of a Group
@@ -941,14 +973,14 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {Group} g - the input group
    * @returns a Rect object
    */
-  getGroupRect: function(g, bondlength) {
-    var r = null;
+  getGroupRect(g, bondlength) {
+    let r = null;
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (a.group != g || a.hidden)
         continue;
 
-      var p = a.p;
+      const p = a.p;
       if (r == null)
         r = new JSDraw2.Rect(p.x, p.y, 0, 0);
       else
@@ -956,11 +988,11 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < this.graphics.length; ++i) {
-      var g2 = this.graphics[i];
+      const g2 = this.graphics[i];
       if (g2.group != g)
         continue;
 
-      var rect = JSDraw2.Group.cast(g2) != null ? this.getGroupRect(g2, bondlength) : g2.rect();
+      const rect = JSDraw2.Group.cast(g2) != null ? this.getGroupRect(g2, bondlength) : g2.rect();
       if (r == null)
         r = rect.clone();
       else
@@ -970,38 +1002,38 @@ JSDraw2.Mol = scil.extend(scil._base, {
     if (r != null && g.gap > 0)
       r.inflate(g.gap * bondlength / 15.0, g.gap * bondlength / 15.0);
     return r;
-  },
+  }
 
   /**
    * Get the Rect of selected atoms
    * @function getSelectedRect
    * @returns a Rect object
    */
-  getSelectedRect: function() {
-    var r = null;
+  getSelectedRect() {
+    let r = null;
     for (let i = 0; i < this.atoms.length; ++i) {
       if (!this.atoms[i].selected)
         continue;
 
-      var p = this.atoms[i].p;
+      const p = this.atoms[i].p;
       if (r == null)
         r = new JSDraw2.Rect(p.x, p.y, 0, 0);
       else
         r.unionPoint(p);
     }
     return r;
-  },
+  }
 
   /**
    * Return the Rect of all object
    * @function rect
    * @returns a Rect object
    */
-  rect: function(withoutRgroups) {
+  rect(withoutRgroups?: boolean) {
     if (this.atoms.length == 0) {
       if (this.graphics.length == 0)
         return null;
-      const r: IRect = this.graphics[0].rect();
+      const r: Rect = this.graphics[0].rect();
       for (let i = 1; i < this.graphics.length; ++i)
         r.union(this.graphics[i].rect());
       return r;
@@ -1035,7 +1067,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
         y2 = p.y;
     }
 
-    const r: IRect = new JSDraw2.Rect(x1, y1, x2 - x1, y2 - y1);
+    const r: Rect = new JSDraw2.Rect(x1, y1, x2 - x1, y2 - y1);
     for (let i = 0; i < this.graphics.length; ++i) {
       const g = this.graphics[i];
       if (JSDraw2.Group.cast(g) != null)
@@ -1055,7 +1087,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return r;
-  },
+  }
 
   /**
    * Move all objects
@@ -1065,7 +1097,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {bool} selectedOnly - indicated if moving only selected objects
    * @returns null
    */
-  offset: function(dx, dy, selectedOnly) {
+  offset(dx, dy, selectedOnly?: boolean) {
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (selectedOnly != true || a.selected)
@@ -1079,14 +1111,14 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < this.graphics.length; ++i) {
-      var g = this.graphics[i];
+      const g = this.graphics[i];
       if (selectedOnly != true || g.selected) {
         this.graphics[i].offset(dx, dy);
       } else {
         if (selectedOnly && !g.selected) {
-          var t = JSDraw2.Text.cast(g);
+          const t = JSDraw2.Text.cast(g);
           if (t != null && t.anchors.length > 0) {
-            var all = true;
+            let all = true;
             for (let j = 0; j < t.anchors.length; ++j) {
               if (!t.anchors[j].selected) {
                 all = false;
@@ -1101,7 +1133,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
         }
       }
     }
-  },
+  }
 
   /**
    * Rotate all objects around a point
@@ -1110,10 +1142,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {number} deg - degrees to be rotated
    * @returns null
    */
-  rotate: function(origin, deg) {
+  rotate(origin, deg) {
     for (let i = 0; i < this.atoms.length; ++i)
       this.atoms[i].p.rotateAround(origin, deg);
-  },
+  }
 
   /**
    * Delete an object
@@ -1121,7 +1153,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {object} obj - Atom, bond, or graphics to be removed
    * @returns null
    */
-  delObject: function(obj) {
+  delObject(obj) {
     if (obj == null)
       return;
 
@@ -1134,10 +1166,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
       return this.delBond(b);
 
     return this.delGraphics(obj);
-  },
+  }
 
-  delGraphics: function(obj) {
-    var group = JSDraw2.Group.cast(obj);
+  delGraphics(obj) {
+    const group = JSDraw2.Group.cast(obj);
     if (group != null) {
       for (let i = 0; i < this.atoms.length; ++i) {
         if (this.atoms[i].group == group)
@@ -1158,10 +1190,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
     return false;
-  },
+  }
 
-  delAtom: function(a, checkBonds) {
-    var atoms = [];
+  delAtom(a: Atom<TBio>, checkBonds?: boolean) {
+    const atoms = [];
     atoms.push(a);
 
     if (checkBonds != false) {
@@ -1177,18 +1209,18 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
 
-    var n = 0;
+    let n = 0;
     for (let i = 0; i < atoms.length; ++i) {
-      var a1 = atoms[i];
+      const a1 = atoms[i];
       if (a == a1 || !a1.bio) {
         if (this.delLoneAtom(atoms[i]))
           ++n;
       }
     }
     return n > 0;
-  },
+  }
 
-  delBond: function(b, delLoneAtom) {
+  delBond(b, delLoneAtom?: boolean) {
     for (let i = 0; i < this.bonds.length; ++i) {
       if (this.bonds[i] == b) {
         this.bonds.splice(i, 1);
@@ -1204,9 +1236,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return false;
-  },
+  }
 
-  delLoneAtom: function(a) {
+  delLoneAtom(a) {
     if (!this.isLoneAtom(a)) {
       this.setHCount(a);
       return false;
@@ -1223,17 +1255,17 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return false;
-  },
+  }
 
-  objectRemoved: function(obj) {
+  objectRemoved(obj) {
     for (let i = 0; i < this.graphics.length; ++i) {
-      var g = this.graphics[i];
+      const g = this.graphics[i];
       if (g.removeObject != null)
         g.removeObject(obj);
     }
-  },
+  }
 
-  hasSelected: function() {
+  hasSelected(): boolean {
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (this.atoms[i].selected)
@@ -1261,12 +1293,12 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return false;
-  },
+  }
 
-  delSelected: function() {
-    var n = 0;
+  delSelected() {
+    let n = 0;
 
-    var atoms = scil.clone(this.atoms);
+    const atoms = scil.clone(this.atoms);
     for (let i = 0; i < atoms.length; ++i) {
       const a = atoms[i];
       if (a.selected) {
@@ -1285,7 +1317,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
 
-    var bonds = scil.clone(this.bonds);
+    const bonds = scil.clone(this.bonds);
     for (let i = 0; i < bonds.length; ++i) {
       if (bonds[i].selected) {
         this.delBond(bonds[i]);
@@ -1293,7 +1325,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
 
-    var graphics = scil.clone(this.graphics);
+    const graphics = scil.clone(this.graphics);
     for (let i = 0; i < graphics.length; ++i) {
       if (graphics[i].selected) {
         this.delObject(graphics[i]);
@@ -1302,29 +1334,29 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return n;
-  },
+  }
 
-  setBondLength: function(d) {
-    var s = d / this.medBondLength();
+  setBondLength(d) {
+    const s = d / this.medBondLength();
     if (isNaN(s))
       return false;
     this.scale(s);
-  },
+  }
 
-  getSketchType: function() {
+  getSketchType() {
     for (let i = 0; i < this.atoms.length; ++i) {
       if (this.atoms[i].bio != null)
         return 'biologics';
     }
     return this.isRxn() ? 'reaction' : 'molecule';
-  },
+  }
 
   /**
    * Merge another Molecule
    * @function mergeMol
    * @param {Mol} m - the Molecule to be merged
    */
-  mergeMol: function(m, _parent, group) {
+  mergeMol(m, _parent?: any, group?: any) {
     for (let i = 0; i < m.atoms.length; ++i) {
       this.addAtom(m.atoms[i]);
       if (group != null)
@@ -1332,7 +1364,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < m.bonds.length; ++i) {
-      var b = m.bonds[i];
+      const b = m.bonds[i];
       if (this.findBond(b.a1, b.a2) == null)
         this.addBond(b, false);
     }
@@ -1341,9 +1373,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
       this.addGraphics(m.graphics[i]);
 
     this._setParent(this);
-  },
+  }
 
-  replaceAtom: function(old, newa) {
+  replaceAtom(old, newa) {
     for (let i = 0; i < this.atoms.length; ++i) {
       if (this.atoms[i] == old) {
         this.atoms[i] = newa;
@@ -1352,7 +1384,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (b.a1 == old)
         b.a1 = newa;
       if (b.a2 == old)
@@ -1360,9 +1392,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     this.setHCount(newa);
-  },
+  }
 
-  replaceBond: function(old, newb) {
+  replaceBond(old, newb) {
     for (let i = 0; i < this.bonds.length; ++i) {
       if (this.bonds[i] == old) {
         this.bonds[i] = newb;
@@ -1372,7 +1404,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     this.replaceAtom(old.a1, newb.a1);
     this.replaceAtom(old.a2, newb.a2);
-  },
+  }
 
   /**
    * Add a graphics
@@ -1380,13 +1412,13 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {Graphics} g - the graphics to be added
    * @returns the Graphics added
    */
-  addGraphics: function(g) {
+  addGraphics(g) {
     if (this.hasGraphics(g))
       return null;
 
     this._addGraphics(g);
     return g;
-  },
+  }
 
   /**
    * Add an Atom
@@ -1394,13 +1426,13 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {Atom} a - the atom to be added
    * @returns the Atom added
    */
-  addAtom: function(a) {
+  addAtom(a) {
     if (this.hasAtom(a))
       return null;
 
     this._addAtom(a);
     return a;
-  },
+  }
 
   /**
    * Add a Bond
@@ -1409,7 +1441,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {bool} resetcharge - indicate if reset atoms' charges of bonded atoms
    * @returns the Bond added
    */
-  addBond: function(b, resetcharge, add2rgroup) {
+  addBond(b: Bond<TBio>, resetcharge?: boolean, add2rgroup?: boolean) {
     if (this.hasBond(b))
       return null;
 
@@ -1434,10 +1466,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
     this.setHCount(b.a1);
     this.setHCount(b.a2);
     return b;
-  },
+  }
 
-  _addBond2RGroupMol: function(b) {
-    var m = b.a1._parent || b.a2._parent;
+  _addBond2RGroupMol(b) {
+    const m = b.a1._parent || b.a2._parent;
     if (m == null || b.a1._parent == b._parent && b.a2._parent == b.a1._parent)
       return;
 
@@ -1453,7 +1485,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     m.addBond(b);
     b._parent = m;
-  },
+  }
 
   /**
    * Set atom alias
@@ -1462,34 +1494,34 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {string} alias - alias name
    * @returns true of false
    */
-  setAtomAlias: function(a, alias, len) {
+  setAtomAlias(a, alias, len?: number) {
     if (alias == null || alias == '')
       return this.setAtomType(a, alias);
 
     if (a.alias == alias)
       return false;
 
-    var elem = '*';
-    var m = JSDraw2.SuperAtoms.get(alias);
+    let elem = '*';
+    let m = JSDraw2.SuperAtoms.get(alias);
     if (m == null) {
-      var alias2 = alias.replace(/^[\+|\-]/, '').replace(/[\+|\-]$/, '');
+      const alias2 = alias.replace(/^[\+|\-]/, '').replace(/[\+|\-]$/, '');
       if (JSDraw2.PT[alias2] != null || (/^R[0-9]+$/).test(alias))
         return this.setAtomType(a, alias);
 
-      var s = JSDraw2.SuperAtoms.guessOne(alias);
+      const s = JSDraw2.SuperAtoms.guessOne(alias);
       if (s != null) {
         alias = s;
         m = JSDraw2.SuperAtoms.get(alias);
       } else {
         // leading O or S
-        var list = this.getNeighborBonds(a);
-        var orphan = list == null || list.length == 0 || list.length == 1 && list[0].type == JSDraw2.BONDTYPES.DUMMY;
+        const list = this.getNeighborBonds(a);
+        const orphan = list == null || list.length == 0 || list.length == 1 && list[0].type == JSDraw2.BONDTYPES.DUMMY;
         m = JSDraw2.FormulaParser.parse(alias, orphan, list.length);
         if (m != null && m.atoms.length == 0)
           return this.setAtomType(a, m.atoms[0].elem);
 
         if (orphan) {
-          var salt = JSDraw2.FormulaParser.parseSalt(alias);
+          const salt = JSDraw2.FormulaParser.parseSalt(alias);
           if (salt != null)
             elem = '#';
         }
@@ -1503,7 +1535,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     a.charge = 0;
     a.alias = alias;
     if (m != null) {
-      var attach = JSDraw2.SuperAtoms._getFirstAttachAtom(m);
+      const attach = JSDraw2.SuperAtoms._getFirstAttachAtom(m);
       if (attach != null)
         JSDraw2.SuperAtoms._alignMol(a._parent, a, m, attach, len != null ? len : this.medBondLength(1.56));
       a.superatom = m;
@@ -1521,16 +1553,16 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
     this.setHCount(a);
     return true;
-  },
+  }
 
-  setAttachPoint: function(a, apo) {
+  setAttachPoint(a, apo) {
     if (apo > 0 && !(a.attachpoints.length == 1 && a.attachpoints[0] == apo)) {
       a.attachpoints = [apo];
       a._parent.setHCount(a);
       return true;
     }
     return false;
-  },
+  }
 
   /**
    * Set atom type
@@ -1539,25 +1571,25 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {string} elem - element symbol of atom
    * @returns true of false
    */
-  setAtomType: function(a, elem, setCharge) {
+  setAtomType(a: Atom<TBio>, elem: string, setCharge?: boolean) {
     if (elem == 'antibody' || elem == 'protein' || elem == 'gene' || elem == 'dna' || elem == 'rna') {
       if (a.biotype() == JSDraw2.BIO.ANTIBODY || a.biotype() == JSDraw2.BIO.PROTEIN || a.biotype() == JSDraw2.BIO.GENE || a.biotype() == JSDraw2.BIO.DNA || a.biotype() == JSDraw2.BIO.RNA)
         return false;
       switch (elem) {
       case 'antibody':
-        a.bio = {type: JSDraw2.BIO.ANTIBODY};
+        a.bio = {type: JSDraw2.BIO.ANTIBODY as TBio};
         break;
       case 'protein':
-        a.bio = {type: JSDraw2.BIO.PROTEIN};
+        a.bio = {type: JSDraw2.BIO.PROTEIN as TBio};
         break;
       case 'gene':
-        a.bio = {type: JSDraw2.BIO.GENE};
+        a.bio = {type: JSDraw2.BIO.GENE as TBio};
         break;
       case 'dna':
-        a.bio = {type: JSDraw2.BIO.DNA};
+        a.bio = {type: JSDraw2.BIO.DNA as TBio};
         break;
       case 'rna':
-        a.bio = {type: JSDraw2.BIO.RNA};
+        a.bio = {type: JSDraw2.BIO.RNA as TBio};
         break;
       }
       a.elem = 'X';
@@ -1569,10 +1601,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
       return true;
     }
 
-    var charge = null;
+    let charge = null;
     if (elem.length > 1 && /[\+|\-][0-9]?$/.test(elem)) {
-      var s = elem.replace(/[\+|\-][0-9]?$/, '');
-      var cs = elem.substr(s.length);
+      const s = elem.replace(/[\+|\-][0-9]?$/, '');
+      const cs = elem.substr(s.length);
       elem = s;
       if (cs == '+')
         charge = 1;
@@ -1584,8 +1616,8 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     if (a.elem == elem && (elem == 'H' && a.isotope == null) || a.bio)
       return false;
-    var alias = null;
-    var e = elem == 'D' || elem == 'T' ? 'H' : elem;
+    let alias = null;
+    let e = elem == 'D' || elem == 'T' ? 'H' : elem;
     if ((/^R[0-9]+$/).test(elem)) {
       e = 'R';
       alias = elem;
@@ -1593,7 +1625,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     if (JSDraw2.PT[e] == null)
       return false;
 
-    var oldelem = a.elem;
+    const oldelem = a.elem;
     a.elem = e;
     if (e != 'R')
       a.rgroup = null;
@@ -1615,9 +1647,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
     if (oldelem == '@') {
       a.alias = null;
       a.bio = null;
-      var list = this.getAllBonds(a);
+      const list = this.getAllBonds(a);
       for (let i = 0; i < list.length; ++i) {
-        var b = list[i];
+        const b = list[i];
         if (b.type == JSDraw2.BONDTYPES.DUMMY)
           scil.Utils.removeArrayItem(this.bonds, b);
       }
@@ -1627,7 +1659,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     if (e == 'R')
       a.updateRGroup();
     return true;
-  },
+  }
 
   /**
    * Set atom charges
@@ -1636,7 +1668,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {number} charge - charges
    * @returns true of false
    */
-  setAtomCharge: function(a, charge) {
+  setAtomCharge(a, charge) {
     if (charge == null || isNaN(charge) || a.bio)
       return false;
     charge = Math.round(charge);
@@ -1645,7 +1677,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     a.charge = charge;
     a._parent.setHCount(a);
     return true;
-  },
+  }
 
   /**
    * Set bond type
@@ -1654,7 +1686,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {BONDTYPES} type - predefined bond type
    * @returns true of false
    */
-  setBondType: function(b, type) {
+  setBondType(b, type) {
     if (b.a1.biotype() == JSDraw2.BIO.AA && b.a2.biotype() == JSDraw2.BIO.AA) {
       if (b.type == JSDraw2.BONDTYPES.DISULFIDE && type == JSDraw2.BONDTYPES.PEPTIDE || b.type == JSDraw2.BONDTYPES.PEPTIDE && type == JSDraw2.BONDTYPES.DISULFIDE) {
         b.type = type;
@@ -1668,23 +1700,23 @@ JSDraw2.Mol = scil.extend(scil._base, {
       b._parent.setHCount(b.a2);
       return true;
     }
-  },
+  }
 
-  isLoneAtom: function(a) {
+  isLoneAtom(a) {
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (b.a1 == a || b.a2 == a)
         return false;
     }
 
     return true;
-  },
+  }
 
-  medBondLength: function(defaultValue) {
+  medBondLength(defaultValue?: any): number {
     if (this.bonds.length == 0)
       return defaultValue;
 
-    var step = Math.floor(this.bonds.length / 10);
+    let step = Math.floor(this.bonds.length / 10);
     if (step == 0)
       step = 1;
 
@@ -1699,23 +1731,23 @@ JSDraw2.Mol = scil.extend(scil._base, {
       return list[0] <= 0 ? 1.5 : list[0];
 
     list.sort();
-    var d = list[Math.round(list.length / 2)];
+    const d = list[Math.round(list.length / 2)];
     return d <= 0 ? 1.5 : d;
-  },
+  }
 
-  _hasDoubleBonds: function(a) {
+  _hasDoubleBonds(a) {
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (b.type == JSDraw2.BONDTYPES.DOUBLE && (b.a1 == a || b.a2 == a))
         return true;
     }
     return false;
-  },
+  }
 
-  getNeighborAtoms: function(a, oa, excludeDummyBond) {
-    var list = [];
+  getNeighborAtoms(a: Atom<TBio>, oa?: Atom<TBio>, excludeDummyBond?: boolean): Atom<TBio>[] {
+    const list = [];
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (excludeDummyBond && b.type == JSDraw2.BONDTYPES.DUMMY)
         continue;
 
@@ -1728,26 +1760,26 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
     return list;
-  },
+  }
 
-  getNeighborBonds: function(a, excludeDummyBonds) {
-    var list = [];
+  getNeighborBonds(a, excludeDummyBonds?: boolean) {
+    const list = [];
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if ((b.a1 == a || b.a2 == a) &&
         (!excludeDummyBonds || b.type != JSDraw2.BONDTYPES.DUMMY && b.type != JSDraw2.BONDTYPES.UNKNOWN))
         list.push(b);
     }
     return list;
-  },
+  }
 
   /**
    * Remove all hydrogen atoms
    * @function removeHydrogens
    * @returns the count of removed atoms
    */
-  removeHydrogens: function() {
-    var hs = [];
+  removeHydrogens() {
+    const hs = [];
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (a.elem == 'H' && a.isotope == null)
@@ -1766,9 +1798,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return hs.length;
-  },
+  }
 
-  draw: function(surface, linewidth, fontsize, textonly, dimension, highlighterrors, showcarbon, simpledraw) {
+  draw(surface, linewidth, fontsize, textonly, dimension, highlighterrors, showcarbon?: boolean, simpledraw?: boolean) {
     if (linewidth == null)
       linewidth = 2;
     if (fontsize == null)
@@ -1787,9 +1819,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
 
       // draw bonds connect to hidden group atom
-      var bonds = [];
+      const bonds = [];
       for (let i = 0; i < this.bonds.length; ++i) {
-        var b = this.bonds[i];
+        const b = this.bonds[i];
         if (b.a1._outside && b.a2._outside && !b.a1.hidden && !b.a2.hidden)
           continue;
 
@@ -1807,7 +1839,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
       for (let i = 0; i < bonds.length; ++i)
         bonds[i].draw(surface, linewidth, this, fontsize, simpledraw);
 
-      var tor = linewidth * 2;
+      const tor = linewidth * 2;
       if (simpledraw) {
         // I#9069
         for (let i = 0; i < this.atoms.length; ++i) {
@@ -1815,8 +1847,8 @@ JSDraw2.Mol = scil.extend(scil._base, {
           if (a._outside || !a.hasErr())
             continue;
 
-          var w = 8;
-          var r = new JSDraw2.Rect(a.p.x - w / 2, a.p.y - w / 2, w, w);
+          const w = 8;
+          const r = new JSDraw2.Rect(a.p.x - w / 2, a.p.y - w / 2, w, w);
           JSDraw2.Drawer.drawRect(surface, r, 'red', linewidth).setFill('red');
         }
       } else {
@@ -1827,9 +1859,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
           // check overlapping
           for (let k = i + 1; k < this.atoms.length; ++k) {
-            var a1 = this.atoms[k];
+            const a1 = this.atoms[k];
             if (Math.abs(a.p.x - a1.p.x) < tor && Math.abs(a.p.y - a1.p.y) < tor) {
-              var r = new JSDraw2.Rect(a.p.x - fontsize / 2, a.p.y - fontsize / 2, fontsize, fontsize);
+              const r = new JSDraw2.Rect(a.p.x - fontsize / 2, a.p.y - fontsize / 2, fontsize, fontsize);
               JSDraw2.Drawer.drawRect(surface, r, 'red', linewidth);
               break;
             }
@@ -1847,7 +1879,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
       this.drawSelect(new JSDraw2.Lasso(surface, linewidth * (simpledraw ? 5 : 1), false), simpledraw);
 
-      var s = null;
+      let s = null;
       if (this.chiral == 'and')
         s = '[AND Enantiomer]';
       else if (this.chiral == 'or')
@@ -1858,9 +1890,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
       if (s != null)
         JSDraw2.Drawer.drawText(surface, new JSDraw2.Point(dimension.x - fontsize * 4, fontsize * 1), s, 'gray', fontsize, 'right');
     }
-  },
+  }
 
-  moveHiddenAtomToGroupBorder: function(a, a2) {
+  moveHiddenAtomToGroupBorder(a, a2) {
     if (!a.hidden)
       return false;
 
@@ -1889,7 +1921,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
       a._outside = false;
     } else {
       // group to group
-      var g2 = this._findGroup(a2);
+      const g2 = this._findGroup(a2);
       if (g2 == null)
         return false;
 
@@ -1932,19 +1964,19 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return true;
-  },
+  }
 
-  _findGroup: function(a) {
+  _findGroup(a) {
     for (let i = 0; i < this.graphics.length; ++i) {
-      var g = JSDraw2.Group.cast(this.graphics[i]);
+      const g = JSDraw2.Group.cast(this.graphics[i]);
       if (g != null && g.a == a)
         return g;
     }
 
     return null;
-  },
+  }
 
-  drawSelect: function(lasso, simpledraw) {
+  drawSelect(lasso, simpledraw) {
     for (let i = 0; i < this.graphics.length; ++i) {
       if (this.graphics[i].selected)
         this.graphics[i].drawSelect(lasso);
@@ -1954,7 +1986,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
       this.atoms[i].__drawselect = false;
 
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (b.selected) {
         b.drawSelect(lasso);
         if (simpledraw) {
@@ -1974,10 +2006,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
           a.rgroup.mols[j].drawSelect(lasso, simpledraw);
       }
     }
-  },
+  }
 
-  setZOrder: function(g, z) {
-    var i = scil.Utils.indexOf(this.graphics, g);
+  setZOrder(g, z) {
+    const i = scil.Utils.indexOf(this.graphics, g);
     if (i < 0 || this.graphics.length == 1)
       return false;
 
@@ -1994,21 +2026,21 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return true;
-  },
+  }
 
-  calcHDir: function(a, tor, drawalias) {
-    var atoms = this.getNeighborAtoms(a);
+  calcHDir(a, tor, drawalias) {
+    const atoms = this.getNeighborAtoms(a);
     if (atoms.length == 0 && a.charge == 0)
       return drawalias ? JSDraw2.ALIGN.RIGHT : JSDraw2.ALIGN.LEFT;
 
-    var r = false;
+    let r = false;
     let b = false;
     let l = false;
     let t = false;
     for (let i = 0; i < atoms.length; ++i) {
-      var oa = atoms[i];
-      var dx = oa.p.x - a.p.x;
-      var dy = oa.p.y - a.p.y;
+      const oa = atoms[i];
+      const dx = oa.p.x - a.p.x;
+      const dy = oa.p.y - a.p.y;
       if (dx > tor)
         r = true;
       else if (dx < -tor)
@@ -2028,7 +2060,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     else if (!t)
       return JSDraw2.ALIGN.TOP;
     return JSDraw2.ALIGN.RIGHT;
-  },
+  }
 
   /**
    * Set molfile
@@ -2036,18 +2068,18 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {string} molfile - the input molfile
    * @returns the Mol object
    */
-  setMolfile: function(molfile, rxn) {
-    var m = this.setMolfile2(molfile, rxn);
+  setMolfile(molfile, rxn?: boolean) {
+    const m = this.setMolfile2(molfile, rxn);
     if (m != null)
       this.guessSuperAtoms();
     return m;
-  },
+  }
 
-  guessSuperAtoms: function() {
+  guessSuperAtoms() {
     return 0;
-  },
+  }
 
-  setMolfile2: function(molfile, rxn) {
+  setMolfile2(molfile, rxn?: boolean) {
     if (molfile != null && molfile.length > 4) {
       if (molfile.substr(0, 4) == '$RXN')
         return this.setRxnfile(molfile);
@@ -2059,7 +2091,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     if (molfile == null || molfile.length == 0)
       return null;
 
-    var lines = null;
+    let lines = null;
     if (molfile.indexOf('\n') >= 0)
       lines = molfile.split('\n');
     else
@@ -2079,12 +2111,12 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
     return null;
-  },
+  }
 
-  setMolV2000: function(lines, start, rxn, rAtoms) {
-    var natoms = parseFloat(lines[start].substr(0, 3));
-    var nbonds = parseFloat(lines[start].substr(3, 3));
-    var chiral = lines[start].substr(12, 3);
+  setMolV2000(lines, start, rxn: boolean, rAtoms?: Atom<TBio>[]) {
+    const natoms = parseFloat(lines[start].substr(0, 3));
+    const nbonds = parseFloat(lines[start].substr(3, 3));
+    const chiral = lines[start].substr(12, 3);
     if (!JSDraw2.defaultoptions.and_enantiomer)
       this.chiral = chiral == '  1';
     if (isNaN(natoms) || isNaN(nbonds))
@@ -2092,19 +2124,19 @@ JSDraw2.Mol = scil.extend(scil._base, {
     ++start;
 
     for (let i = start; i < natoms + start; i++) {
-      var s: string = lines[i];
-      var x = parseFloat(s.substr(0, 10));
-      var y = -parseFloat(s.substr(10, 10));
-      var e = scil.Utils.trim(s.substr(31, 3));
-      var c = s.length >= 39 ? parseInt(s.substr(36, 3)) : 0;
-      var ami = rxn && s.length >= 63 ? parseInt(s.substr(60, 3)) : 0;
-      var hs = s.length >= 45 ? parseInt(s.substr(42, 3)) : 0;
-      var val = s.length >= 51 ? parseInt(s.substr(48, 3)) : 0;
+      const s: string = lines[i];
+      const x = parseFloat(s.substr(0, 10));
+      const y = -parseFloat(s.substr(10, 10));
+      let e = scil.Utils.trim(s.substr(31, 3));
+      const c = s.length >= 39 ? parseInt(s.substr(36, 3)) : 0;
+      const ami = rxn && s.length >= 63 ? parseInt(s.substr(60, 3)) : 0;
+      const hs = s.length >= 45 ? parseInt(s.substr(42, 3)) : 0;
+      const val = s.length >= 51 ? parseInt(s.substr(48, 3)) : 0;
 
       if (isNaN(x) || isNaN(y) || isNaN(c))
         return null;
 
-      var alias = null;
+      let alias = null;
       if ((/^R[0-9]+$/).test(e)) {
         alias = e;
         e = 'R';
@@ -2276,7 +2308,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
             a.query.v = v;
         }
       } else if (token == 'M  UNS') {
-        var n = parseInt(s.substr(6, 3));
+        const n = parseInt(s.substr(6, 3));
         for (let k = 0; k < n; ++k) {
           const ai = parseInt(s.substr(9 + 8 * k + 1, 3));
           const v = parseInt(s.substr(9 + 8 * k + 5, 3));
@@ -2286,7 +2318,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
           a.query.uns = v == 1;
         }
       } else if (token == 'M  RBC') {
-        var n = parseInt(s.substr(6, 3));
+        const n = parseInt(s.substr(6, 3));
         for (let k = 0; k < n; ++k) {
           const ai = parseInt(s.substr(9 + 8 * k + 1, 3));
           const v = parseInt(s.substr(9 + 8 * k + 5, 3));
@@ -2298,10 +2330,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
           }
         }
       } else if (token == 'M  RGP') {
-        var n = parseInt(s.substr(6, 3));
+        const n = parseInt(s.substr(6, 3));
         for (let k = 0; k < n; ++k) {
           const ai = parseInt(s.substr(10 + k * 8, 3));
-          var rr = parseInt(s.substr(14 + k * 8, 3));
+          const rr = parseInt(s.substr(14 + k * 8, 3));
           if (isNaN(ai) || isNaN(rr))
             return null;
           if (this.atoms[ai - 1].elem == 'R') {
@@ -2313,15 +2345,15 @@ JSDraw2.Mol = scil.extend(scil._base, {
           }
         }
       } else if (token == 'M  APO') {
-        var n = parseInt(s.substr(6, 3));
+        const n = parseInt(s.substr(6, 3));
         for (let k = 0; k < n; ++k) {
-          var ai = parseInt(s.substr(10 + k * 8, 3));
-          var rr = parseInt(s.substr(14 + k * 8, 3));
+          const ai = parseInt(s.substr(10 + k * 8, 3));
+          const rr = parseInt(s.substr(14 + k * 8, 3));
           if (!isNaN(ai) && !isNaN(rr) && this.atoms[ai - 1] != null)
             this.atoms[ai - 1].attachpoints.push(rr);
         }
       } else if (token == 'M  STY') {
-        var n = parseInt(s.substr(6, 3));
+        const n = parseInt(s.substr(6, 3));
         for (let k = 0; k < n; ++k) {
           const si = parseInt(s.substr(10 + k * 8, 3));
           const sn = s.substr(14 + k * 8, 3);
@@ -2344,35 +2376,35 @@ JSDraw2.Mol = scil.extend(scil._base, {
             sgroups[si] = br;
         }
       } else if (token == 'M  SMT') {
-        var si = parseInt(s.substr(7, 3));
-        var sa = s.substr(11);
+        const si = parseInt(s.substr(7, 3));
+        let sa = s.substr(11);
         if (sa.length > 0 && sa.substr(0, 1) == '^')
           sa = sa.substr(1);
         sgroups[si].subscript = sa;
       } else if (token == 'M  SCL') {
-        var si = parseInt(s.substr(7, 3));
+        const si = parseInt(s.substr(7, 3));
         sgroups[si].cls = s.substr(11);
       } else if (token == 'M  SPL') {
-        var n = parseInt(s.substr(6, 3));
+        const n = parseInt(s.substr(6, 3));
         for (let k = 0; k < n; ++k) {
-          var ci = parseInt(s.substr(10 + k * 8, 3));
-          var pi = parseInt(s.substr(14 + k * 8, 3));
+          const ci = parseInt(s.substr(10 + k * 8, 3));
+          const pi = parseInt(s.substr(14 + k * 8, 3));
           if (JSDraw2.Text.cast(sgroups[ci]) != null && JSDraw2.Bracket.cast(sgroups[pi]) != null)
             sgroups[ci].anchors = [sgroups[pi]]; // text attached to bracket
         }
       } else if (token == 'M  SCN') {
-        var n = parseInt(s.substr(6, 3));
+        const n = parseInt(s.substr(6, 3));
         for (let k = 0; k < n; ++k) {
-          var si = parseInt(s.substr(10 + k * 8, 3));
-          var conn = s.substr(14 + k * 8, 2);
+          const si = parseInt(s.substr(10 + k * 8, 3));
+          const conn = s.substr(14 + k * 8, 2);
           if (JSDraw2.Bracket.cast(sgroups[si]) != null)
             sgroups[si].conn = conn;
         }
       } else if (token == 'M  SNC') {
-        var n = parseInt(s.substr(6, 3));
+        const n = parseInt(s.substr(6, 3));
         for (let k = 0; k < n; ++k) {
-          var si = parseInt(s.substr(10 + k * 8, 3));
-          var num = scil.Utils.trim(s.substr(14 + k * 8, 2));
+          const si = parseInt(s.substr(10 + k * 8, 3));
+          const num = scil.Utils.trim(s.substr(14 + k * 8, 2));
           if (JSDraw2.Bracket.cast(sgroups[si]) != null) {
             if (sgroups[si].type == 'c')
               sgroups[si].type = 'c' + num;
@@ -2381,12 +2413,12 @@ JSDraw2.Mol = scil.extend(scil._base, {
           }
         }
       } else if (token == 'M  SAL') {
-        var si = parseInt(s.substr(7, 3));
-        var sg = sgroups[si];
+        const si = parseInt(s.substr(7, 3));
+        const sg = sgroups[si];
         if (sg != null) {
-          var n = parseInt(s.substr(10, 3));
+          const n = parseInt(s.substr(10, 3));
           for (let k = 0; k < n; ++k) {
-            var ai = parseInt(s.substr(14 + k * 4, 3));
+            const ai = parseInt(s.substr(14 + k * 4, 3));
             const a = this.atoms[ai - 1];
             if (a != null) {
               if (sg.type == 'SUPERATOM')
@@ -2399,12 +2431,12 @@ JSDraw2.Mol = scil.extend(scil._base, {
           }
         }
       } else if (token == 'M  SPA') {
-        var si = parseInt(s.substr(7, 3));
-        var sg = sgroups[si];
+        const si = parseInt(s.substr(7, 3));
+        const sg = sgroups[si];
         if (JSDraw2.Bracket.cast(sg) != null && sg.type == 'mul') {
-          var n = parseInt(s.substr(10, 3));
+          const n = parseInt(s.substr(10, 3));
           for (let k = 0; k < n; ++k) {
-            var ai = parseInt(s.substr(14 + k * 4, 3));
+            const ai = parseInt(s.substr(14 + k * 4, 3));
             const a = this.atoms[ai - 1];
             if (a != null) {
               if (sg.spa == null)
@@ -2414,22 +2446,22 @@ JSDraw2.Mol = scil.extend(scil._base, {
           }
         }
       } else if (token == 'M  SBL') {
-        var si = parseInt(s.substr(7, 3));
-        var sg = sgroups[si];
-        var n = parseInt(s.substr(10, 3));
+        const si = parseInt(s.substr(7, 3));
+        const sg = sgroups[si];
+        const n = parseInt(s.substr(10, 3));
         for (let k = 0; k < n; ++k) {
-          var bi = parseInt(s.substr(14 + k * 4, 3));
-          var b = this.bonds[bi - 1];
+          const bi = parseInt(s.substr(14 + k * 4, 3));
+          const b = this.bonds[bi - 1];
           if (b != null && JSDraw2.Text.cast(sg) != null)
             sg.anchors.push(b);
         }
       } else if (token == 'M  SDI') {
-        var si = parseInt(s.substr(7, 3));
-        var sg = sgroups[si];
-        var n = parseInt(s.substr(10, 3));
+        const si = parseInt(s.substr(7, 3));
+        const sg = sgroups[si];
+        const n = parseInt(s.substr(10, 3));
         if (sg != null && n == 4) {
-          var p1 = new JSDraw2.Point(parseFloat(s.substr(13, 10)), -parseFloat(s.substr(23, 10)));
-          var p2 = new JSDraw2.Point(parseFloat(s.substr(33, 10)), -parseFloat(s.substr(43, 10)));
+          const p1 = new JSDraw2.Point(parseFloat(s.substr(13, 10)), -parseFloat(s.substr(23, 10)));
+          const p2 = new JSDraw2.Point(parseFloat(s.substr(33, 10)), -parseFloat(s.substr(43, 10)));
           if (p1.isValid() && p2.isValid()) {
             if (sg._rect == null)
               sg._rect = new JSDraw2.Rect().set(p1, p2);
@@ -2438,25 +2470,25 @@ JSDraw2.Mol = scil.extend(scil._base, {
           }
         }
       } else if (token == 'M  SDT') {
-        var si = parseInt(s.substr(7, 3));
-        var sg = sgroups[si];
+        const si = parseInt(s.substr(7, 3));
+        const sg = sgroups[si];
         if (JSDraw2.Text.cast(sg) != null)
           sg.fieldtype = scil.Utils.trim(s.substr(11, 30));
       } else if (token == 'M  SDD') {
-        var si = parseInt(s.substr(7, 3));
-        var sg = sgroups[si];
+        const si = parseInt(s.substr(7, 3));
+        const sg = sgroups[si];
         if (JSDraw2.Text.cast(sg) != null) {
           const p = new JSDraw2.Point(parseFloat(s.substr(11, 10)), -parseFloat(s.substr(21, 10)));
           if (p.isValid())
             sg._rect = new JSDraw2.Rect(p.x, p.y, 0, 0);
         }
       } else if (token == 'M  SED') {
-        var si = parseInt(s.substr(7, 3));
-        var sg = sgroups[si];
+        const si = parseInt(s.substr(7, 3));
+        const sg = sgroups[si];
         if (JSDraw2.Text.cast(sg) != null)
           sg.text = scil.Utils.trim(s.substr(11));
       } else if (token3 == 'A  ') {
-        var ai = parseInt(s.substr(3, 3));
+        const ai = parseInt(s.substr(3, 3));
         ++i;
         this.atoms[ai - 1].alias = scil.Utils.trim(lines[i]);
       } else if (token3 == 'V  ') {
@@ -2468,22 +2500,22 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
 
-    var superatoms = [];
-    var brackets = [];
-    var gap = this.medBondLength(1.56) / 2;
+    const superatoms = [];
+    const brackets = [];
+    const gap = this.medBondLength(1.56) / 2;
     for (let i = 0; i < sgroups.length; ++i) {
       // post-process sgroups
-      var sg = sgroups[i];
+      const sg = sgroups[i];
       if (sg == null)
         continue;
-      const br = JSDraw2.Bracket.cast(sg);
+      const br = JSDraw2.Bracket.cast<TBio>(sg);
       if (sg._rect != null && (br != null || sg.text != null && sg.text != '')) {
         this.addGraphics(sg);
         if (br != null) {
-          if (br.getType() != '')
+          if (br.getType() != '') {
             //this.setSgroup(br, "BRACKET_TYPE", br.getType(), br._rect.right() + gap / 4, br._rect.bottom() - gap);
             this.setSgroup(br, 'BRACKET_TYPE', br.subscript || br.getType(), br._rect.right() + gap / 4, br._rect.bottom() - gap);
-          else
+          } else
             brackets.push(br);
           if (br.conn != null && br.conn != '')
             this.setSgroup(br, 'BRACKET_CONN', br.conn.toLowerCase(), br._rect.right() + gap / 4, br._rect.top - gap / 4);
@@ -2495,8 +2527,8 @@ JSDraw2.Mol = scil.extend(scil._base, {
             sg.fieldtype = 'BRACKET_MOD';
         }
       } else if (sg.type == 'SUPERATOM') {
-        var na = new JSDraw2.Atom(null, 'C');
-        var m = new JSDraw2.Mol();
+        const na = new JSDraw2.Atom(null, 'C');
+        const m = new JSDraw2.Mol();
         superatoms.push({a: na, m: m});
         m.atoms = sg.atoms;
         for (let k = 0; k < m.atoms.length; ++k)
@@ -2553,8 +2585,8 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < brackets.length; ++i) {
-      var br = brackets[i];
-      var t = this.getSgroupText(br, 'BRACKET_TYPE');
+      const br = brackets[i];
+      const t = this.getSgroupText(br, 'BRACKET_TYPE');
       if (t != null)
         brackets[i].type = t.text;
 
@@ -2580,19 +2612,19 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     if (JSDraw2.defaultoptions.and_enantiomer) {
       if (this.hasStereoCenter() && chiral == '  0')
-        this.chiral = 'and';
+        this.chiral = ChiralTypes.AND;
     }
     return this;
-  },
+  }
 
-  hasRGroup: function() {
+  hasRGroup() {
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (a.elem == 'R')
         return true;
     }
     return false;
-  },
+  }
 
   /**
    * Get molfile
@@ -2601,7 +2633,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {bool} v3000 - render it in Molfile V3000 format
    * @returns a string
    */
-  getMolfile: function(rxn, v3000, excludeDummyBonds) {
+  getMolfile(rxn?: any, v3000?: boolean, excludeDummyBonds?: boolean): string {
     if (v3000 == null) {
       if (this.needV3000())
         v3000 = true;
@@ -2611,17 +2643,17 @@ JSDraw2.Mol = scil.extend(scil._base, {
       return this.getMolV3000(rxn);
     else
       return this.getMolV2000(rxn, excludeDummyBonds);
-  },
+  }
 
-  needV3000: function() {
+  needV3000() {
     return this.atoms.length > 999 || this.bonds.length > 999 || this.hasEnhancedStereochemistry();
-  },
+  }
 
-  getRgfile: function(rxn, rgroups, superatoms) {
+  getRgfile(rxn, rgroups, superatoms) {
     return null;
-  },
+  }
 
-  _getRgroups: function(rgroups) {
+  _getRgroups(rgroups?: any) {
     if (rgroups == null)
       rgroups = {n: 0, list: []};
 
@@ -2635,15 +2667,15 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
     return rgroups;
-  },
+  }
 
-  getSubMol: function(atoms) {
-    var m = this;
-    var set = {atoms: scil.clone(atoms), bonds: [], openbonds: []};
+  getSubMol(atoms) {
+    const m = this;
+    const set = {atoms: scil.clone(atoms), bonds: [], openbonds: []};
     for (let j = 0; j < m.bonds.length; ++j) {
-      var b = m.bonds[j];
-      var f1 = scil.Utils.indexOf(atoms, b.a1) >= 0;
-      var f2 = scil.Utils.indexOf(atoms, b.a2) >= 0;
+      const b = m.bonds[j];
+      const f1 = scil.Utils.indexOf(atoms, b.a1) >= 0;
+      const f2 = scil.Utils.indexOf(atoms, b.a2) >= 0;
       if (f1 && f2) {
         //if (scil.Utils.indexOf(set.atoms, b.a1) < 0)
         //    set.atoms.push(b.a1);
@@ -2662,17 +2694,17 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return set;
-  },
+  }
 
-  expandSuperAtoms: function(superatoms2) {
+  expandSuperAtoms(superatoms2?: any[]) {
     const superatoms = [];
 
-    var m = this.clone(null);
-    var list = scil.clone(m.atoms);
+    const m = this.clone(null);
+    const list = scil.clone(m.atoms);
     for (let i = 0; i < list.length; ++i) {
       const a = list[i];
       if (a.superatom != null) {
-        var m2 = JSDraw2.SuperAtoms.addToMol(m, a, a.superatom);
+        const m2 = JSDraw2.SuperAtoms.addToMol(m, a, a.superatom);
         superatoms.push({a: a, m: m2});
         if (superatoms2 != null)
           superatoms2.push({a: a, m: m2});
@@ -2684,13 +2716,13 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < m.graphics.length; ++i) {
-      var br = JSDraw2.Bracket.cast(m.graphics[i]);
+      const br = JSDraw2.Bracket.cast(m.graphics[i]);
       if (br == null)
         continue;
 
       if (br.atoms != null && superatoms != null) {
         const atoms = [];
-        let m2: IMol<any> = null;
+        let m2: Mol<TBio> = null;
         for (let k = 0; k < br.atoms.length; ++k) {
           for (let j = 0; j < superatoms.length; ++j) {
             if (br.atoms[k] == superatoms[j].a) {
@@ -2713,34 +2745,34 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     m.calcHCount(true);
     return m;
-  },
+  }
 
-  getMolV2000: function(rxn, excludeDummyBonds) {
-    var superatoms = [];
-    var m = this.expandSuperAtoms(superatoms);
+  getMolV2000(rxn, excludeDummyBonds) {
+    const superatoms = [];
+    const m = this.expandSuperAtoms(superatoms);
     m.chiral = this.chiral;
 
     if (excludeDummyBonds) {
       for (let i = m.bonds.length - 1; i >= 0; --i) {
-        var b = m.bonds[i];
+        const b = m.bonds[i];
         if (b.type == JSDraw2.BONDTYPES.DUMMY)
           m.bonds.splice(i, 1);
       }
     }
 
-    var hasRgroup = false;
-    var rgroups = m._getRgroups();
+    const hasRgroup = false;
+    const rgroups = m._getRgroups();
     if (rgroups.list.length > 0)
       return m.getRgfile(rxn, rgroups, superatoms);
 
-    var s = (m.name == null ? '' : m.name) + '\n';
+    let s = (m.name == null ? '' : m.name) + '\n';
     s += m._getMolHeader();
     s += '\n';
     s += m._getMolV2000(rxn, null, superatoms);
     return s;
-  },
+  }
 
-  allAtoms: function(list) {
+  allAtoms(list?: Atom<TBio>[]): Atom<TBio>[] {
     if (list == null)
       list = [];
     for (let i = 0; i < this.atoms.length; ++i) {
@@ -2752,9 +2784,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
     return list;
-  },
+  }
 
-  allBonds: function(list) {
+  allBonds(list?: Bond<TBio>[]): Bond<TBio>[] {
     if (list == null)
       list = [];
     for (let i = 0; i < this.bonds.length; ++i)
@@ -2768,32 +2800,32 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
     return list;
-  },
+  }
 
-  _getMolTime: function() {
-    var dt = new Date();
-    var yr = dt.getFullYear() + '';
+  _getMolTime() {
+    const dt = new Date();
+    const yr = dt.getFullYear() + '';
     return scil.Utils.formatStr(dt.getMonth() + 1, 2, 0).replace(' ', '0') +
       scil.Utils.formatStr(dt.getDate(), 2, 0).replace(' ', '0') +
       yr.substr(2) +
       scil.Utils.formatStr(dt.getHours(), 2, 0).replace(' ', '0') +
       scil.Utils.formatStr(dt.getMinutes(), 2, 0).replace(' ', '0');
-  },
+  }
 
-  _getMolHeader: function() {
-    var dt = new Date();
-    var yr = dt.getFullYear() + '';
+  _getMolHeader() {
+    const dt = new Date();
+    const yr = dt.getFullYear() + '';
     return '   JSDraw2' + this._getMolTime() + '2D\n';
-  },
+  }
 
-  _getMolV2000: function(rxn, rgroups, superatoms) {
+  _getMolV2000(rxn, rgroups, superatoms) {
     if (rgroups != null)
       this._getRgroups(rgroups);
 
-    var len = this.bondlength > 0 ? this.bondlength : this.medBondLength();
-    var scale = len > 0 ? (1.56 / len) : 1.0;
+    const len = this.bondlength > 0 ? this.bondlength : this.medBondLength();
+    const scale = len > 0 ? (1.56 / len) : 1.0;
 
-    var s = '';
+    let s = '';
     s += scil.Utils.formatStr(this.atoms.length, 3, 0);
     s += scil.Utils.formatStr(this.bonds.length, 3, 0);
     s += '  0  0';
@@ -2803,13 +2835,13 @@ JSDraw2.Mol = scil.extend(scil._base, {
       s += '  0';
     s += '  0              0 V2000\n';
 
-    var isotopes = '';
-    var radicals = '';
-    var tags = '';
-    var query = '';
-    var rgp = '';
-    var apo = '';
-    var astr = '';
+    let isotopes = '';
+    let radicals = '';
+    let tags = '';
+    let query = '';
+    let rgp = '';
+    let apo = '';
+    let astr = '';
     this.resetIds();
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
@@ -2838,11 +2870,11 @@ JSDraw2.Mol = scil.extend(scil._base, {
           query += 'M  SUB  1' + scil.Utils.formatStr(i + 1, 4, 0) + scil.Utils.formatStr(a.query.sub == 0 ? -1 : (a.query.sub == '*' ? -2 : a.query.sub), 4, 0) + '\n';
       }
 
-      var elem = a.elem;
+      let elem = a.elem;
       if (a.elem == 'R') {
         if (a.iR > 0) {
           elem = 'R#';
-          rgp += 'M  RGP  1' + scil.Utils.formatStr(i + 1, 4, 0) + scil.Utils.formatStr(parseInt(a.iR), 4, 0) + '\n';
+          rgp += 'M  RGP  1' + scil.Utils.formatStr(i + 1, 4, 0) + scil.Utils.formatStr(parseInt(a.iR as string), 4, 0) + '\n';
         } else {
           elem = 'R';
         }
@@ -2859,7 +2891,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
       s += ' ';
       s += scil.Utils.padRight(elem, 2, ' ');
       s += '  0';
-      var c = 0;
+      let c = 0;
       switch (a.charge) {
       case 1:
         c = 3;
@@ -2903,13 +2935,13 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
 
       s += scil.Utils.formatStr(b.a1.id, 3, 0);
       s += scil.Utils.formatStr(b.a2.id, 3, 0);
 
-      var order = 0;
-      var stereo = 0;
+      let order = 0;
+      let stereo = 0;
       switch (b.type) {
       case JSDraw2.BONDTYPES.UNKNOWN:
         order = 8;
@@ -2978,7 +3010,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     s += rgp;
     s += apo;
 
-    var nSTY = 0;
+    let nSTY = 0;
     if (superatoms != null) {
       for (let i = 0; i < superatoms.length; ++i) {
         const a = superatoms[i].a;
@@ -2987,7 +3019,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
           continue;
 
         ++nSTY;
-        var sty = scil.Utils.formatStr(nSTY, 3, 0);
+        const sty = scil.Utils.formatStr(nSTY, 3, 0);
         s += 'M  STY  1 ' + sty + ' SUP\n';
         s += this.writeList('M  SAL ' + sty, m.atoms, 'id', 4, 8);
         s += this.writeList('M  SBL ' + sty, m.bonds, 'bondid', 4, 8);
@@ -2998,23 +3030,23 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
 
-    var texts = [];
+    const texts = [];
     for (let i = 0; i < this.graphics.length; ++i) {
-      var t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast(this.graphics[i]);
       if (t != null)
         texts.push(t);
     }
 
     // SGroup
-    var sgroupdata = '';
-    var id = {k: nSTY};
-    var brackets = [];
+    let sgroupdata = '';
+    const id = {k: nSTY};
+    const brackets = [];
     for (let i = 0; i < this.graphics.length; ++i) {
-      var br = JSDraw2.Bracket.cast(this.graphics[i]);
+      const br = JSDraw2.Bracket.cast<TBio>(this.graphics[i]);
       if (br == null)
         continue;
       brackets.push(br);
-      var r = br._rect;
+      const r = br._rect;
 
       let bracketatoms = null;
       let bracketbonds = null;
@@ -3038,19 +3070,19 @@ JSDraw2.Mol = scil.extend(scil._base, {
           type = 'GEN';
       }
       sgroup.sty += ' ' + scil.Utils.formatStr(k, 3, 0) + ' ' + type;
-      var fieldtype = JSDraw2.SGroup.fieldtypes[tp];
+      let fieldtype = JSDraw2.SGroup.fieldtypes[tp];
       if (fieldtype == null)
         fieldtype = 'BRACKET';
-      var custom = type == null;
+      const custom = type == null;
 
-      var subscript = null;
+      let subscript = null;
       for (let j = 0; j < texts.length; ++j) {
-        var t = texts[j];
+        const t = texts[j];
         if (t != null && t.anchors.length == 1 && t.anchors[0] == br) {
           if (t.fieldtype == 'BRACKET_CONN') {
             connectivity = t.text;
           } else if (t.fieldtype != 'BRACKET_TYPE' || t.text != tp && tp != 'mul' || custom) {
-            var ft = t.fieldtype;
+            let ft = t.fieldtype;
             if (fieldtype != null && ft != null && ft.length > 8 && ft.substr(0, 8) == 'BRACKET_') {
               if (ft == 'BRACKET_SUBTYPE')
                 ft = fieldtype + '_TYPE';
@@ -3113,12 +3145,12 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     for (let i = 0; i < texts.length; ++i) {
-      var t = texts[i];
+      const t = texts[i];
       if (t == null)
         continue;
 
-      var k = id.k;
-      var sgroup = {sty: '', spl: '', data: '', id: id};
+      let k = id.k;
+      const sgroup = {sty: '', spl: '', data: '', id: id};
       this.getDataGroup(t.text, t.fieldtype, t._rect.left * scale, -t._rect.top * scale, null, sgroup);
       sgroupdata += 'M  STY' + scil.Utils.formatStr(sgroup.sty.length / 8, 3, 0) + sgroup.sty + '\n';
 
@@ -3127,10 +3159,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
         ++id.k;
       k = id.k;
 
-      var sal = '';
-      var sbl = '';
+      let sal = '';
+      let sbl = '';
       for (let j = 0; j < t.anchors.length; ++j) {
-        var a = t.anchors[j];
+        const a = t.anchors[j];
         if (JSDraw2.Atom.cast(a) != null)
           sal += ' ' + scil.Utils.formatStr(a.atomid, 3, 0);
         else if (JSDraw2.Bond.cast(a) != null)
@@ -3147,12 +3179,12 @@ JSDraw2.Mol = scil.extend(scil._base, {
     s += sgroupdata;
     s += 'M  END\n';
     return s;
-  },
+  }
 
-  getExpandedAtoms: function(atoms) {
-    var ret = [];
+  getExpandedAtoms(atoms: Atom<TBio>[]): Atom<TBio>[] {
+    const ret: Atom<TBio>[] = [];
     for (let i = 0; i < atoms.length; ++i) {
-      var a = atoms[i];
+      const a = atoms[i];
       if (a.superatom == null) {
         ret.push(a);
       } else {
@@ -3161,20 +3193,20 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
     return ret;
-  },
+  }
 
-  writeList: function(prefix, list, key, chars, countperline) {
+  writeList(prefix, list, key, chars, countperline) {
     if (list == null || list.Length == 0)
       return '';
 
-    var s = '';
+    let s = '';
     let countlastline = list.length % countperline;
     if (countlastline == 0)
       countlastline = countperline;
     const lines = (list.length - countlastline) / countperline + 1;
 
     for (let i = 0; i < lines; ++i) {
-      var countthisline = i + 1 == lines ? countlastline : countperline;
+      const countthisline = i + 1 == lines ? countlastline : countperline;
       s += prefix;
       s += scil.Utils.formatStr(countthisline, 3);
       for (let j = 0; j < countthisline; ++j)
@@ -3183,25 +3215,25 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return s;
-  },
+  }
 
-  getMolV3000: function(rxn) {
-    var superatoms = [];
-    var m = this.expandSuperAtoms(superatoms);
+  getMolV3000(rxn) {
+    const superatoms = [];
+    const m = this.expandSuperAtoms(superatoms);
     m.chiral = this.chiral;
     return m._getMolV3000();
-  },
+  }
 
-  _getMolV3000: function(rxn) {
-    var len = this.bondlength > 0 ? this.bondlength : this.medBondLength();
-    var scale = len > 0 ? (1.56 / len) : 1.0;
+  _getMolV3000(rxn?: any) {
+    const len = this.bondlength > 0 ? this.bondlength : this.medBondLength();
+    const scale = len > 0 ? (1.56 / len) : 1.0;
 
     this.resetIds();
 
-    var dt = new Date();
-    var yr = dt.getFullYear() + '';
+    const dt = new Date();
+    const yr = dt.getFullYear() + '';
 
-    var s = '';
+    let s = '';
     if (!rxn) {
       s += (this.name == null ? '' : this.name) + '\n';
       s += '   JSDraw ' + scil.Utils.formatStr(dt.getMonth() + 1, 2, 0).replace(' ', '0') +
@@ -3213,16 +3245,16 @@ JSDraw2.Mol = scil.extend(scil._base, {
       s += '  0  0        0               999 V3000\n';
     }
 
-    var enhancedstereochemistry = this.getEnhancedStereochemistry();
-    var chiral = this.hasStereoCenter() || !scil.Utils.isNullOrEmpty(enhancedstereochemistry);
+    const enhancedstereochemistry = this.getEnhancedStereochemistry();
+    const chiral = this.hasStereoCenter() || !scil.Utils.isNullOrEmpty(enhancedstereochemistry);
 
     s += 'M  V30 BEGIN CTAB\n';
     s += 'M  V30 COUNTS ' + this.atoms.length + ' ' + this.bonds.length + ' 0 0 ' + (chiral ? 1 : 0) + '\n';
 
     s += 'M  V30 BEGIN ATOM\n';
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
-      var elem = a.elem;
+      const a = this.atoms[i];
+      let elem = a.elem;
       if (elem == 'R') {
         if (a.iR > 0)
           elem = 'R#';
@@ -3252,9 +3284,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
     s += 'M  V30 END ATOM\n';
     s += 'M  V30 BEGIN BOND\n';
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
-      var order = 0;
-      var stereo = 0;
+      const b = this.bonds[i];
+      let order = 0;
+      let stereo = 0;
       switch (b.type) {
       case JSDraw2.BONDTYPES.UNKNOWN:
         order = 8;
@@ -3310,50 +3342,50 @@ JSDraw2.Mol = scil.extend(scil._base, {
     s += 'M  V30 END CTAB\n';
     s += 'M  END\n';
     return s;
-  },
+  }
 
-  hasStereoCenter: function() {
+  hasStereoCenter() {
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (b.type == JSDraw2.BONDTYPES.WEDGE || b.type == JSDraw2.BONDTYPES.HASH)
         return true;
     }
 
     return false;
-  },
+  }
 
-  hasEnhancedStereochemistry: function() {
+  hasEnhancedStereochemistry() {
     return false;
-  },
+  }
 
-  getEnhancedStereochemistry: function() {
+  getEnhancedStereochemistry() {
     return '';
-  },
+  }
 
-  setMolV3000: function(lines, start, rxn, pos, endtoken) {
+  setMolV3000(lines, start, rxn, pos?: any, endtoken?: any) {
     return this;
-  },
+  }
 
-  readV30Collections: function(lines, i, atommap) {
-  },
+  readV30Collections(lines, i, atommap) {
+  }
 
-  readV30Bonds: function(lines, i, atommap, rxn) {
-  },
+  readV30Bonds(lines, i, atommap, rxn) {
+  }
 
-  getChiralAtom: function(t) {
+  getChiralAtom(t): Atom<TBio> | null {
     if (t == null || t.anchors == null || t.anchors.length != 1 || t.fieldtype != 'CHIRAL')
       return null;
-    var a = JSDraw2.Atom.cast(t.anchors[0]);
+    const a = JSDraw2.Atom.cast<TBio>(t.anchors[0]);
     if (a == null)
       return null;
     return JSDraw2.Atom.isValidChiral(t.text) ? a : null;
-  },
+  }
 
-  markChirality: function(a, c, bondlength) {
+  markChirality(a, c, bondlength) {
     return false;
-  },
+  }
 
-  findBestPostion: function(a, bondlength) {
+  findBestPostion(a, bondlength) {
     const atoms = a._parent.getNeighborAtoms(a);
     const p = a.p.clone();
     if (atoms != null && atoms.length > 0) {
@@ -3368,10 +3400,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
       p.y -= bondlength * 0.75;
     }
     return p;
-  },
+  }
 
-  readRxnCenter: function(bond, s) {
-    var rcenter = s == null ? null : parseInt(s);
+  readRxnCenter(bond, s) {
+    const rcenter = s == null ? null : parseInt(s);
     switch (rcenter) {
     case -1:
       bond.rcenter = JSDraw2.RXNCENTER.NOTCENTER;
@@ -3392,43 +3424,43 @@ JSDraw2.Mol = scil.extend(scil._base, {
       bond.rcenter = JSDraw2.RXNCENTER.CHANGE;
       break;
     }
-  },
+  }
 
-  readV30Atoms: function(lines, i, atommap, rxn) {
+  readV30Atoms(lines, i, atommap, rxn) {
 
-  },
+  }
 
-  readV30Counts: function(lines, i, counts) {
+  readV30Counts(lines, i, counts) {
 
-  },
+  }
 
-  parseV30Attributes: function(ss, start) {
+  parseV30Attributes(ss, start) {
     return null;
-  },
+  }
 
-  getDataGroup: function(data, key, x, y, k2, sgroup) {
+  getDataGroup(data, key, x, y, k2, sgroup) {
 
-  },
+  }
 
-  containsWord: function(word) {
+  containsWord(word) {
     word = word.toLowerCase();
     for (let i = 0; i < this.graphics.length; ++i) {
-      var t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast(this.graphics[i]);
       if (t != null && scil.Utils.containsWord(t.text, word, true))
         return true;
     }
     return false;
-  },
+  }
 
-  containsText: function(s) {
+  containsText(s) {
     s = s.toLowerCase();
     for (let i = 0; i < this.graphics.length; ++i) {
-      var t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast(this.graphics[i]);
       if (t != null && t.text != null && t.text.toLowerCase().indexOf(s) >= 0)
         return true;
     }
     return false;
-  },
+  }
 
   /**
    * Get Mol property
@@ -3436,9 +3468,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {string} k - the property name
    * @returns the property
    */
-  getProp: function(k) {
+  getProp(k) {
     return this.props == null ? null : this.props[k];
-  },
+  }
 
   /**
    * Set Mol property
@@ -3447,7 +3479,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {object} v - the property value
    * @returns null
    */
-  setProp: function(k, v) {
+  setProp(k, v) {
     if (v == null) {
       if (this.props != null)
         delete this.props[k];
@@ -3456,7 +3488,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
         this.props = {};
       this.props[k] = v + '';
     }
-  },
+  }
 
   /**
    * Set RGfile
@@ -3464,47 +3496,47 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {string} rgfile - the input rgfile
    * @returns the Mol object
    */
-  setRgfile: function(rgfile) {
+  setRgfile(rgfile) {
     return null;
-  },
+  }
 
-  _setParent: function(m) {
+  _setParent(m) {
     for (let i = 0; i < this.atoms.length; ++i)
       this.atoms[i]._parent = m;
     for (let i = 0; i < this.bonds.length; ++i)
       this.bonds[i]._parent = m;
     for (let i = 0; i < this.graphics.length; ++i)
       this.graphics[i]._parent = m;
-  },
+  }
 
-  _setGroup: function(g) {
+  _setGroup(g: any) {
     for (let i = 0; i < this.atoms.length; ++i)
       this.atoms[i].group = g;
     for (let i = 0; i < this.bonds.length; ++i)
       this.bonds[i].group = g;
-  },
+  }
 
-  toggleAtom: function(p, tor) {
+  toggleAtom(p, tor) {
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a = this.atoms[i];
       if (a.toggle(p, tor))
         return a;
 
       if (a.rgroup != null) {
-        var list = a.rgroup.mols;
+        const list = a.rgroup.mols;
         for (let j = 0; j < list.length; ++j) {
-          var r = list[j].toggleAtom(p, tor);
+          const r = list[j].toggleAtom(p, tor);
           if (r != null)
             return r;
         }
       }
     }
     return null;
-  },
+  }
 
-  toggle: function(p, tor) {
+  toggle(p, tor) {
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a = this.atoms[i];
       if (a.toggle(p, tor))
         return a;
 
@@ -3514,16 +3546,16 @@ JSDraw2.Mol = scil.extend(scil._base, {
       if (a.rgroup.toggle(p, tor))
         return a.rgroup;
 
-      var list = a.rgroup.mols;
+      const list = a.rgroup.mols;
       for (let j = 0; j < list.length; ++j) {
-        var r = list[j].toggle(p, tor);
+        const r = list[j].toggle(p, tor);
         if (r != null)
           return r;
       }
     }
 
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (b.toggle(p, tor))
         return this.bonds[i];
     }
@@ -3534,7 +3566,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
         return this.graphics[i];
     }
     return null;
-  },
+  }
 
   /**
    * Set Rxnfile
@@ -3542,33 +3574,33 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {string} rxnfile - the input rxnfile
    * @returns the Mol object
    */
-  setRxnfile: function(rxnfile) {
+  setRxnfile(rxnfile) {
     return this;
-  },
+  }
 
-  setRxnV3000: function(lines) {
+  setRxnV3000(lines) {
     return this;
-  },
+  }
 
-  readCtabs: function(lines, i, n, list, endtoken) {
+  readCtabs(lines, i, n, list, endtoken) {
     for (let k = 0; k < n; ++k) {
-      var m = new JSDraw2.Mol();
-      var pos: any = {};
+      const m = new JSDraw2.Mol();
+      const pos: any = {};
       m.setMolV3000(lines, i, true, pos, endtoken);
       i = pos.i;
       if (!m.isEmpty())
         list.push(m);
     }
     return i;
-  },
+  }
 
-  setRxnV2000: function(lines) {
+  setRxnV2000(lines) {
     return this;
-  },
+  }
 
-  setRxn: function(rxn, bondlength) {
+  setRxn(rxn, bondlength) {
     return this;
-  },
+  }
 
   /**
    * Get Rxnfile
@@ -3577,8 +3609,8 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {bool} v3000 - indicate if rendering the rxnfile in V3000 format
    * @returns a string
    */
-  getRxnfile: function(groupbyplus, v3000) {
-    var rxn = this.parseRxn(true, groupbyplus);
+  getRxnfile(groupbyplus, v3000) {
+    const rxn = this.parseRxn(true, groupbyplus);
     if (rxn == null)
       return null;
 
@@ -3586,35 +3618,35 @@ JSDraw2.Mol = scil.extend(scil._base, {
       return this.getRxnV3000(rxn);
     else
       return this.getRxnV2000(rxn);
-  },
+  }
 
-  getAllBrackets: function() {
-    var list = [];
+  getAllBrackets() {
+    const list = [];
     for (let j = 0; j < this.graphics.length; ++j) {
-      var b = this.graphics[j];
+      const b = this.graphics[j];
       if (JSDraw2.Bracket.cast(b) != null)
         list.push(b);
     }
     return list;
-  },
+  }
 
-  getAllTexts: function() {
-    var list = [];
+  getAllTexts() {
+    const list = [];
     for (let j = 0; j < this.graphics.length; ++j) {
-      var b = this.graphics[j];
+      const b = this.graphics[j];
       if (JSDraw2.Text.cast(b) != null)
         list.push(b);
     }
     return list;
-  },
+  }
 
-  getRxnV2000: function(rxn) {
+  getRxnV2000(rxn) {
     return null;
-  },
+  }
 
-  getRxnV3000: function(rxn, groupbyplus) {
+  getRxnV3000(rxn, groupbyplus?: boolean) {
     return null;
-  },
+  }
 
   /**
    * Get JSDraw xml file format
@@ -3624,17 +3656,17 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {bool} viewonly - in viewonly mode
    * @returns a string
    */
-  getXml: function(width, height, viewonly, svg, len) {
+  getXml(width: number, height: number, viewonly: boolean, svg: any, len: number) {
     return this._getXml(width, height, viewonly, svg, len);
-  },
+  }
 
-  getHtml: function(width, height, viewonly, svg, len) {
+  getHtml(width: number, height: number, viewonly: boolean, svg: any, len: number) {
     return this.getXml(width, height, viewonly, svg, len);
-  },
+  }
 
-  _getXml: function(width, height, viewonly, svg, len, inside) {
+  _getXml(width: number, height: number, viewonly: boolean, svg: any, len: number, inside?: boolean) {
     return null;
-  },
+  }
 
   /**
    * Set Secptrum JDX data
@@ -3642,9 +3674,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {string} data - JDX string
    * @returns a Mol object
    */
-  setJdx: function(data, bondlength) {
+  setJdx(data, bondlength) {
     return this;
-  },
+  }
 
   /**
    * Set JSDraw xml file format
@@ -3652,23 +3684,23 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {string} xml - the input JSDraw html/xml string
    * @returns a Mol object
    */
-  setXml: function(xml) {
+  setXml(xml) {
     return this;
-  },
+  }
 
-  setHtml: function(xml) {
+  setHtml(xml) {
     return this.setXml(xml);
-  },
+  }
 
-  toScreen: function(screenBondLength) {
-    var len = this.medBondLength();
+  toScreen(screenBondLength): number {
+    let len = this.medBondLength();
     if (!(len > 0))
       len = 1.56;
 
-    var scale = screenBondLength / len;
+    const scale = screenBondLength / len;
     this.scale(scale);
     return scale;
-  },
+  }
 
   /**
    * Scale the molecule
@@ -3677,12 +3709,12 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {Point} origin - the origin of scaling
    * @returns null
    */
-  scale: function(scale, origin) {
+  scale(scale, origin?: Point): void {
     if (!(scale > 0))
       return;
 
     for (let i = 0; i < this.atoms.length; ++i) {
-      var a = this.atoms[i];
+      const a = this.atoms[i];
       a.p.scale(scale, origin);
       if (a.rgroup != null) {
         if (a.rgroup != null)
@@ -3694,7 +3726,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     for (let i = 0; i < this.graphics.length; ++i)
       this.graphics[i].scale(scale, origin);
-  },
+  }
 
   /**
    * Flip the molecule around an X axis
@@ -3702,14 +3734,14 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {number} x - the x axis
    * @returns null
    */
-  flipX: function(x) {
+  flipX(x: number): void {
     for (let i = 0; i < this.atoms.length; ++i) {
-      var p = this.atoms[i].p;
+      const p = this.atoms[i].p;
       p.x = x - (p.x - x);
     }
     for (let i = 0; i < this.graphics.length; ++i)
       this.graphics[i].flipX(x);
-  },
+  }
 
   /**
    * Flip the molecule around a Y axis
@@ -3717,31 +3749,31 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {number} y - the y axis
    * @returns null
    */
-  flipY: function(y) {
+  flipY(y: number): void {
     for (let i = 0; i < this.atoms.length; ++i) {
-      var p = this.atoms[i].p;
+      const p = this.atoms[i].p;
       p.y = y - (p.y - y);
     }
     for (let i = 0; i < this.graphics.length; ++i)
       this.graphics[i].flipY(y);
-  },
+  }
 
-  clearFlag: function() {
+  clearFlag(): void {
     for (let i = 0; i < this.atoms.length; ++i) {
       this.atoms[i].f = null;
       this.atoms[i].ringclosures = null;
     }
     for (let i = 0; i < this.bonds.length; ++i)
       this.bonds[i].f = null;
-  },
+  }
 
-  _connectFragsByPlus: function(frags, bondlen) {
+  _connectFragsByPlus(frags, bondlen) {
     return null;
-  },
+  }
 
-  _splitFrags: function(frags) {
+  _splitFrags(frags) {
     for (let i = 0; i < frags.length; ++i) {
-      var ss = frags[i].splitFragments();
+      const ss = frags[i].splitFragments();
       if (ss.length > 0) {
         frags.splice(i, 1);
         for (let k = 0; k < ss.length; ++k)
@@ -3749,53 +3781,53 @@ JSDraw2.Mol = scil.extend(scil._base, {
         i += ss.length - 1;
       }
     }
-  },
+  }
 
-  _connectNextLine: function(frags, rect, above, arrow, bondlen) {
+  _connectNextLine(frags, rect, above, arrow, bondlen) {
     return null;
-  },
+  }
 
-  detectRxn: function(arrow) {
+  detectRxn(arrow) {
     return null;
-  },
+  }
 
-  _findCloseTexts: function(t, texts, dy, ret) {
+  _findCloseTexts(t, texts, dy, ret): void {
     for (let k = 0; k < texts.length; ++k) {
-      var x = texts[k];
+      const x = texts[k];
       if (x == null)
         continue;
 
-      var r1 = t.rect();
-      var r2 = x.rect();
+      const r1 = t.rect();
+      const r2 = x.rect();
       if (Math.abs(r1.top - r2.top) < dy || Math.abs(r1.top - r2.bottom()) < dy ||
         Math.abs(r1.bottom() - r2.top) < dy || Math.abs(r1.bottom() - r2.bottom()) < dy) {
-        var overlap = Math.min(r1.right(), r2.right()) - Math.max(r1.left, r2.left);
+        const overlap = Math.min(r1.right(), r2.right()) - Math.max(r1.left, r2.left);
         if (overlap >= Math.min(r1.width, r2.width) / 2) {
           ret.push(x);
           texts[k] = null;
         }
       }
     }
-  },
+  }
 
-  parseRxn2: function() {
+  parseRxn2() {
     return null;
-  },
+  }
 
   /**
    * Test if the molecule is a reaction
    * @function isRxn
    * @returns true or false
    */
-  isRxn: function() {
+  isRxn() {
     return null;
-  },
+  }
 
-  _groupByPlus: function(rxn) {
+  _groupByPlus(rxn) {
     if (rxn == null)
       return rxn;
 
-    var pluses = [];
+    const pluses = [];
     for (let i = 0; i < this.graphics.length; ++i) {
       if (this.graphics[i].T == 'PLUS')
         pluses.push(this.graphics[i]);
@@ -3814,10 +3846,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     } else {
       // order by x
-      var xx = [];
+      const xx = [];
       for (let i = 0; i < pluses.length; ++i) {
-        var x = pluses[i].p.x;
-        var p = xx.length;
+        const x = pluses[i].p.x;
+        let p = xx.length;
         for (let k = 0; k < xx.length; ++k) {
           if (x < xx[k]) {
             p = k;
@@ -3832,15 +3864,15 @@ JSDraw2.Mol = scil.extend(scil._base, {
       rxn.products = this._groupByPlus2(xx, rxn.products);
     }
     return rxn;
-  },
+  }
 
-  _groupByPlus2: function(pluses, mols) {
-    var list = [];
-    var n = pluses.length;
+  _groupByPlus2(pluses, mols): Mol<TBio>[] {
+    const list: Mol<TBio>[] = [];
+    const n = pluses.length;
     for (let i = 0; i < mols.length; ++i) {
-      var m = mols[i];
-      var cx = mols[i].center().x;
-      var f = false;
+      const m = mols[i];
+      const cx = mols[i].center().x;
+      let f = false;
       for (let k = 0; k < n; ++k) {
         if (cx < pluses[k]) {
           if (list[k] == null)
@@ -3860,21 +3892,21 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
 
-    var ret = [];
+    const ret: Mol<TBio>[] = [];
     for (let i = 0; i < list.length; ++i) {
       if (list[i] != null)
         ret.push(list[i]);
     }
     return ret;
-  },
+  }
 
   /**
    * Parse the molecule as a reaction
    * @function parseRxn
    * @returns a Reaction object: { reactants, products, arrow, above, below }
    */
-  parseRxn: function(copygraphics, groupbyplus) {
-    var rxn = this._parseRxn();
+  parseRxn(copygraphics?: boolean, groupbyplus?: boolean) {
+    let rxn = this._parseRxn();
     if (groupbyplus)
       rxn = this._groupByPlus(rxn);
 
@@ -3886,47 +3918,47 @@ JSDraw2.Mol = scil.extend(scil._base, {
     //        }
 
     return rxn;
-  },
+  }
 
-  _addGraphicsRxnMol: function(mols, brackets, texts) {
+  _addGraphicsRxnMol(mols, brackets, texts) {
     for (let i = 0; i < mols.length; ++i) {
-      var m = mols[i];
+      const m = mols[i];
       for (let k = 0; k < brackets.length; ++k) {
-        var b = brackets[k];
+        const b = brackets[k];
         if (b != null && b.allAtomsIn(m)) {
           m.graphics.push(b);
           brackets[k] = null;
         }
       }
       for (let k = 0; k < texts.length; ++k) {
-        var b = texts[k];
+        const b = texts[k];
         if (b != null && b.allAnchorsIn(m)) {
           m.graphics.push(b);
           brackets[k] = null;
         }
       }
     }
-  },
+  }
 
-  _parseRxn: function() {
+  _parseRxn() {
     return null;
-  },
+  }
 
-  _hasOverlap: function(left, right, rect) {
-    var l = rect.left;
-    var r = rect.right();
+  _hasOverlap(left, right, rect) {
+    const l = rect.left;
+    const r = rect.right();
     return l < right && r > left;
-  },
+  }
 
-  _sortTextByTop: function(texts) {
+  _sortTextByTop(texts) {
     if (texts == null || texts.length == 0)
       return texts;
 
-    var yy = [];
-    var sorted = [];
+    const yy = [];
+    const sorted = [];
     for (let i = 0; i < texts.length; ++i) {
-      var y = texts[i]._rect.top;
-      var p = yy.length;
+      const y = texts[i]._rect.top;
+      let p = yy.length;
       for (let k = 0; k < yy.length; ++k) {
         if (y < yy[k]) {
           p = k;
@@ -3939,7 +3971,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return sorted;
-  },
+  }
 
   /**
    * Get the whole fragment containing an input atom
@@ -3947,37 +3979,37 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {Atom} a - the input atom
    * @returns a Mol object
    */
-  getFragment: function(a, parent) {
+  getFragment(a: Atom<TBio>, parent?: Mol<TBio>) {
     this.setAtomBonds();
     this.clearFlag();
 
-    var tree = this._getTree(a).tree;
-    var path = [];
+    const tree = this._getTree(a).tree;
+    const path = [];
     tree.list(path, 'breadthfirst');
 
-    var m = new JSDraw2.Mol();
+    const m = new JSDraw2.Mol();
     for (let k = 0; k < path.length; ++k) {
-      var b = path[k];
+      const b = path[k];
       if (b.a != null && b.ringclosure == null)
         m._addAtom(b.a, parent);
       if (b.b != null)
         m._addBond(b.b, parent);
     }
     return m;
-  },
+  }
 
   /**
    * Split it into fragments
    * @function splitFragments
    * @returns an array of Mol
    */
-  splitFragments: function(skipHiddenAtoms) {
+  splitFragments(skipHiddenAtoms?: boolean) {
     this.clearFlag();
 
     let fragid = -1;
-    const bonds: IBond[] = scil.Utils.cloneArray(this.bonds);
+    const bonds: Bond<TBio>[] = scil.Utils.cloneArray(this.bonds);
     while (bonds.length > 0) {
-      const b: IBond = bonds[0];
+      const b: Bond<TBio> = bonds[0];
       if (skipHiddenAtoms) {
         if (b.a1.hidden || b.a2.hidden) {
           bonds.splice(0, 1);
@@ -4029,7 +4061,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
         if (skipHiddenAtoms && this.atoms[i].hidden)
           continue;
 
-        var m = new JSDraw2.Mol();
+        const m = new JSDraw2.Mol();
         frags.push(m);
         m._addAtom(this.atoms[i], this);
       }
@@ -4037,7 +4069,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     // brackets
     for (let i = 0; i < this.graphics.length; ++i) {
-      var br = JSDraw2.Bracket.cast(this.graphics[i]);
+      const br = JSDraw2.Bracket.cast(this.graphics[i]);
       if (br == null)
         continue;
 
@@ -4047,7 +4079,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
         if (frags[k].containsAllAtoms(br.atoms)) {
           frags[k].graphics.push(br);
           for (let j = 0; j < this.graphics.length; ++j) {
-            var t = JSDraw2.Text.cast(this.graphics[j]);
+            const t = JSDraw2.Text.cast(this.graphics[j]);
             if (t != null && t.anchors != null && t.anchors.length == 1 && t.anchors[0] == br)
               frags[k].graphics.push(t);
           }
@@ -4057,7 +4089,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     // attached texts
     for (let i = 0; i < this.graphics.length; ++i) {
-      var t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast(this.graphics[i]);
       if (t == null || t.anchors == null || t.anchors.length == 0)
         continue;
 
@@ -4070,9 +4102,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     // set chiral flags
     for (let i = 0; i < frags.length; ++i) {
-      var frag = frags[i];
+      const frag = frags[i];
       for (let j = 0; j < frag.atoms.length; ++j) {
-        var g = frag.atoms[j].group;
+        const g = frag.atoms[j].group;
         if (g != null && g.type == 'chiral') {
           frag.chiral = true;
           break;
@@ -4084,9 +4116,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
       frags[i].bondlength = this.bondlength;
 
     return frags;
-  },
+  }
 
-  containsAllAtoms: function(atoms) {
+  containsAllAtoms(atoms) {
     if (atoms == null || atoms.length == 0)
       return false;
     for (let i = 0; i < atoms.length; ++i) {
@@ -4095,7 +4127,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return true;
-  },
+  }
 
   /**
    * Check if the Mol contains an atom
@@ -4103,15 +4135,15 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {Atom} a - the input atom
    * @returns true or false
    */
-  containsAtom: function(a) {
+  containsAtom(a) {
     for (let i = 0; i < this.atoms.length; ++i) {
       if (this.atoms[i] == a)
         return true;
     }
     return false;
-  },
+  }
 
-  setAtomBonds: function(clear) {
+  setAtomBonds(clear?: boolean) {
     for (let i = 0; i < this.atoms.length; ++i)
       this.atoms[i].bonds = null;
 
@@ -4119,7 +4151,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
       return;
 
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
 
       if (b.a1.bonds == null)
         b.a1.bonds = [];
@@ -4129,17 +4161,17 @@ JSDraw2.Mol = scil.extend(scil._base, {
         b.a2.bonds = [];
       b.a2.bonds.push(b);
     }
-  },
+  }
 
-  setBondOrders: function() {
+  setBondOrders() {
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       b.order = b.valence();
     }
 
     if (DEBUG.enable) {
       for (let i = 0; i < this.bonds.length; ++i) {
-        var b = this.bonds[i];
+        const b = this.bonds[i];
         DEBUG.print(b.a1.id + '-' + b.a2.id + ' ' + b.order);
       }
     }
@@ -4164,13 +4196,13 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return {arrings: ars, rings: rings};
-  },
+  }
 
-  isAromaticRing: function(r) {
+  isAromaticRing(r: Bond<TBio>[]): boolean {
     if (r.length == 6) {
-      var b1 = r[0];
+      let b1 = r[0];
       for (let k = 1; k <= r.length; ++k) {
-        var b2 = r[k == r.length ? 0 : k];
+        const b2 = r[k == r.length ? 0 : k];
         if (!(b1.order == 1 && b2.order == 2 ||
           b1.order == 2 && b2.order == 1 ||
           b1.order == 1.5 && b2.order >= 1 && b2.order <= 2 ||
@@ -4184,9 +4216,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     if (r.length == 5) {
-      var b1 = r[0];
+      let b1 = r[0];
       for (let k = 1; k <= r.length; ++k) {
-        var b2 = r[k == r.length ? 0 : k];
+        const b2 = r[k == r.length ? 0 : k];
         if (b1.order == 1 && b2.order == 1) {
           let v;
           if (b1.a1 == b2.a1 || b1.a1 == b2.a2)
@@ -4202,7 +4234,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
               return true;
             } else if (v.elem == 'C') {
               for (let i = 0; i < v.bonds.length; ++i) {
-                var order = v.bonds[i].order;
+                const order = v.bonds[i].order;
                 if (order == 1.5 || order == 2)
                   return true;
               }
@@ -4218,17 +4250,17 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return false;
-  },
+  }
 
-  prepareScreen: function() {
-    var atoms = JSDraw2.FormulaParser.getAtomStats(this).elements;
-    var allrings = this.setBondOrders();
+  prepareScreen() {
+    const atoms = JSDraw2.FormulaParser.getAtomStats(this).elements;
+    const allrings = this.setBondOrders();
 
-    var bonds = {0: 0, 1: 0, 1.5: 0, 2: 0, 3: 0};
+    const bonds = {0: 0, 1: 0, 1.5: 0, 2: 0, 3: 0};
     for (let i = 0; i < this.bonds.length; ++i)
       ++bonds[this.bonds[i].order];
 
-    var rings = {n5: 0, a5: 0, n6: 0, a6: 0};
+    const rings = {n5: 0, a5: 0, n6: 0, a6: 0};
     for (let i = 0; i < allrings.arrings.length; ++i) {
       if (allrings.arrings[i].length == 5)
         ++rings.a5;
@@ -4243,10 +4275,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return {atoms: atoms, bonds: bonds, rings: rings};
-  },
+  }
 
-  clearAtomMap: function(ai) {
-    var n = 0;
+  clearAtomMap(ai?: number) {
+    let n = 0;
     if (ai == null) {
       for (let i = 0; i < this.atoms.length; ++i) {
         if (this.atoms[i].atommapid != null) {
@@ -4263,27 +4295,27 @@ JSDraw2.Mol = scil.extend(scil._base, {
       }
     }
     return n;
-  },
+  }
 
-  getMaxMapId: function() {
-    var maxid = 0;
-    var list = this.atoms;
+  getMaxMapId() {
+    let maxid = 0;
+    const list = this.atoms;
     for (let i = 0; i < list.length; ++i) {
       if (list[i].atommapid != null && list[i].atommapid >= maxid)
         maxid = list[i].atommapid;
     }
     return maxid + 1;
-  },
+  }
 
-  screen: function(target, fullstructure) {
+  screen(target, fullstructure) {
     if (this.stats == null)
       this.stats = this.prepareScreen();
     if (target.stats == null)
       target.stats = target.prepareScreen();
 
-    var atomsq = this.stats.atoms;
-    var atomst = target.stats.atoms;
-    var at = atomst['*'] == null ? 0 : atomst['*'];
+    const atomsq = this.stats.atoms;
+    const atomst = target.stats.atoms;
+    let at = atomst['*'] == null ? 0 : atomst['*'];
     at += atomst['A'] == null ? 0 : atomst['A'];
     at += atomst['X'] == null ? 0 : atomst['X'];
     at += atomst['Q'] == null ? 0 : atomst['Q'];
@@ -4296,8 +4328,8 @@ JSDraw2.Mol = scil.extend(scil._base, {
         return false;
     }
 
-    var bondsq = this.stats.bonds;
-    var bondst = target.stats.bonds;
+    const bondsq = this.stats.bonds;
+    const bondst = target.stats.bonds;
     for (const e in bondsq) {
       if (fullstructure && !(bondsq[e] == bondst[e]) || !fullstructure && !(bondsq[e] <= bondst[e]))
         return false;
@@ -4313,7 +4345,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
       this.stats.rings.n5 <= target.stats.rings.n5 &&
       this.stats.rings.a6 <= target.stats.rings.a6 &&
       this.stats.rings.n6 <= target.stats.rings.n6;
-  },
+  }
 
   /**
    * Perform a full-structure search
@@ -4321,33 +4353,35 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {Mol} target - the target mol
    * @returns true or false
    */
-  fullstructureMatch: function(target, matchstereobonds) {
-    if (target == null || this.atoms.length != target.atoms.length || this.bonds.length != target.bonds.length || this.getMolWeight() != target.getMolWeight())
-      return false;
+  fullstructureMatch(target: Mol<TBio>, matchstereobonds?: boolean): boolean {
+    if (
+      target == null || this.atoms.length != target.atoms.length ||
+      this.bonds.length != target.bonds.length || this.getMolWeight() != target.getMolWeight()
+    ) return false;
     return this.aamap(target, true, null, matchstereobonds) != null;
-  },
+  }
 
-  getBrackets: function() {
-    var list = [];
+  getBrackets() {
+    const list = [];
     for (let i = 0; i < this.graphics.length; ++i) {
-      var b = JSDraw2.Bracket.cast(this.graphics[i]);
+      const b = JSDraw2.Bracket.cast(this.graphics[i]);
       if (b != null) {
         list.push(b);
         b.sgrouptexts = this.getSgroupTexts(b);
       }
     }
     return list;
-  },
+  }
 
   // todo: match included atoms as well
-  matchBrackets: function(target) {
-    var list1 = this.getBrackets();
-    var list2 = target == null ? [] : target.getBrackets();
+  matchBrackets(target): boolean {
+    const list1 = this.getBrackets();
+    const list2 = target == null ? [] : target.getBrackets();
     if (list1.length != list2.length)
       return false;
 
     for (let i = 0; i < list1.length; ++i) {
-      var f = false;
+      let f = false;
       for (let k = 0; k < list2.length; ++k) {
         if (list1[i].sgrouptexts == list2[k].sgrouptexts) {
           f = true;
@@ -4359,7 +4393,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return true;
-  },
+  }
 
   /**
    * Perform a sub-structure search using the Mol as a query
@@ -4367,9 +4401,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {Mol} target - the target mol
    * @returns true or false
    */
-  substructureMatch: function(target) {
+  substructureMatch(target) {
     return this.aamap(target, false) != null;
-  },
+  }
 
   /**
    * Perform atom-by-atom mapping using the Mol as a query
@@ -4379,8 +4413,8 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {bool} highlighting - indicate if highlighting mapped atoms and bonds
    * @returns the map result as a dictionary
    */
-  aamap: function(target, fullstructure, highlighting, matchsterebonds) {
-    var map = this.aamap2(target, fullstructure, matchsterebonds);
+  aamap(target, fullstructure, highlighting?: boolean, matchsterebonds?: boolean) {
+    const map = this.aamap2(target, fullstructure, matchsterebonds);
 
     if (highlighting) {
       target.setColor(map == null ? null : 'black');
@@ -4393,9 +4427,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return map;
-  },
+  }
 
-  aamap2: function(target, fullstructure, matchsterebonds) {
+  aamap2(target, fullstructure, matchsterebonds) {
     if (DEBUG.enable) {
       DEBUG.clear();
     }
@@ -4406,19 +4440,19 @@ JSDraw2.Mol = scil.extend(scil._base, {
       return null;
     }
 
-    var path = this._bfPath();
+    const path = this._bfPath();
     target.setAtomBonds();
     target.clearFlag();
     this.clearFlag();
 
-    var i = 0;
+    let i = 0;
     while (i < path.length) {
-      var f = false;
-      var n = path[i];
+      let f = false;
+      let n = path[i];
 
       if (n.b == null) { // start of new fragment
         for (let j = (n.f == null ? 0 : (n.f + 1)); j < target.atoms.length; ++j) {
-          var t = target.atoms[j];
+          const t = target.atoms[j];
           n.f = j;
           if (t.f == null && JSDraw2.Atom.match(t, n.a)) {
             f = true;
@@ -4428,19 +4462,19 @@ JSDraw2.Mol = scil.extend(scil._base, {
           }
         }
       } else if (n.ringclosure != null) { // ring closure
-        var b = target.findBond(n.b.a1.f, n.b.a2.f);
+        const b = target.findBond(n.b.a1.f, n.b.a2.f);
         if (b != null && n.b.order == b.order && (!matchsterebonds || n.b.type == b.type)) {
           f = true;
           b.f = n.b;
           n.b.f = b;
         }
       } else {
-        var st = n.f == null ? 0 : n.f + 1;
-        var t = n.startAtom().f;
+        const st = n.f == null ? 0 : n.f + 1;
+        const t = n.startAtom().f;
         for (let k = st; k < t.bonds.length; ++k) {
           n.f = k;
-          var b = t.bonds[k];
-          var oa = b.otherAtom(t);
+          const b = t.bonds[k];
+          const oa = b.otherAtom(t);
           if (b.f == null && oa.f == null && n.b.order == b.order && (!matchsterebonds || n.b.type == b.type) && JSDraw2.Atom.match(n.a, oa)) {
             f = true;
             n.a.f = oa;
@@ -4456,7 +4490,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
         // step next
         ++i;
         if (DEBUG.enable) {
-          var s = '';
+          let s = '';
           if (n.a != null)
             s += n.a.id + ' -> ' + n.a.f.id + ' ';
           if (n.b != null)
@@ -4498,47 +4532,47 @@ JSDraw2.Mol = scil.extend(scil._base, {
     if (DEBUG.enable)
       DEBUG.print('succeed');
 
-    var atommap = [];
+    const atommap = [];
     for (let i = 0; i < this.atoms.length; ++i)
       atommap.push({q: this.atoms[i], t: this.atoms[i].f});
 
-    var bondmap = [];
+    const bondmap = [];
     for (let i = 0; i < this.bonds.length; ++i)
       bondmap.push({q: this.bonds[i], t: this.bonds[i].f});
 
     return {atoms: atommap, bonds: bondmap};
-  },
+  }
 
-  _setAromaticFlag: function() {
+  _setAromaticFlag() {
     for (let i = 0; i < this.atoms.length; ++i)
       this.atoms[i].aromatic = false;
 
     for (let i = 0; i < this.bonds.length; ++i) {
-      var b = this.bonds[i];
+      const b = this.bonds[i];
       if (b.type == JSDraw2.BONDTYPES.DELOCALIZED)
         b.a1.aromatic = b.a2.aromatic = true;
     }
-  },
+  }
 
   /**
    * Get SMILES
    * @function getSmiles
    * @returns a string
    */
-  getSmiles: function() {
+  getSmiles() {
     return null;
-  },
+  }
 
-  _getSmiles: function() {
+  _getSmiles() {
     return null;
-  },
+  }
 
-  _getRings: function() {
+  _getRings() {
     //        if (DEBUG.enable) {
     //            DEBUG.clear();
     //        }
 
-    var rings = [];
+    const rings = [];
 
     this.setAtomBonds();
     this.clearFlag();
@@ -4546,16 +4580,16 @@ JSDraw2.Mol = scil.extend(scil._base, {
       this.clearFlag();
       for (let j = 0; j < i; ++j)
         this.atoms[j].f = 'ex';
-      var start = this.atoms[i];
-      var ret = this._getTree(start);
+      const start = this.atoms[i];
+      const ret = this._getTree(start);
       if (ret.ri == 0)
         continue;
 
-      var path = [];
+      const path = [];
       ret.tree.list(path, 'breadthfirst');
 
       for (let k = 0; k < path.length; ++k) {
-        var b = path[k];
+        const b = path[k];
         if (b.depth > 3)
           break;
 
@@ -4567,7 +4601,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
           let n = k;
           while (a != start) {
             for (let j = n - 1; j > 0; --j) {
-              var t = path[j];
+              const t = path[j];
               if (t.a == a) {
                 ring.push(t.b);
                 a = t.startAtom();
@@ -4605,26 +4639,26 @@ JSDraw2.Mol = scil.extend(scil._base, {
     //            }
     //        }
     return rings;
-  },
+  }
 
-  _bfPath: function() {
-    var ss = [];
-    var trees = this._getTrees();
+  _bfPath() {
+    const ss = [];
+    const trees = this._getTrees();
     for (let i = 0; i < trees.length; ++i)
       trees[i].list(ss, 'breadthfirst');
     return ss;
-  },
+  }
 
-  _getTrees: function() {
+  _getTrees() {
     this.setAtomBonds();
     this.clearFlag();
 
-    var starts = [];
-    var ri = 0;
+    const starts = [];
+    let ri = 0;
     while (true) {
-      var start = null;
+      let start = null;
       for (let i = 0; i < this.atoms.length; ++i) {
-        var a = this.atoms[i];
+        const a = this.atoms[i];
         if (a.f == null && !a.isMarkedStereo()) {
           start = a;
           break;
@@ -4633,7 +4667,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
       if (start == null) {
         for (let i = 0; i < this.atoms.length; ++i) {
-          var a = this.atoms[i];
+          const a = this.atoms[i];
           if (a.f == null/* && !a.isMarkedStereo() */) {
             start = a;
             break;
@@ -4644,40 +4678,40 @@ JSDraw2.Mol = scil.extend(scil._base, {
       if (start == null)
         break;
 
-      var ret = this._getTree(start, ri);
+      const ret = this._getTree(start, ri);
       starts.push(ret.tree);
       ri = ret.ri;
     }
 
     return starts;
-  },
+  }
 
   // breadthfirst
-  _getTree: function(a, ri) {
+  _getTree(a: Atom<TBio>, ri?: number) {
     if (ri == null)
       ri = 0;
 
-    var start = new JSDraw2.BA(null, a, null);
+    const start = new JSDraw2.BA(null, a, null);
     start.depth = 0;
 
     start.a.f = true;
-    var stack = new JSDraw2.Stack();
+    const stack = new JSDraw2.Stack();
     stack.push(start);
 
-    var ba;
+    let ba;
     while ((ba = stack.popHead()) != null) {
-      var bonds = ba.a.bonds;
+      const bonds = ba.a.bonds;
       if (bonds == null)
         continue;
 
       for (let i = 0; i < bonds.length; ++i) {
-        var b = bonds[i];
+        const b = bonds[i];
         if (b.f)
           continue;
         b.f = true;
 
-        var next = null;
-        var oa = b.otherAtom(ba.a);
+        let next = null;
+        const oa = b.otherAtom(ba.a);
         if (oa.f == 'ex')
           continue;
 
@@ -4697,10 +4731,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return {tree: start, ri: ri};
-  },
+  }
 
   // depth-first
-  _getPath: function(b) {
+  _getPath(b) {
     const stack = new JSDraw2.Stack();
     stack.push({b: b, a: b.a1.bonds.length > b.a2.bonds.length ? b.a1 : b.a2});
 
@@ -4723,7 +4757,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return path;
-  },
+  }
 
   /**
    * Get molecular formula
@@ -4731,12 +4765,12 @@ JSDraw2.Mol = scil.extend(scil._base, {
    * @param {bool} html - indicate if rendering the formula in HTML format
    * @returns a string
    */
-  getFormula: function(html) {
-    var rxn = this.parseRxn();
+  getFormula(html: boolean): string {
+    const rxn = this.parseRxn();
     if (rxn == null)
       return this._getFormula(html);
 
-    var s = '';
+    let s = '';
     if (rxn.arrow != null) {
       for (let i = 0; i < rxn.reactants.length; ++i)
         s += (i > 0 ? ' + ' : '') + rxn.reactants[i]._getFormula(html);
@@ -4749,80 +4783,80 @@ JSDraw2.Mol = scil.extend(scil._base, {
         s += (i > 0 ? ' + ' : '') + rxn.reactants[i]._getFormula(html);
     }
     return s;
-  },
+  }
 
-  _getFormula: function(html) {
-    var m = this.expandSuperAtoms();
-    var stats = JSDraw2.FormulaParser.getAtomStats(m);
+  _getFormula(html): string {
+    const m = this.expandSuperAtoms();
+    const stats = JSDraw2.FormulaParser.getAtomStats(m);
     return JSDraw2.FormulaParser.stats2mf(stats, html);
-  },
+  }
 
   /**
    * Get molecular weight
    * @function getMolWeight
    * @returns a number
    */
-  getMolWeight: function() {
-    var mw = this.getMixtureMW();
+  getMolWeight() {
+    const mw = this.getMixtureMW();
     if (mw > 0)
       return mw;
 
     if (this.hasGenericAtom())
       return null;
 
-    var m = this.expandSuperAtoms();
-    var stats = JSDraw2.FormulaParser.getAtomStats(m);
-    var sum = JSDraw2.FormulaParser.stats2mw(stats);
+    const m = this.expandSuperAtoms();
+    const stats = JSDraw2.FormulaParser.getAtomStats(m);
+    const sum = JSDraw2.FormulaParser.stats2mw(stats);
     return sum == null ? null : Math.round(sum * 10000) / 10000;
-  },
+  }
 
-  getMixtureMW: function() {
+  getMixtureMW() {
     for (let i = 0; i < this.graphics.length; ++i) {
       const br = JSDraw2.Bracket.cast(this.graphics[i]);
       if (br == null || !(br.type == '' || br.type == null))
         continue;
 
-      var t = this.getSgroupText(br, 'POLYMER_MW');
+      const t = this.getSgroupText(br, 'POLYMER_MW');
       if (t == null)
         continue;
 
-      var s = scil.Utils.trim(t.text);
+      const s = scil.Utils.trim(t.text);
       if (s != null && scil.Utils.startswith(s, 'mw=')) {
-        var n = s.substr(3);
+        const n = s.substr(3);
         return parseFloat(n);
       }
     }
     return null;
-  },
+  }
 
   /**
    * Get exact mass
    * @function getExactMass
    * @returns a number
    */
-  getExactMass: function() {
+  getExactMass() {
     if (this.hasGenericAtom())
       return null;
 
-    var m = this.expandSuperAtoms();
-    var stats = JSDraw2.FormulaParser.getAtomStats(m);
-    var sum = JSDraw2.FormulaParser.stats2em(stats);
+    const m = this.expandSuperAtoms();
+    const stats = JSDraw2.FormulaParser.getAtomStats(m);
+    const sum = JSDraw2.FormulaParser.stats2em(stats);
     return sum == null ? null : Math.round(sum * 10000) / 10000;
-  },
+  }
 
-  getAllBonds: function(a) {
-    var ret = [];
-    var bonds = this.bonds;
+  getAllBonds(a) {
+    const ret = [];
+    const bonds = this.bonds;
     for (let i = 0; i < bonds.length; ++i) {
       if (bonds[i].a1 == a || bonds[i].a2 == a)
         ret.push(bonds[i]);
     }
     return ret;
-  },
+  }
 
-  getAllBondAtoms: function(a) {
-    var ret = [];
-    var bonds = this.bonds;
+  getAllBondAtoms(a: Atom<TBio>): Atom<TBio>[] {
+    const ret: Atom<TBio>[] = [];
+    const bonds: Bond<TBio>[] = this.bonds;
     for (let i = 0; i < bonds.length; ++i) {
       if (bonds[i].a1 == a)
         ret.push(bonds[i].a2);
@@ -4830,10 +4864,10 @@ JSDraw2.Mol = scil.extend(scil._base, {
         ret.push(bonds[i].a1);
     }
     return ret;
-  },
+  }
 
-  countSelected: function() {
-    var n = 0;
+  countSelected() {
+    let n = 0;
     for (let i = 0; i < this.atoms.length; ++i) {
       if (this.atoms[i].selected)
         ++n;
@@ -4847,9 +4881,9 @@ JSDraw2.Mol = scil.extend(scil._base, {
         ++n;
     }
     return n;
-  },
+  }
 
-  setSgroup: function(br, fieldtype, v, x, y) {
+  setSgroup(br, fieldtype, v, x, y) {
     if (v == '')
       v = null;
 
@@ -4858,7 +4892,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
       br.subscript = null;
     }
 
-    var t = this.getSgroupText(br, fieldtype);
+    let t = this.getSgroupText(br, fieldtype);
     if (v == null) {
       if (t != null) {
         this.delGraphics(t);
@@ -4871,7 +4905,7 @@ JSDraw2.Mol = scil.extend(scil._base, {
           return t;
         }
       } else {
-        var r = new JSDraw2.Rect(x, y, 0, 0);
+        const r = new JSDraw2.Rect(x, y, 0, 0);
         t = new JSDraw2.Text(r, v);
         t.fieldtype = fieldtype;
         t.anchors.push(br);
@@ -4881,21 +4915,21 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
 
     return null;
-  },
+  }
 
-  getSgroupText: function(br, fieldtype) {
+  getSgroupText(br, fieldtype): any {
     for (let i = 0; i < this.graphics.length; ++i) {
-      var t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast(this.graphics[i]);
       if (t != null && t.fieldtype == fieldtype && t.anchors.length == 1 && t.anchors[0] == br)
         return t;
     }
     return null;
-  },
+  }
 
-  getSgroupTexts: function(br) {
-    var ss = [];
+  getSgroupTexts(br): string {
+    const ss: any[] = [];
     for (let i = 0; i < this.graphics.length; ++i) {
-      var t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast(this.graphics[i]);
       if (t != null && t.anchors.length == 1 && t.anchors[0] == br)
         ss.push(t.text);
     }
@@ -4905,12 +4939,12 @@ JSDraw2.Mol = scil.extend(scil._base, {
 
     ss.sort();
     return scil.Utils.array2str(ss, '; ');
-  },
+  }
 
-  removeTags: function(br, fieldtypes) {
-    var n = 0;
+  removeTags(br, fieldtypes) {
+    let n = 0;
     for (let i = this.graphics.length - 1; i >= 0; --i) {
-      var t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast(this.graphics[i]);
       if (t != null && t.anchors.length == 1 && t.anchors[0] == br && fieldtypes.indexOf(t.fieldtype + ',') >= 0) {
         this.delGraphics(t);
         ++n;
@@ -4918,6 +4952,8 @@ JSDraw2.Mol = scil.extend(scil._base, {
     }
     return n;
   }
-});
+}
 
-const JsMol: IMol<any> = JSDraw2.Mol;
+JSDraw2.Mol = Mol;
+
+var JsMol: (typeof Mol) = Mol;

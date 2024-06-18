@@ -4,8 +4,12 @@
 // http://www.scilligence.com/
 //
 
+// @ts-nocheck
 
 import {JSDraw2ModuleType, ScilModuleType} from './types';
+import {IGraphics, ShapeType} from './types/jsdraw2';
+import {Atom} from './Atom';
+import {Rect} from './Rect';
 
 declare const scilligence: ScilModuleType;
 declare const scil: ScilModuleType;
@@ -15,24 +19,43 @@ declare const JSDraw2: JSDraw2ModuleType<any>;
  * Bracket class
  * @class scilligence.JSDraw2.Bracket
  */
-JSDraw2.Bracket = scilligence.extend(scilligence._base, {
-  constructor: function(type, rect, shape) {
+export class Bracket<TBio> implements IGraphics {
+  readonly T: string;
+  public atoms: Atom<TBio>[];
+  readonly type: string;
+  readonly _rect: Rect;
+  private shape: ShapeType;
+  public sgrouptexts: string;
+  public subscript: string;
+  conn: any;
+  expandedatoms: Atom<TBio>[];
+
+  // IGraphics
+  public id: number;
+  public color: string;
+  // TODO: IGraphics
+  reject: any; // TODO
+  selected: boolean;
+  graphicsid: number;
+
+
+  constructor(type, rect, shape?: ShapeType) {
     this.T = "BRACKET";
     this.atoms = [];
     this.type = type;
     this._rect = rect;
     this.color = null;
     this.shape = shape;
-  },
+  }
 
-  clone: function() {
-    var b = new JSDraw2.Bracket(this.type, this._rect.clone(), this.shape);
+  clone(): IGraphics {
+    const b = new JSDraw2.Bracket(this.type, this._rect.clone(), this.shape);
     b.color = this.color;
     b.sgrouptexts = this.sgrouptexts;
-    return b;
-  },
+    return b as IGraphics;
+  }
 
-  getXbonds: function(m) {
+  getXbonds(m) {
     var list = [];
     var bonds = m.bonds;
     for (var i = 0; i < bonds.length; ++i) {
@@ -44,9 +67,9 @@ JSDraw2.Bracket = scilligence.extend(scilligence._base, {
     }
 
     return list;
-  },
+  }
 
-  allAtomsIn: function(m) {
+  allAtomsIn(m) {
     if (this.atoms.length == 0)
       return false;
     for (var i = 0; i < this.atoms.length; ++i) {
@@ -54,9 +77,9 @@ JSDraw2.Bracket = scilligence.extend(scilligence._base, {
         return false;
     }
     return true;
-  },
+  }
 
-  getTypeNum: function() {
+  getTypeNum() {
     if (this.type == null)
       return null;
     var type = this.type + "";
@@ -65,9 +88,9 @@ JSDraw2.Bracket = scilligence.extend(scilligence._base, {
     //        else if (type.match(/^[0-9]+$/))
     //            return type;
     return null;
-  },
+  }
 
-  getType: function() {
+  getType() {
     if (this.type == null)
       return "";
     var type = this.type + "";
@@ -76,14 +99,14 @@ JSDraw2.Bracket = scilligence.extend(scilligence._base, {
     //        else if (type.match(/^[0-9]+$/))
     //            type = "mul";
     return type;
-  },
+  }
 
-  getSubscript: function(m) {
+  getSubscript(m) {
     const t = m.getSgroupText(this, "BRACKET_TYPE");
     return t == null ? null : t.text;
-  },
+  }
 
-  createSubscript: function(m, s) {
+  createSubscript(m, s) {
     if (scil.Utils.isNullOrEmpty(s))
       return null;
 
@@ -94,9 +117,9 @@ JSDraw2.Bracket = scilligence.extend(scilligence._base, {
     var gap = m.medBondLength(1.56) / 2;
     t = m.setSgroup(this, "BRACKET_TYPE", s, this._rect.right() + gap / 4, this._rect.bottom() - gap);
     return t;
-  },
+  }
 
-  html: function(scale) {
+  html(scale) {
     //if (this.atoms == null || this.atoms.length == 0)
     //    return;
     var ss = "";
@@ -115,36 +138,36 @@ JSDraw2.Bracket = scilligence.extend(scilligence._base, {
     s += " r='" + this._rect.toString(scale) + "'";
     s += " atoms='" + ss + "'></i>";
     return s;
-  },
+  }
 
-  flipY: function(y) {
-  },
+  flipY(y) {
+  }
 
-  flipX: function(x) {
-  },
+  flipX(x) {
+  }
 
-  scale: function(s, origin) {
+  scale(s, origin) {
     this._rect.scale(s, origin);
-  },
+  }
 
-  offset: function(dx, dy) {
+  offset(dx, dy) {
     this._rect.offset(dx, dy);
-  },
+  }
 
-  rect: function() {
+  rect() {
     return this._rect;
-  },
+  }
 
-  toggle: function(p, tor) {
+  toggle(p, tor) {
     var r = this._rect;
     if (r == null)
       return;
     var x1 = p.x - r.left;
     var x2 = r.right() - p.x;
     return p.y >= r.top - tor && p.y <= r.bottom() + tor && (x1 >= -tor / 2 && x1 < tor || x2 >= -tor / 2 && x2 < tor);
-  },
+  }
 
-  drawCur: function(surface, r, color, m) {
+  drawCur(surface, r, color, m) {
     var r2 = this._rect;
     if (r2 == null)
       return;
@@ -156,24 +179,24 @@ JSDraw2.Bracket = scilligence.extend(scilligence._base, {
       for (var i = 0; i < this.atoms.length; ++i)
         this.atoms[i].drawCur(surface, r * 0.75, color);
     }
-  },
+  }
 
-  draw: function(surface, linewidth, m, fontsize) {
+  draw(surface, linewidth, m, fontsize) {
     var r = this._rect;
 
     var color = this.color == null ? "gray" : this.color;
     JSDraw2.Drawer.drawBracket(surface, r, color, linewidth);
-  },
+  }
 
-  drawSelect: function(lasso) {
+  drawSelect(lasso) {
     lasso.draw(this, this._rect.fourPoints());
-  },
+  }
 
-  cornerTest: function(p, tor) {
+  cornerTest(p, tor) {
     return this._rect.cornerTest(p, tor);
-  },
+  }
 
-  resize: function(corner, d, texts) {
+  resize(corner, d, texts) {
     this._rect.moveCorner(corner, d);
     if (texts == null)
       return;
@@ -211,9 +234,9 @@ JSDraw2.Bracket = scilligence.extend(scilligence._base, {
         texts.topright[i]._rect.offset(d.x, 0);
       break;
     }
-  },
+  }
 
-  removeObject: function(obj) {
+  removeObject(obj) {
     var a = JSDraw2.Atom.cast(obj);
     if (a == null)
       return;
@@ -223,9 +246,9 @@ JSDraw2.Bracket = scilligence.extend(scilligence._base, {
         break;
       }
     }
-  },
+  }
 
-  getTexts: function(m) {
+  getTexts(m) {
     var ret = {topleft: [], topright: [], bottomleft: [], bottomright: []};
     var c1 = this._rect.center();
     for (var i = 0; i < m.graphics.length; ++i) {
@@ -248,4 +271,10 @@ JSDraw2.Bracket = scilligence.extend(scilligence._base, {
 
     return ret;
   }
-});
+
+  static cast<TBio>(g: IGraphics): Bracket<TBio> {
+    throw new Error("Not implemented");
+  }
+}
+
+JSDraw2.Bracket = Bracket;

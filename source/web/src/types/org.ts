@@ -1,9 +1,13 @@
-import {IAtom, IEditor, IOrgPlugin, IPoint} from './jsdraw2';
+import {Atom} from '../Atom';
+import {Editor} from '../JSDraw.Editor';
+import {Point} from '../Point';
+import {IOrgPlugin} from './jsdraw2';
 
 export const enum MonomerTypes {
   BACKBONE = 'Backbone',
   BRANCH = 'Branch',
   TERMINAL = 'Terminal',
+  UNDEFINED = 'Undefined',
 }
 
 /** 'Backbone' | 'Branch' | 'Terminal' */
@@ -39,45 +43,58 @@ export type WebEditorRGroups = { [group: string]: string };
 
 /** */
 export interface IOrgMonomer {
-  id: string;
+  id?: string;
 }
 
-export interface IOrgWebEditorMonomer extends IOrgMonomer {
-  /** symbol */ id: string;
+export interface IMonomerColors {
+  linecolor?: string;
+  backgroundcolor?: string;
+  textcolor?: string;
+  nature?: string;
+}
+
+export interface IWebEditorMonomer extends IOrgMonomer, IMonomerColors {
+  /** symbol */ id?: string;
   /** name */ n?: string;
   /** natural analog */ na?: string;
   /* Pistoia.HELM deletes .type and .mt in Monomers.addOneMonomer() */
   /** polymer type */type?: PolymerType;
   /** monomer type */ mt?: MonomerType;
   /** molfile */ m?: string;
-  /** substituents */ at: WebEditorRGroups;
-  /** number of substituents */ get rs(): number;
+  /** molfile compressed */ mz?: any;
+  /** substituents */ at?: WebEditorRGroups;
+  /** number of substituents */ rs?: number;
 
   issmiles?: boolean;
   smiles?: string;
+
+  name?: string;
 }
 
-export type MonomerSetType = { [key: string]: IOrgWebEditorMonomer };
+export type MonomerSetType = { [key: string]: IWebEditorMonomer };
 
 export interface IOrgMonomers<TBio> {
-  getMonomer(a: IAtom<TBio> | TBio, elem?: string): IOrgWebEditorMonomer | null;
-  getMonomerSet(biotype: string): MonomerSetType;
-  getMonomerList(a: IAtom<TBio> | TBio): any;
+  getMonomer(a: Atom<TBio> | TBio, elem?: string): IWebEditorMonomer | null;
+  getMonomerSet(biotype: TBio): MonomerSetType;
+  getMonomerList(a: Atom<TBio> | TBio): any;
+  [p: string]: any;
 }
 
-export interface IOrgInterface {
-  drawMonomer(surface: SVGSVGElement, a: IAtom, p: IPoint, fontsize: number, linewidth: number, color: string): void;
-  onContextMenu<TBio = any>(ed: IEditor<TBio>, e: Event, viewonly: boolean): any[];
+export interface IOrgInterface<TBio> {
+  drawMonomer(surface: SVGSVGElement, a: Atom<TBio>, p: Point, fontsize: number, linewidth: number, color: string): void;
+  onContextMenu(ed: Editor<TBio>, e: Event, viewonly: boolean): any[];
 }
 
 /** scil.helm */
 export type IOrgWebEditor<TBio> = {
   HELM: typeof HelmTypes;
-  Interface: IOrgInterface;
+  Interface: IOrgInterface<TBio>;
   Monomers: IOrgMonomers<TBio>;
   Plugin: IOrgPlugin<TBio>;
   MolViewer: any;
   MonomerExplorer: any;
+
+  defaultbondratio: number;
 
   isHelmNode(a: any): boolean;
   symbolCase(s: string): string;

@@ -1,5 +1,10 @@
 import {IOrgWebEditor} from './org';
-import type {IPoint, IRect} from './jsdraw2';
+import {Page} from '../../page/Page';
+import {Point} from '../Point';
+import {Rect} from '../Rect';
+import {ButtonDescType, Form, LangType} from '../../form/Form';
+import {TabbedForm} from '../../form/TabbedForm';
+import {Tabs} from '../../form/Tab';
 
 export type IndexType = { prefix: string, index: number | null };
 
@@ -9,7 +14,7 @@ export interface IDebug {
   print(s: string): void;
 }
 
-interface IScilUtils {
+export interface IScilUtils {
   buttonWidth: number;
 
   get isOpera(): boolean;
@@ -23,13 +28,13 @@ interface IScilUtils {
 
   alert: (s: string) => void; // to override
   alert2(message: string, caption?: string, callback?: Function, iconurl?: string, width?: number): void;
-  confirmYes(message: string, callback: Function, owner: any): void;
+  confirmYes(message: string, callback: Function, owner?: any): void;
 
   ajax(url: string, callback: Function, params?: any, opts?: any): void;
   beep(): void;
   eval(expression: string): any | null;
 
-  listOptions(select: any, items: { [p: string]: string }, selected?: string | null, removeall?: boolean, sortitems?: boolean): void;
+  listOptions(select: any, items: { [p: string]: string }, selected?: string | null, removeall?: boolean | null, sortitems?: boolean | null): void;
   json2str(v: any, readable?: boolean, restrict?: boolean): string;
   parseXml(s: string): any;
 
@@ -48,7 +53,7 @@ interface IScilUtils {
   indexOf(s: any, token: any, ignorecase?: boolean): number;
   startswith(s: string, token: string, casesensitive?: boolean): boolean;
   endswith(s: string, token: string, casesensitive?: boolean): boolean;
-  escXmlValue(el: HTMLElement): string;
+  escXmlValue(el: object | string): string;
 
   containsWord(str: string, word: string, ignorecase: boolean): boolean;
   formatStr(value: number, width: number, d?: number): string;
@@ -59,28 +64,30 @@ interface IScilUtils {
   parseIndex(s: string | null): IndexType | null;
 
   createCookie(name: string, value: string, days?: number, ignoreStore?: boolean): void;
-  readCookie(name: string): string | null;
+  readCookie(name: string, ignoreStore?: boolean): string | null;
 
   createTable(parent?: HTMLElement, cellspacing?: number, cellpadding?: number, styles?: Partial<CSSStyleDeclaration> | null, border?: string): HTMLTableElement;
   createElement(parent: HTMLElement | null, tag: string, html?: string | null, styles?: Partial<CSSStyleDeclaration> | null, attributes?: any, onclick?: Function): HTMLElement;
   createElement(parent: HTMLElement | null, tag: 'div', html?: string | null, styles?: Partial<CSSStyleDeclaration> | null, attributes?: any, onclick?: Function): HTMLDivElement;
   createElement(parent: HTMLElement | null, tag: 'input', html?: string | null, styles?: Partial<CSSStyleDeclaration> | null, attributes?: any, onclick?: Function): HTMLInputElement;
   createElement(parent: HTMLElement | null, tag: 'select', html?: string | null, styles?: Partial<CSSStyleDeclaration> | null, attributes?: any, onclick?: Function): HTMLSelectElement;
+  createElement(parent: HTMLElement | null, tag: 'tr', html?: string | null, styles?: Partial<CSSStyleDeclaration> | null, attributes?: any, onclick?: Function): HTMLTableRowElement;
+  createElement(parent: HTMLElement | null, tag: 'td', html?: string | null, styles?: Partial<CSSStyleDeclaration> | null, attributes?: any, onclick?: Function): HTMLTableCellElement;
   isAttTrue(e: HTMLElement, att: string): boolean;
   isAttFalse(e: HTMLElement, att: string): boolean;
   getInnerText(e: HTMLElement): string;
-  getFirstElement(parent: HTMLElement, tagName: string): HTMLElement;
+  getFirstElement(parent: HTMLElement, tagName?: string): HTMLElement;
   getElements(parent: HTMLElement, tagName: string): HTMLElement[];
 
   getTopWindow(): Window;
   getScreenSize(win: Window): { w: number, h: number };
-  getOffset(e: HTMLElement, scroll: boolean): IPoint;
+  getOffset(e: HTMLElement, scroll: boolean): Point;
   hasAnsestor(obj: Node, parent: Node): boolean;
-  scrollOffset(): IPoint;
+  scrollOffset(): Point;
   getZindex(e: HTMLElement): number;
   getMaxZindex(): number;
   getParent(obj: HTMLElement | null, tag: string): HTMLElement | null;
-  styleRect(e: HTMLElement): IRect;
+  styleRect(e: HTMLElement): Rect;
   textWidth(s: string): number;
 
   disableContextMenu(element: HTMLElement, doc?: string): void;
@@ -97,44 +104,9 @@ interface IScilUtils {
 
   getDictKeys(dict: {}): string[];
 
+  createButton(parent: HTMLElement, button: Partial<ButtonDescType>, lang?: LangType): HTMLElement;
+
   [p: string]: any;
-}
-
-export type PageTreeType = {
-  caption: string;
-  marginBottom: string;
-  marginTop: string;
-  onresizetree: Function;
-  onrender: (div: HTMLDivElement) => void;
-};
-
-export type PageFormsType = {
-  resizable: boolean;
-  leftwidth: number;
-}
-
-export interface IPageExplorerForm {
-  kHeaderStyle: any;
-  kToolbarStyle: any;
-  kAreaStyle: any;
-  new(parent: HTMLElement, options?: any): IPageExplorerForm;
-}
-
-export interface IPage {
-  ExplorerForm: IPageExplorerForm;
-
-  new(parent: HTMLElement, tree: PageTreeType, forms: PageFormsType, middle?: any, onRefreshReceivers?: Function): IPage;
-}
-
-interface IFormOptions {
-  viewonly: boolean;
-  lang: string;
-}
-
-interface IForm {
-
-  new(options?: Partial<IFormOptions> | boolean): IForm;
-  [pName: string]: any;
 }
 
 export interface IFavorite {
@@ -152,6 +124,10 @@ export interface IDnD {
   new(src: HTMLElement, options: DnDOptions): IDnD;
 }
 
+export type ITable = any;
+
+export type ITree = any;
+
 export type ScilModuleType = {
   eln: any;
   DnD: IDnD;
@@ -162,16 +138,39 @@ export type ScilModuleType = {
   Utils: IScilUtils;
 
   App: any;
+  AutoComplete: any;
   Clipboard: any;
+  ColorPicker2: any;
   ContextMenu: any;
+  DatePicker: any;
   Dialog: any;
   DropdownInput: any;
-  Page: IPage;
-  Form: IForm;
-  Tabs: any;
+  DropdownCheck: any;
+  EditableSelect: any;
+  FieldCode: any;
+  FieldCurve: any;
+  FieldFile: any;
+  FieldFileLink: any;
+  FieldImage: any;
+  FieldNumber: any;
+  FieldPlainText: any;
+  FieldRichText: any;
+  FieldSketches: any;
+  FieldSubform: any;
+  FieldTabText: any;
+  FieldSignature: any;
+  FileShelf: any;
+  Page: typeof Page;
+  Form: typeof Form;
+  Richtext: any;
+  TabbedForm: typeof TabbedForm;
+  Table: ITable;
+  Tabs: typeof Tabs;
+  Tree: ITree;
   XDraw: any;
   Resizable: any;
   Lang: any;
+  MobileData: any;
 
   mstouch: any;
   helm: IOrgWebEditor<any>;
@@ -184,4 +183,5 @@ export type ScilModuleType = {
   clone<T>(src: T): T;
   connect(node: Node | Window, event: string, callback: Function): any;
   onload(handler: Function): void;
+  ready(handler: Function): void;
 }

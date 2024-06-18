@@ -53,11 +53,11 @@ async function loadModules(): Promise<void> {
   await import(/* webpackMode: "eager" */ './Atom');
   require('./BA.js');
   require('./Base64.js');
-  require('./Bond.js');
+  await import(/* webpackMode: "eager" */ './Bond');
   require('./JSDrawIO.js');
   await import(/* webpackMode: "eager" */ './Mol');
-  require('./Point.js');
-  require('./Rect.js');
+  await import(/* webpackMode: "eager" */ './Point');
+  await import(/* webpackMode: "eager" */ './Rect');
   require('./Stack.js');
   require('./SuperAtoms.js');
   require('./FormulaParser.js');
@@ -74,11 +74,11 @@ async function loadModules(): Promise<void> {
   require('./Group.js');
   require('./Text.js');
 
-  require('../form/Lang.js');
+  await import(/* webpackMode: "eager" */ '../form/Lang');
   require('../form/Menu.js');
   require('../form/ContextMenu.js');
   require('../form/Dialog.js');
-  require('../form/Form.js');
+  await import(/* webpackMode: "eager" */ '../form/Form');
   require('../form/AutoComplete.js');
   require('../form/Progress.js');
   require('../form/Table.js');
@@ -86,8 +86,8 @@ async function loadModules(): Promise<void> {
   require('../form/DropdownInput.js');
   require('../form/Popup.js');
   require('../form/UploadFile.js');
-  require('../form/Tab.js');
-  require('../form/TabbedForm.js');
+  await import(/* webpackMode: "eager" */ '../form/Tab');
+  await import(/* webpackMode: "eager" */ '../form/TabbedForm');
   require('../form/FieldNumber.js');
   require('../form/Chart.js');
   require('../form/Clipboard.js');
@@ -98,14 +98,14 @@ async function loadModules(): Promise<void> {
   require('../form/DropdownButton.js');
   require('../form/App.Lite.js');
 
-  require('../page/Page.js');
-  require('../page/Page.Custom.js');
-  require('../page/Page.Explorer.js');
+  await import(/* webpackMode: "eager" */ '../page/Page');
+  await import(/* webpackMode: "eager" */ '../page/Page.Custom');
+  await import(/* webpackMode: "eager" */ '../page/Page.Explorer');
   await import(/* webpackMode: "eager" */ '../page/Page.ExplorerForm');
-  require('../page/Page.Form.js');
-  require('../page/Page.Tab.js');
-  require('../page/Page.Table.js');
-  require('../page/Page.Tree.js');
+  await import(/* webpackMode: "eager" */ '../page/Page.Form');
+  await import(/* webpackMode: "eager" */ '../page/Page.Tab');
+  await import(/* webpackMode: "eager" */ '../page/Page.Table');
+  await import(/* webpackMode: "eager" */ '../page/Page.Tree');
 
   require('../Scilligence.JSDraw2.Resources.js');
 }

@@ -1,4 +1,6 @@
-import {IMol, JSDraw2ModuleType} from './types/jsdraw2';
+// @ts-nocheck
+
+import {JSDraw2ModuleType} from './types/jsdraw2';
 import {IMolHandler, MolHandlerOptions, defaultMolHandlerOptions} from './types/mol-handler';
 import {ScilModuleType} from './types';
 
