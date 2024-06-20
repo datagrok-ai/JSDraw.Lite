@@ -1,10 +1,11 @@
-import {IOrgWebEditor} from './org';
-import {Page} from '../../page/Page';
-import {Point} from '../Point';
-import {Rect} from '../Rect';
-import {ButtonDescType, Form, LangType} from '../../form/Form';
-import {TabbedForm} from '../../form/TabbedForm';
-import {Tabs} from '../../form/Tab';
+import type {IOrgWebEditor} from './org';
+import type {Page} from '../../page/Page';
+import type {Point} from '../Point';
+import type {Rect} from '../Rect';
+import type {ButtonDescType, Form, LangType} from '../../form/Form';
+import type {TabbedForm} from '../../form/TabbedForm';
+import type {Tabs} from '../../form/Tab';
+import type {Lang} from '../../form/Lang';
 
 export type IndexType = { prefix: string, index: number | null };
 
@@ -169,7 +170,7 @@ export type ScilModuleType = {
   Tree: ITree;
   XDraw: any;
   Resizable: any;
-  Lang: any;
+  Lang: typeof Lang;
   MobileData: any;
 
   mstouch: any;

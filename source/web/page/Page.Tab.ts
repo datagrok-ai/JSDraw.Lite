@@ -9,9 +9,9 @@
 
 // @ts-nocheck
 
-import {ScilModuleType} from '../src/types';
-import {Page} from './Page';
-import {Tabs} from '../form/Tab';
+import type {ScilModuleType} from '../src/types';
+import type {Page} from './Page';
+import type {Tabs} from '../form/Tab';
 
 declare const scil: ScilModuleType;
 
@@ -78,3 +78,5 @@ export class PageTab {
     this.tabs.hide();
   }
 }
+
+scil.Page.Tab = PageTab;

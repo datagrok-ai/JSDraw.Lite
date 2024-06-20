@@ -1,5 +1,5 @@
-import {ScilModuleType} from './scil';
-import {JSDraw2ModuleType} from './jsdraw2';
+import type {ScilModuleType} from './scil';
+import type {JSDraw2ModuleType} from './jsdraw2';
 
 export {ScilModuleType, JSDraw2ModuleType};
 

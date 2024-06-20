@@ -6,10 +6,11 @@
 
 // @ts-nocheck
 
-import {JSDraw2ModuleType, ScilModuleType} from './types';
-import {IGraphics, ShapeType} from './types/jsdraw2';
-import {Atom} from './Atom';
-import {Rect} from './Rect';
+import type {JSDraw2ModuleType, ScilModuleType} from './types';
+
+import type {IGraphics, ShapeType} from './types/jsdraw2';
+import type {Atom} from './Atom';
+import type {Rect} from './Rect';
 
 declare const scilligence: ScilModuleType;
 declare const scil: ScilModuleType;

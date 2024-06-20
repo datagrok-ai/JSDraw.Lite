@@ -8,7 +8,7 @@
 
 // @ts-nocheck
 
-import {ScilModuleType} from "../src/types/scil";
+import type {ScilModuleType} from "../src/types/scil";
 
 declare const scil: ScilModuleType;
 

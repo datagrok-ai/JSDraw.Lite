@@ -12,10 +12,10 @@
 
 import type {JSDraw2ModuleType, ScilModuleType} from '../src/types';
 
-import {IScilUtils} from '../src/types/scil';
-import {DojoType, DojoxType} from '../src/types/dojo';
-import {TabbedForm} from './TabbedForm';
-import {IDialog} from '../src/types/jsdraw2';
+import type {IScilUtils} from '../src/types/scil';
+import type {DojoType, DojoxType} from '../src/types/dojo';
+import type {TabbedForm} from './TabbedForm';
+import type {IDialog} from '../src/types/jsdraw2';
 
 declare const dojo: DojoType;
 declare const dojox: DojoxType;

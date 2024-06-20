@@ -10,7 +10,7 @@
 
 // @ts-nocheck
 
-import {DojoType} from '../src/types/dojo';
+import type {DojoType} from '../src/types/dojo';
 import type {ScilModuleType} from '../src/types';
 
 declare const dojo: DojoType;

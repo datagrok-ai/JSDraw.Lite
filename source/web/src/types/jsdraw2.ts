@@ -1,11 +1,11 @@
-import {IMolHandler} from './mol-handler';
-import {Plus, Point} from '../Point';
-import {Editor} from '../JSDraw.Editor';
-import {Atom} from '../Atom';
-import {Rect} from '../Rect';
-import {Bond, BondB} from '../Bond';
-import {Mol} from '../Mol';
-import {Bracket} from '../Bracket';
+import type {IMolHandler} from './mol-handler';
+import type {Plus, Point} from '../Point';
+import type {Editor} from '../JSDraw.Editor';
+import type {Atom} from '../Atom';
+import type {Rect} from '../Rect';
+import type {Bond, BondB} from '../Bond';
+import type {Mol} from '../Mol';
+import type {Bracket} from '../Bracket';
 
 export const enum BondTypes {
   UNKNOWN = 0,

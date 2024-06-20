@@ -1,7 +1,7 @@
-import {Atom} from '../Atom';
-import {Editor} from '../JSDraw.Editor';
-import {Point} from '../Point';
-import {IOrgPlugin} from './jsdraw2';
+import type {Atom} from '../Atom';
+import type {Editor} from '../JSDraw.Editor';
+import type {Point} from '../Point';
+import type {IOrgPlugin} from './jsdraw2';
 
 export const enum MonomerTypes {
   BACKBONE = 'Backbone',

@@ -10,8 +10,9 @@
 
 // @ts-nocheck
 
-import {JSDraw2ModuleType} from './types';
-import {Point} from './Point';
+import type {JSDraw2ModuleType} from './types';
+
+import type {Point} from './Point';
 
 declare const JSDraw2: JSDraw2ModuleType<any>;
 

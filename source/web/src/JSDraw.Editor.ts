@@ -10,17 +10,20 @@
 
 // @ts-nocheck
 
-import {JSDraw2ModuleType, ScilModuleType} from './types';
-import {DojoType, DojoxType} from './types/dojo';
-import {OrgType} from './types/org';
-import {
+import type {DojoType, DojoxType} from './types/dojo';
+import type {JSDraw2ModuleType, ScilModuleType} from './types';
+import type {OrgType} from './types/org';
+
+import type {
   ColorArray, IContextMenu, IDialog, IEditorOptions, IOrgPlugin, IStack,
-  JSDraw2Document, JSDraw2Window, ShapeType, ShapeTypes
+  JSDraw2Document, JSDraw2Window, ShapeType
 } from './types/jsdraw2';
-import {IMolHandler} from './types/mol-handler';
-import {Point} from './Point';
-import {Atom} from './Atom';
-import {Mol} from './Mol';
+import type {IMolHandler} from './types/mol-handler';
+import type {Point} from './Point';
+import type {Atom} from './Atom';
+import type {Mol} from './Mol';
+
+import {ShapeTypes} from './types/jsdraw2';
 
 type EventPoint<TBio = any> = Point & { tm: number, clientX: number, clientY: number, atom: Atom<TBio> }
 type EditorClone<TBio = any> = {

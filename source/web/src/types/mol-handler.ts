@@ -1,4 +1,4 @@
-import {Mol} from '../Mol';
+import type {Mol} from '../Mol';
 
 export const defaultMolHandlerOptions = new class {
   showimplicithydrogens: boolean = true;

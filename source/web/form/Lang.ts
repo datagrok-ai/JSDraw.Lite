@@ -135,3 +135,5 @@ export class Lang {
     }
   }
 }
+
+scil.Lang = Lang;

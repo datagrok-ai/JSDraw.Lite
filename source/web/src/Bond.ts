@@ -10,14 +10,15 @@
 
 // @ts-nocheck
 
-import {BondType, IBio, IRGroup, JSDraw2ModuleType, RxnCenterType} from './types/jsdraw2';
 import type {ScilModuleType} from './types/scil';
-import {DojoType, DojoxType} from './types/dojo';
-import {OrgType} from './types/org';
-import {Point} from './Point';
-import {Rect} from './Rect';
-import {Atom} from './Atom';
-import {Mol} from './Mol';
+import type {DojoType, DojoxType} from './types/dojo';
+import type {OrgType} from './types/org';
+
+import type {Point} from './Point';
+import type {Rect} from './Rect';
+import type {Atom} from './Atom';
+import type {Mol} from './Mol';
+import type {BondType, IBio, IRGroup, JSDraw2ModuleType, RxnCenterType} from './types/jsdraw2';
 
 declare const dojo: DojoType;
 declare const dojox: DojoxType;

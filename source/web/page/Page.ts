@@ -9,14 +9,14 @@
 
 // @ts-nocheck
 
-import {ScilModuleType} from "../src/types/scil";
-import {PageCustom} from './Page.Custom';
-import {PageExplorer} from './Page.Explorer';
-import {PageExplorerForm} from './Page.ExplorerForm';
-import {PageForm} from './Page.Form';
-import {PageTable} from './Page.Table';
-import {PageTree} from './Page.Tree';
-import {PageTab} from './Page.Tab';
+import type {ScilModuleType} from "../src/types/scil";
+import type {PageCustom} from './Page.Custom';
+import type {PageExplorer} from './Page.Explorer';
+import type {PageExplorerForm} from './Page.ExplorerForm';
+import type {PageForm} from './Page.Form';
+import type {PageTable} from './Page.Table';
+import type {PageTree} from './Page.Tree';
+import type {PageTab} from './Page.Tab';
 
 declare const scil: ScilModuleType;
 

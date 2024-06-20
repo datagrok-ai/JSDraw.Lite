@@ -10,14 +10,15 @@
 
 // @ts-nocheck
 
-import {AtomQueryType, IBio, IRGroup, JSDraw2ModuleType} from './types/jsdraw2';
+import type {DojoType, DojoxType} from './types/dojo';
 import type {ScilModuleType} from './types/scil';
-import {DojoType, DojoxType} from './types/dojo';
-import {OrgType} from './types/org';
-import {Point} from './Point';
-import {Rect} from './Rect';
-import {Bond} from './Bond';
-import {Mol} from './Mol';
+import type {OrgType} from './types/org';
+
+import type {Point} from './Point';
+import type {Rect} from './Rect';
+import type {Bond} from './Bond';
+import type {Mol} from './Mol';
+import type {AtomQueryType, IBio, IRGroup, JSDraw2ModuleType} from './types/jsdraw2';
 
 declare const dojo: DojoType;
 declare const dojox: DojoxType;
@@ -448,7 +449,7 @@ export class Atom<TBio> {
   //   return a.elem != 'C' || a.charge != 0 || a.isotope != null || a.hcount == 4;
   // },
 
-  drawBio(surface, linewidth, fontsize, color) {
+  drawBio(surface, linewidth: number, fontsize: number, color) {
     var a = this;
     var biotype = this.biotype();
     var p = a.p.clone();
@@ -523,7 +524,7 @@ export class Atom<TBio> {
     return (!a.bio && (e == null || e.a >= 0 && a.hasError)) && a.elem != '3\'' && a.elem != '5\'';
   }
 
-  draw(surface, linewidth, m, fontsize, showError) {
+  draw(surface, linewidth: number, m: Mol<TBio>, fontsize: number, showError: boolean) {
     var a = this;
 
     this._rect = null;

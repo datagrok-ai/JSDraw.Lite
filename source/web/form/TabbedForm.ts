@@ -9,9 +9,9 @@
 // @ts-nocheck
 
 import type {ScilModuleType} from '../src/types';
-import {FieldType, Form, ItemType} from './Form';
-import {DojoType} from '../src/types/dojo';
-import {ITabs} from '../src/types/scil.form';
+import type {FieldType, Form, ItemType} from './Form';
+import type {DojoType} from '../src/types/dojo';
+import type {ITabs} from '../src/types/scil.form';
 
 declare const dojo: DojoType;
 

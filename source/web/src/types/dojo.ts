@@ -1,4 +1,4 @@
-import {StyleType} from './common';
+import type {StyleType} from './common';
 
 export type DojoConfigType = {
   afterOnLoad: boolean;
@@ -44,6 +44,8 @@ export type DojoxGfxType = {
   utils: DojoxGfxUtilsType;
 
   createSurface(e: HTMLElement, width: number, height: number): any; // TODO: Surface to draw molecule
+
+  [p: string]: any;
 };
 
 export type DojoxType = {

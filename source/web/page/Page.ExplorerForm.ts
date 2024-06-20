@@ -8,8 +8,8 @@
 
 // @ts-nocheck
 
-import {DojoType} from '../src/types/dojo';
-import {ScilModuleType} from '../src/types';
+import type {DojoType} from '../src/types/dojo';
+import type {ScilModuleType} from '../src/types';
 
 declare const dojo: DojoType;
 declare const scil: ScilModuleType;

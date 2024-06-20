@@ -10,12 +10,15 @@
 
 // @ts-nocheck
 
-import {IndexType, ScilModuleType, IDebug} from './types/scil';
-import {BondTypes, IGraphics, JSDraw2ModuleType} from './types/jsdraw2';
-import {Atom} from './Atom';
-import {Bond} from './Bond';
-import {Rect} from './Rect';
-import {Plus, Point} from './Point';
+import type {IndexType, ScilModuleType, IDebug} from './types/scil';
+import type {IGraphics, JSDraw2ModuleType} from './types/jsdraw2';
+
+import type {Atom} from './Atom';
+import type {Bond} from './Bond';
+import type {Rect} from './Rect';
+import type {Plus, Point} from './Point';
+
+import {BondTypes} from './types/jsdraw2';
 
 declare const JSDraw2: JSDraw2ModuleType<any>;
 declare const scil: ScilModuleType;

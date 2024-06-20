@@ -1,8 +1,11 @@
 // @ts-nocheck
 
-import {JSDraw2ModuleType} from './types/jsdraw2';
-import {IMolHandler, MolHandlerOptions, defaultMolHandlerOptions} from './types/mol-handler';
-import {ScilModuleType} from './types';
+import type {JSDraw2ModuleType} from './types/jsdraw2';
+import type {ScilModuleType} from './types';
+
+import type {MolHandlerOptions} from './types/mol-handler';
+
+import {defaultMolHandlerOptions} from './types/mol-handler';
 
 declare const JSDraw2: JSDraw2ModuleType<any>;
 declare const scil: ScilModuleType;

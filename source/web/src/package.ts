@@ -1,6 +1,6 @@
+import type {DojoType, DojoWindow} from './types/dojo';
+import type {JSDraw2Window} from './types';
 import {errInfo, timeout} from './dg-utils/index';
-import {JSDraw2Window} from './types';
-import {DojoType, DojoWindow} from './types/dojo';
 
 declare const window: Window & DojoWindow & JSDraw2Window;
 declare const dojo: DojoType;
@@ -13,22 +13,22 @@ export async function initJsDrawLite(): Promise<void> {
     window.jsDraw2$.initPromise = (async () => {
       console.debug(`${logPrefix}, IN`);
 
-      console.debug(`${logPrefix}, dojo.ready(), before`);
-      await timeout<void>(new Promise<void>((resolve, reject) => {
-        try {
-          if (window.dojo.config.afterOnLoad) {
-            console.debug(`${logPrefix}, dojo.config.afterOnLoad already`);
-            resolve();
-          }
-
-          dojo.require('dojo/ready')(() => {
-            console.debug(`${logPrefix}, dojo.ready(), callback`);
-            resolve();
-          });
-        } catch (err: any) {
-          reject(err);
-        }
-      }), 5000, 'dojo.ready() callback timeout 5000 ms');
+      // console.debug(`${logPrefix}, dojo.ready(), before`);
+      // await timeout<void>(new Promise<void>((resolve, reject) => {
+      //   try {
+      //     if (window.dojo.config.afterOnLoad) {
+      //       console.debug(`${logPrefix}, dojo.config.afterOnLoad already`);
+      //       resolve();
+      //     }
+      //
+      //     dojo.require('dojo/ready')(() => {
+      //       console.debug(`${logPrefix}, dojo.ready(), callback`);
+      //       resolve();
+      //     });
+      //   } catch (err: any) {
+      //     reject(err);
+      //   }
+      // }), 20000, 'dojo.ready() callback timeout 20000 ms');
 
       console.debug(`${logPrefix}, loadModules(), before`);
       await loadModules();

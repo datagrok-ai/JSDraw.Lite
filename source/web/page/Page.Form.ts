@@ -9,10 +9,10 @@
 
 // @ts-nocheck
 
-import {ScilModuleType} from '../src/types';
-import {IPageForm, Page} from './Page';
-import {PageExplorerForm} from './Page.ExplorerForm';
-import {Form} from '../form/Form';
+import type {ScilModuleType} from '../src/types';
+import type {IPageForm, Page} from './Page';
+import type {PageExplorerForm} from './Page.ExplorerForm';
+import type {Form} from '../form/Form';
 
 declare const scil: ScilModuleType;
 
