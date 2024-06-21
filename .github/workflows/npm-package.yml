@@ -1,0 +1,116 @@
+name: NPM package
+on:
+  workflow_dispatch: { }
+
+  push:
+    paths:
+      - 'source/web/**'
+  pull_request:
+    paths:
+      - 'source/web/**'
+jobs:
+  common-check:
+    name: Common checks
+    uses: ./.github/workflows/common_check.yaml
+    with:
+      run_trigger: ${{ github.event_name }}
+
+  version:
+    name: Check version
+    needs: common-check
+    runs-on: ubuntu-22.04
+    if: needs.common-check.outputs.continue == 'true'
+    outputs:
+      changed_version: ${{ steps.check-version.outputs.changed_version }}
+      current_version: ${{ steps.check-version.outputs.current_version }}
+      name: ${{ steps.check-version.outputs.name }}
+      job_name: ${{ steps.check-version.outputs.job_name }}
+      packages_matrix: ${{ steps.packages.outputs.matrix }}
+      libraries_matrix: ${{ steps.libraries.outputs.matrix }}
+      latest: ${{ steps.check-version.outputs.latest }}
+      replace_pack_dep: ${{ steps.packages.outputs.replace_pack_dep }}
+      replace_lib_dep: ${{ steps.libraries.outputs.replace_lib_dep }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check version was changed
+        id: check-version
+        working-directory: ./source/web
+        run: |
+          name="$(jq -r '.name' package.json)"
+          current_version="$(jq -r '.version' package.json)"
+          npm_version="$(curl --retry 3 -s "https://registry.npmjs.org/${name}/${current_version}" | jq -r '.? | select( has("version") == true ).version')"
+          job_name='Check'
+          scripts="$(jq  '. | select( has("scripts") == true ).scripts' package.json)"
+          if [ ! -z "$(jq  '. | select( has("build") == true )' <<< "$scripts")" ]; then
+            job_name='Build'
+          fi
+          if [ ! -z "$(jq  '. | select( has("test") == true )' <<< "$scripts")" ]; then
+            job_name='Build, test'
+          fi
+          if [[ $npm_version == ${current_version} ]]; then
+            changed_version='false'
+            echo "Package $name version ${current_version} already published"
+            echo "::notice title=${name}::Version ${current_version} is already published"
+          else
+            echo "NPM response for ${current_version}: $npm_version"
+            if [[ ${{ github.ref }} == 'refs/heads/master' ]] || [[ ${{ github.ref }} == "refs/heads/release/"* ]]; then
+              changed_version='true'
+              job_name+=", and publish to NPM"
+              latest_pushed=$(curl --retry 3 -LsS https://registry.npmjs.org/${name} | jq -r '.time | with_entries(select(.key | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))) | keys | sort_by( values | split(".") | map(tonumber)) | last')
+              newest_version=$(echo -e "$latest_pushed\n$current_version" | sort -V | tail -n1)
+              if [[ "${newest_version}" == "${current_version}" ]]; then
+                echo "latest=true" >> $GITHUB_OUTPUT
+              else
+                echo "latest=false" >> $GITHUB_OUTPUT
+              fi
+            else
+                echo "It is an actions for development branch. Publish will be skipped"
+                echo "::notice title=${name}::It is an actions for development branch. Publish will be skipped"
+            fi
+          fi
+          echo "changed_version=${changed_version}" >> $GITHUB_OUTPUT
+          echo "job_name=${job_name}" >> $GITHUB_OUTPUT
+          echo "current_version=${current_version}" >> $GITHUB_OUTPUT
+          echo "name=${name}" >> $GITHUB_OUTPUT
+
+      - name: Output
+        run: |
+          echo -e "changed_version: ${{ steps.check-version.outputs.changed_version }}"
+          echo -e "current_version: ${{ steps.check-version.outputs.current_version }}"
+          echo -e "name: ${{ steps.check-version.outputs.name }}"
+          echo -e "latest: ${{ steps.check-version.outputs.latest }}"
+
+  build:
+    name: ${{ needs.version.outputs.job_name || 'Deploy' }}
+    runs-on: ubuntu-22.04
+    needs: [ version, common-check ]
+    if: needs.common-check.outputs.continue == 'true'
+    env:
+      HOST: GitHubAction
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: |
+            source/web/package-lock.json
+      - run: npm install
+        working-directory: ./source/web
+      - run: npm run build
+        working-directory: ./source/web
+        if: contains(needs.version.outputs.job_name, 'build')
+      - run: npm run test
+        working-directory: ./source/web
+        if: contains(needs.version.outputs.job_name, 'test')
+      - run: npm install -g datagrok-tools@latest
+      - run: grok check
+        working-directory: ./source/web
+      - id: publish
+        run: npm publish --access public
+        working-directory: ./source/web
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        if: needs.version.outputs.changed_version == 'true'
