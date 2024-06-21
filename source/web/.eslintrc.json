@@ -1,0 +1,47 @@
+{
+  "env": {
+    "browser": true,
+    "es2022": true
+  },
+  "extends": [
+    "google"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 12,
+    "sourceType": "module"
+  },
+  "rules": {
+    "indent": ["warn", 2, {"SwitchCase": 0}],
+    "camelcase": "off",
+    "eol-last": ["warn"],
+    "quotes": [0],
+    "max-len": ["off", 120],
+    "no-unused-vars": "off",
+    "no-var": "off",
+    "new-cap": "off",
+    "object-curly-spacing": "warn",
+    "key-spacing": "warn",
+    "@typescript-eslint/no-unused-vars": ["warn", { "varsIgnorePattern": "^(_|ui$|grok$|DG$)", "argsIgnorePattern": "^_"}],
+    "require-jsdoc": "off",
+    "valid-jsdoc": "warn",
+    "spaced-comment": "off",
+    "space-before-function-paren": "off",
+    "linebreak-style": "off",
+    "curly": ["warn", "multi-or-nest", "consistent"],
+    "brace-style": ["error", "1tbs", {"allowSingleLine": true}],
+    "block-spacing": [2, "always"],
+    "comma-dangle": [
+      "error", {
+        "arrays": "only-multiline",
+        "functions": "only-multiline",
+        "objects": "only-multiline",
+        "imports": "only-multiline"
+      }
+    ],
+    "guard-for-in": "off"
+  },
+  "parser": "@typescript-eslint/parser",
+  "plugins": [
+    "@typescript-eslint"
+  ]
+}
