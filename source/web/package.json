@@ -1,5 +1,5 @@
 {
-  "name": "@datagrok/js-draw-lite",
+  "name": "@datagrok-libraries/js-draw-lite",
   "friendlyName": "JsDrawLite",
   "version": "0.0.1",
   "description": "JSDraw.Lite forked from http://www.scilligence.com/",
