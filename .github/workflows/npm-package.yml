@@ -25,11 +25,7 @@ jobs:
       current_version: ${{ steps.check-version.outputs.current_version }}
       name: ${{ steps.check-version.outputs.name }}
       job_name: ${{ steps.check-version.outputs.job_name }}
-      packages_matrix: ${{ steps.packages.outputs.matrix }}
-      libraries_matrix: ${{ steps.libraries.outputs.matrix }}
       latest: ${{ steps.check-version.outputs.latest }}
-      replace_pack_dep: ${{ steps.packages.outputs.replace_pack_dep }}
-      replace_lib_dep: ${{ steps.libraries.outputs.replace_lib_dep }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -114,3 +110,50 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         if: needs.version.outputs.changed_version == 'true'
+
+      - name: Prepare Slack Message
+        if: steps.publish.outcome == 'success'
+        id: slack-user
+        shell: bash
+        env:
+          SLACK_ID: ${{ secrets.SLACK_ID }}
+        run: |
+          channel_id=$(echo "$SLACK_ID" | jq -r .\"${{ github.actor }}\")
+          echo "::add-mask::$channel_id"
+          echo SLACK_CHANNEL=$channel_id >> $GITHUB_ENV
+
+          header="Library *${{ needs.version.outputs.name }}* version *${{ needs.version.outputs.current_version }}* published to <https://www.npmjs.com/package/${{ needs.version.outputs.name }}/v/${{ needs.version.outputs.current_version }}|NPM>"
+          echo SLACK_MESSAGE_HEADER=$header >> $GITHUB_ENV
+
+          context="*GitHub Workflow:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.workflow }} ${{ github.run_number }}>\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|$(echo "${{ github.sha }}" | cut -c1-8) $(echo -e "${{ github.event.head_commit.message }}" | head -n1)>"
+          echo SLACK_MESSAGE_CONTEXT=$context >> $GITHUB_ENV
+
+      - name: Send to Slack
+        id: slack
+        if: steps.slack-user.outcome == 'success'
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL }}
+          payload: |
+            {
+                "blocks": [
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "${{ env.SLACK_MESSAGE_HEADER }}"
+                        }
+                    },
+                    {
+                        "type": "context",
+                        "elements": [
+                            {
+                                "type": "mrkdwn",
+                                "text": "${{ env.SLACK_MESSAGE_CONTEXT }}"
+                            }
+                        ]
+                    }
+                ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
