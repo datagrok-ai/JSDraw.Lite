@@ -57,7 +57,7 @@ jobs:
             if [[ ${{ github.ref }} == 'refs/heads/master' ]] || [[ ${{ github.ref }} == "refs/heads/release/"* ]]; then
               changed_version='true'
               job_name+=", and publish to NPM"
-              latest_pushed=$(curl --retry 3 -LsS https://registry.npmjs.org/${name} | jq -r '.time | with_entries(select(.key | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))) | keys | sort_by( values | split(".") | map(tonumber)) | last')
+              latest_pushed=$(curl --retry 3 -LsS https://registry.npmjs.org/${name} | jq -r '.time? | with_entries(select(.key | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")))? | keys | sort_by( values | split(".") | map(tonumber)) | last')
               newest_version=$(echo -e "$latest_pushed\n$current_version" | sort -V | tail -n1)
               if [[ "${newest_version}" == "${current_version}" ]]; then
                 echo "latest=true" >> $GITHUB_OUTPUT
