@@ -1,7 +1,7 @@
 {
   "name": "@datagrok-libraries/js-draw-lite",
   "friendlyName": "JsDrawLite",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "JSDraw.Lite forked from http://www.scilligence.com/",
   "devDependencies": {
     "@types/node": "^18.11.18",
@@ -20,8 +20,8 @@
     "webpack-cli": "^4.9.1"
   },
   "scripts": {
-    "build": "webpack",
-    "build-prod": "cross-env NODE_ENV=production webpack",
+    "build": "tsc && webpack",
+    "build-prod": "cross-env NODE_ENV=production \"tsc && webpack\"",
     "lint": "eslint src --ext .ts",
     "lint-fix": "eslint src --ext .ts --fix"
   },

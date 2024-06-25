@@ -1,3 +1,12 @@
+src/**/*.ts
+!src/**/*.d.ts
+
+page/**/*.ts
+!page/**/*.d.ts
+
+form/**/*.ts
+!form/**/*.d.ts
+
 # Developer keys
 upload.keys.json
 
