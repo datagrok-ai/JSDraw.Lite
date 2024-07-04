@@ -4,15 +4,10 @@ const packageName = path.parse(require('./package.json').name).name.toLowerCase(
 const TerserWebpackPlugin = require('terser-webpack-plugin');
 const FileManagerPlugin = require('filemanager-webpack-plugin');
 
-const extPaths = new class {
-  HELMWebEditor = `../../../HELMWebEditor`;
-}();
-
 const mode = process.env.NODE_ENV ?? 'production';
 if (mode !== 'production') {
   console.warn(`Building '${packageName}' in '${mode}' mode.`);
 }
-const out = `js-draw-lite.${mode}`;
 
 module.exports = {
   mode: mode,
@@ -31,24 +26,15 @@ module.exports = {
     ],
   },
   plugins: [new FileManagerPlugin({
-    events: {
-      onStart: {delete: [`./dist/*`]},
-      onEnd: {
-        copy: [{
-          source: `./dist/*`,
-          destination: `${extPaths.HELMWebEditor}/HELM/source/vendor/`,
-        }],
-      },
-    },
+    events: {onStart: {delete: [`./dist/*`]}},
   })],
-  devtool: mode !== 'production' ? 'inline-source-map' : 'source-map',
+  devtool: 'source-map',
   optimization: {
     minimize: mode === 'production',
     minimizer: [new TerserWebpackPlugin({extractComments: false})],
   },
   output: {
-    filename: `${out}.js`,
-    sourceMapFilename: `${out}.js.map`,
+    filename: `[name].js`,
     library: packageName,
     libraryTarget: 'var',
     path: path.resolve(__dirname, 'dist'),
