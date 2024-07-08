@@ -81,7 +81,7 @@ export interface IOrgMonomers<TBio> {
 }
 
 export interface IOrgInterface<TBio> {
-  drawMonomer(surface: SVGSVGElement, a: Atom<TBio>, p: Point, fontsize: number, linewidth: number, color: string): void;
+  drawMonomer(surface: SVGSVGElement, a: Atom<TBio>, p: Point, fontsize: number, linewidth: number, color: string, step?: number): void;
   onContextMenu(ed: Editor<TBio>, e: Event, viewonly: boolean): any[];
 }
 

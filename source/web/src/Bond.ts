@@ -8,17 +8,14 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
-// @ts-nocheck
-
 import type {ScilModuleType} from './types/scil';
 import type {DojoType, DojoxType} from './types/dojo';
 import type {OrgType} from './types/org';
 
 import type {Point} from './Point';
-import type {Rect} from './Rect';
 import type {Atom} from './Atom';
 import type {Mol} from './Mol';
-import type {BondType, IBio, IRGroup, JSDraw2ModuleType, RxnCenterType} from './types/jsdraw2';
+import type {BondType, ILasso, JSDraw2ModuleType, RxnCenterType} from './types/jsdraw2';
 
 declare const dojo: DojoType;
 declare const dojox: DojoxType;
@@ -51,27 +48,27 @@ export class Bond<TBio> {
    @property {bool} selected Selecting Flag
    */
   private T: string;
-  public id: number;
+  public id!: number;
   public a1: Atom<TBio>;
   public a2: Atom<TBio>;
-  public apo1: number;
-  public apo2: number;
-  public color: string;
-  public ring: boolean;
-  public order: number;
-  public rcenter: RxnCenterType;
+  public apo1: number | null;
+  public apo2: number | null;
+  public color: string | null;
+  public ring: boolean | null;
+  public order: number | null;
+  public rcenter: RxnCenterType | null;
   public selected: boolean;
-  public tag: string;
-  public f: number;
+  public tag: string | null;
+  public f: number | null;
   public r1: number | string | null;
   public r2: number | string | null;
   public ratio1: number | string | null;
   public ratio2: number | string | null;
   public type: BondType;
 
-  public _parent: Mol<TBio>;
-  private z: number;
-  public bondid: number;
+  public _parent!: Mol<TBio>;
+  private z?: number;
+  public bondid?: number;
   public group: any;
 
   /**
@@ -100,8 +97,8 @@ export class Bond<TBio> {
     this.type = type == null ? JSDraw2.BONDTYPES.SINGLE : type;
   }
 
-  clone() {
-    var b = new JSDraw2.Bond(this.a1, this.a2, this.type);
+  clone(): Bond<TBio> {
+    const b: Bond<TBio> = new JSDraw2.Bond(this.a1, this.a2, this.type);
     b.id = this.id;
     b.color = this.color;
     b.order = this.order;
@@ -156,7 +153,7 @@ export class Bond<TBio> {
    * @param {Atom} a - one atom on the bond
    * @returns the other Atom
    */
-  otherAtom(a) {
+  otherAtom(a: Atom<TBio>): Atom<TBio> | null {
     if (this.a1 == a)
       return this.a2;
     else if (this.a2 == a)
@@ -170,16 +167,16 @@ export class Bond<TBio> {
    * @returns null
    */
   reverse() {
-    var a = this.a1;
+    const a = this.a1;
     this.a1 = this.a2;
     this.a2 = a;
 
-    var apo = this.apo1;
+    const apo = this.apo1;
     this.apo1 = this.apo2;
     this.apo2 = apo;
   }
 
-  valence() {
+  valence(): number | null {
     switch (this.type) {
     case JSDraw2.BONDTYPES.SINGLE:
     case JSDraw2.BONDTYPES.WEDGE:
@@ -207,21 +204,21 @@ export class Bond<TBio> {
     }
   }
 
-  _centerDoubleBond(m, b) {
-    var atoms1 = m.getNeighborAtoms(b.a1, b.a2);
-    var atoms2 = m.getNeighborAtoms(b.a2, b.a1);
+  _centerDoubleBond(m: Mol<TBio>, b: BondB<TBio>): boolean {
+    const atoms1 = m.getNeighborAtoms(b.a1, b.a2);
+    const atoms2 = m.getNeighborAtoms(b.a2, b.a1);
     return atoms1.length == 0 && atoms2.length == 2 || atoms2.length == 0 && atoms1.length == 2;
   }
 
-  _shirftDirection(m, b) {
-    var a1 = null;
-    var a2 = null;
-    var atoms1 = m.getNeighborAtoms(b.a1, b.a2, true);
+  _shirftDirection(m: Mol<TBio>, b: BondB<TBio>) {
+    let a1 = null;
+    let a2 = null;
+    const atoms1 = m.getNeighborAtoms(b.a1, b.a2, true);
     if (atoms1.length == 1)
       a1 = atoms1[0];
 
     if (a1 == null) {
-      var atoms2 = m.getNeighborAtoms(b.a2, b.a1, true);
+      const atoms2 = m.getNeighborAtoms(b.a2, b.a1, true);
       if (atoms2.length == 1)
         a2 = atoms2[0];
 
@@ -241,18 +238,18 @@ export class Bond<TBio> {
     }
 
     if (a1 != null) {
-      var ang = b.p1.angleAsOrigin(b.p2, a1.p);
+      const ang = b.p1.angleAsOrigin(b.p2, a1.p);
       return ang <= 180;
     }
 
     if (a2 != null) {
-      var ang = b.p2.angleAsOrigin(a2.p, b.p1);
+      const ang = b.p2.angleAsOrigin(a2.p, b.p1);
       return ang <= 180;
     }
   }
 
   html() {
-    var s = "<b i='" + this.id + "' a1='" + this.a1.id + "' a2='" + this.a2.id + "' t='" + this.type + "'";
+    let s = "<b i='" + this.id + "' a1='" + this.a1.id + "' a2='" + this.a2.id + "' t='" + this.type + "'";
     if (this.ring != null)
       s += " ring='" + (this.ring ? 1 : 0) + "'";
     if (this.rcenter != null)
@@ -263,9 +260,9 @@ export class Bond<TBio> {
       s += " r1='" + this.r1 + "'";
     if (!scil.Utils.isNullOrEmpty(this.r2 as string))
       s += " r2='" + this.r2 + "'";
-    if (this.apo1 > 0 && this.a1.superatom != null)
+    if (this.apo1! > 0 && this.a1.superatom != null)
       s += " apo1='" + this.apo1 + "'";
-    if (this.apo2 > 0 && this.a2.superatom != null)
+    if (this.apo2! > 0 && this.a2.superatom != null)
       s += " apo2='" + this.apo2 + "'";
     if (this.tag != null)
       s += " tag='" + scil.Utils.escXmlValue(this.tag) + "'";
@@ -273,31 +270,31 @@ export class Bond<TBio> {
     return s;
   }
 
-  readHtml(e) {
-    var r = e.getAttribute("clr");
+  readHtml(e: HTMLElement) {
+    const r = e.getAttribute("clr");
     if (r != null)
       this.color = r;
 
-    var tag = e.getAttribute("tag");
+    const tag = e.getAttribute("tag");
     if (tag != null && tag != "")
       this.tag = tag;
   }
 
-  toggle(p, tor) {
+  toggle(p: Point, tor: number) {
     return p.onLine(this.a1.p, this.a2.p, tor / 5);
   }
 
-  drawCur(surface, r, color) {
-    var p = this.center();
+  drawCur(surface: any, r: number, color: string) {
+    const p = this.center();
     surface.createCircle({cx: p.x, cy: p.y, r: r}).setFill(color);
   }
 
-  _drawBond(surface: any, b: any, color: string, linewidth: number, shrink?: number, shift?: number, dotline?: number, gap?: any, cap?: any): void {
+  _drawBond(surface: any, b: any, color: string, linewidth: number, shrink?: number | null, shift?: number | null, dotline?: number | null, gap?: any, cap?: any): void {
     if (shrink == null || shrink == 0) {
       JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, linewidth, dotline, cap);
     } else {
-      var d = shift == 0 ? new JSDraw2.Point(0, 0) : b.vector().scale(1.0 / Math.abs(shift));
-      var v = b.vector().rotate(shrink > 0 ? 90 : -90).setLength(gap == null ? linewidth * 2 : gap);
+      const d = shift == 0 ? new JSDraw2.Point(0, 0) : b.vector().scale(1.0 / Math.abs(shift!));
+      const v = b.vector().rotate(shrink > 0 ? 90 : -90).setLength(gap == null ? linewidth * 2 : gap);
       JSDraw2.Drawer.drawLine(surface, b.p1.clone().offset(d.x + v.x, d.y + v.y), b.p2.clone().offset(-d.x + v.x, -d.y + v.y), color, linewidth, dotline, cap);
     }
   }
@@ -316,13 +313,13 @@ export class Bond<TBio> {
     return "black";
   }
 
-  splitPosR(s): PosRType {
+  splitPosR(s: any): PosRType {
     if (!scil.Utils.isNullOrEmpty(s)) {
-      var s2 = s == "?" ? "?:?" : s + "";
-      var p = s2.indexOf(':');
+      const s2 = s == "?" ? "?:?" : s + "";
+      const p = s2.indexOf(':');
       if (p >= 0) {
-        var pos = s2.substr(0, p);
-        var r = s2.substr(p + 1);
+        const pos = s2.substr(0, p);
+        const r = s2.substr(p + 1);
         return {pos: (pos == "" ? "?" : pos), r: (r == "" ? "?" : r)};
       }
     }
@@ -331,11 +328,11 @@ export class Bond<TBio> {
   }
 
   _fmtBondAnn(): BondAnnotationType {
-    var s1 = "";
-    var s2 = "";
+    let s1 = "";
+    let s2 = "";
 
-    var r1 = this.splitPosR(this.r1);
-    var r2 = this.splitPosR(this.r2);
+    const r1 = this.splitPosR(this.r1);
+    const r2 = this.splitPosR(this.r2);
     if (r1.pos != "?" || r2.pos != "?") {
       s1 += (s1 == "" ? "" : "; ") + "Pos: " + r1.pos;
       s2 += (s2 == "" ? "" : "; ") + "Pos: " + r2.pos;
@@ -345,9 +342,9 @@ export class Bond<TBio> {
       s2 += (s2 == "" ? "" : "; ") + "R#: " + r2.r;
     }
 
-    var defaultratio = org.helm.webeditor.defaultbondratio == null ? "" : org.helm.webeditor.defaultbondratio;
-    var ratio1 = scil.Utils.isNullOrEmpty(this.ratio1 as string) ? defaultratio : this.ratio1;
-    var ratio2 = scil.Utils.isNullOrEmpty(this.ratio2 as string) ? defaultratio : this.ratio2;
+    const defaultratio = org.helm.webeditor.defaultbondratio == null ? "" : org.helm.webeditor.defaultbondratio;
+    const ratio1 = scil.Utils.isNullOrEmpty(this.ratio1 as string) ? defaultratio : this.ratio1;
+    const ratio2 = scil.Utils.isNullOrEmpty(this.ratio2 as string) ? defaultratio : this.ratio2;
     if (ratio1 != defaultratio || ratio2 != defaultratio /* https://github.com/PistoiaHELM/HELMWebEditor/issues/148 */) {
       s1 += (s1 == "" ? "" : "; ") + "Ratio: " + ratio1;
       s2 += (s2 == "" ? "" : "; ") + "Ratio: " + ratio2;
@@ -356,17 +353,17 @@ export class Bond<TBio> {
     return {ba1: s1, ba2: s2};
   }
 
-  drawBondAnnotation(surface, fontsize, b) {
-    var s = this._fmtBondAnn();
-    var ba1 = s.ba1;
-    var ba2 = s.ba2;
+  drawBondAnnotation(surface: any, fontsize: number, b: BondB<TBio>) {
+    const s = this._fmtBondAnn();
+    const ba1 = s.ba1;
+    const ba2 = s.ba2;
     if (ba1 == "" && ba2 == "")
       return;
 
-    var dx = (b.p1.x - b.p2.x) / 90;
-    var dy = (b.p1.y - b.p2.y) / 90;
-    var c1 = new JSDraw2.Point((b.p1.x + b.p2.x) / 2, (b.p1.y + b.p2.y) / 2);
-    var c2 = c1.clone();
+    const dx = (b.p1.x - b.p2.x) / 90;
+    const dy = (b.p1.y - b.p2.y) / 90;
+    const c1 = new JSDraw2.Point((b.p1.x + b.p2.x) / 2, (b.p1.y + b.p2.y) / 2);
+    const c2 = c1.clone();
 
     if (Math.abs(b.a1.p.x - b.a2.p.x) < fontsize) {
       //vertical
@@ -394,7 +391,7 @@ export class Bond<TBio> {
     }
   }
 
-  draw(surface, linewidth, m, fontsize, simpledraw) {
+  draw(surface: any, linewidth: number, m: Mol<TBio>, fontsize: number, simpledraw: boolean, drawStep: number) {
     if (this.type == JSDraw2.BONDTYPES.DUMMY) {
       if ((this.a1.elem == "@" || this.a2.elem == "@") && !this.a1.p.equalsTo(this.a2.p))
         JSDraw2.Drawer.drawLine(surface, this.a1.p, this.a2.p, "#eee", linewidth / 2);
@@ -404,7 +401,7 @@ export class Bond<TBio> {
     if (this.a1.p.equalsTo(this.a2.p))
       return;
 
-    var b = new JSDraw2.BondB(this);
+    const b = new JSDraw2.BondB(this);
     if (!simpledraw) {
       if (b.a1._haslabel)
         b.p1.shrink(b.p2, fontsize * 0.6);
@@ -412,25 +409,56 @@ export class Bond<TBio> {
         b.p2.shrink(b.p1, fontsize * 0.6);
     }
 
-    var color = scil.Utils.isNullOrEmpty(this.color) ? "black" : this.color;
-    if (simpledraw || b.type == JSDraw2.BONDTYPES.PEPTIDE || b.type == JSDraw2.BONDTYPES.AMIDE) {
-      JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, linewidth);
-      return;
-    } else if (b.type == JSDraw2.BONDTYPES.DISULFIDE) {
-      JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, linewidth);
-      return;
-    } else if (b.type == JSDraw2.BONDTYPES.NUCLEOTIDE) {
-      JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, linewidth);
-      return;
+    const color = scil.Utils.isNullOrEmpty(this.color) ? "black" : this.color!;
+    switch (drawStep) {
+    case 0: {
+      const hlColor = '#FFB2B2';
+      if (simpledraw || b.type == JSDraw2.BONDTYPES.PEPTIDE || b.type == JSDraw2.BONDTYPES.AMIDE) {
+        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, hlColor, 5);
+        return;
+      } else if (b.type == JSDraw2.BONDTYPES.DISULFIDE) {
+        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, hlColor, 5);
+        return;
+      } else if (b.type == JSDraw2.BONDTYPES.NUCLEOTIDE) {
+        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, hlColor, 5);
+        return;
+      }
+    }
+    case 1: {
+      const selColor = '#F8F8DD';
+      if (simpledraw || b.type == JSDraw2.BONDTYPES.PEPTIDE || b.type == JSDraw2.BONDTYPES.AMIDE) {
+        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, selColor, 7);
+        return;
+      } else if (b.type == JSDraw2.BONDTYPES.DISULFIDE) {
+        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, selColor, 7);
+        return;
+      } else if (b.type == JSDraw2.BONDTYPES.NUCLEOTIDE) {
+        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, selColor, 7);
+        return;
+      }
+    }
+    case 2: {
+      if (simpledraw || b.type == JSDraw2.BONDTYPES.PEPTIDE || b.type == JSDraw2.BONDTYPES.AMIDE) {
+        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, linewidth);
+        return;
+      } else if (b.type == JSDraw2.BONDTYPES.DISULFIDE) {
+        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, linewidth);
+        return;
+      } else if (b.type == JSDraw2.BONDTYPES.NUCLEOTIDE) {
+        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, linewidth);
+        return;
+      }
+      break;
+    }
     }
 
     if ((this.r1 as number) > 0 || (this.r2 as number) > 0) {
-      var c = new JSDraw2.Point((b.p1.x + b.p2.x) / 2, (b.p1.y + b.p2.y) / 2);
-      var color1 = this.getRColor(this.color, this.r1 as number);
-      var color2 = this.getRColor(this.color, this.r2 as number);
+      const c = new JSDraw2.Point((b.p1.x + b.p2.x) / 2, (b.p1.y + b.p2.y) / 2);
+      const color1 = this.getRColor(this.color!, this.r1 as number);
+      const color2 = this.getRColor(this.color!, this.r2 as number);
       if (this.z) {
-        var p1 = new JSDraw2.Point(b.p1.x, c.y);
-        var p2 = new JSDraw2.Point(b.p2.x, c.y);
+        const p1 = new JSDraw2.Point(b.p1.x, c.y);
+        const p2 = new JSDraw2.Point(b.p2.x, c.y);
         JSDraw2.Drawer.drawLine(surface, b.p1, p1, color1, linewidth, null, "butt");
         JSDraw2.Drawer.drawLine(surface, p1, c, color1, linewidth, null, "butt");
         JSDraw2.Drawer.drawLine(surface, c, p2, color2, linewidth, null, "butt");
@@ -449,7 +477,7 @@ export class Bond<TBio> {
     if (!simpledraw)
       this.drawBondAnnotation(surface, fontsize, b);
 
-    var dir = 8;
+    let dir = 8;
     if (b.type == JSDraw2.BONDTYPES.DOUBLE || b.type == JSDraw2.BONDTYPES.DELOCALIZED || b.type == JSDraw2.BONDTYPES.EITHER || b.type == JSDraw2.BONDTYPES.DOUBLEORAROMATIC)
       dir = this._shirftDirection(m, b) ? 8 : -8;
 
@@ -470,7 +498,7 @@ export class Bond<TBio> {
     }
 
     if (b.type == JSDraw2.BONDTYPES.WEDGE) {
-      var v = b.vector().rotate(90).setLength(linewidth * 2);
+      const v = b.vector().rotate(90).setLength(linewidth * 2);
       surface.createPolyline([
         b.p1.x, b.p1.y,
         b.p2.x + v.x, b.p2.y + v.y,
@@ -481,18 +509,18 @@ export class Bond<TBio> {
     }
 
     if (b.type == JSDraw2.BONDTYPES.HASH || b.type == JSDraw2.BONDTYPES.BOLDHASH) {
-      var len = b.bondLength();
-      var n = Math.floor(len / (linewidth * 2));
-      var d = b.vector().scale(1.0 / n);
-      var v = b.vector().rotate(90);
-      for (var k = 1; k <= n; ++k) {
-        var p = b.p1.clone().offset(d.x * k, d.y * k);
-        var vlen = linewidth * 2;
+      const len = b.bondLength();
+      const n = Math.floor(len / (linewidth * 2));
+      const d = b.vector().scale(1.0 / n);
+      const v = b.vector().rotate(90);
+      for (let k = 1; k <= n; ++k) {
+        const p = b.p1.clone().offset(d.x * k, d.y * k);
+        let vlen = linewidth * 2;
         if (b.type == JSDraw2.BONDTYPES.HASH)
           vlen *= k / n;
         else
           vlen *= 0.6;
-        var vi = v.clone().setLength(vlen);
+        const vi = v.clone().setLength(vlen);
         JSDraw2.Drawer.drawLine(surface, p.clone().offset(vi.x, vi.y), p.clone().offset(-vi.x, -vi.y), color, linewidth);
       }
     }
@@ -501,10 +529,10 @@ export class Bond<TBio> {
       JSDraw2.Drawer.drawCurves(surface, b.p1, b.p2, color, linewidth);
 
     if (b.type == JSDraw2.BONDTYPES.EITHER) {
-      var d = b.vector().scale(1.0 / Math.abs(dir));
-      var v = b.vector().rotate(dir > 0 ? 90 : -90).setLength(linewidth * 2);
-      var p1 = b.p1.clone().offset(d.x + v.x, d.y + v.y);
-      var p2 = b.p2.clone().offset(-d.x + v.x, -d.y + v.y);
+      const d = b.vector().scale(1.0 / Math.abs(dir));
+      const v = b.vector().rotate(dir > 0 ? 90 : -90).setLength(linewidth * 2);
+      const p1 = b.p1.clone().offset(d.x + v.x, d.y + v.y);
+      const p2 = b.p2.clone().offset(-d.x + v.x, -d.y + v.y);
       JSDraw2.Drawer.drawLine(surface, b.p1, p2, color, linewidth);
       JSDraw2.Drawer.drawLine(surface, b.p2, p1, color, linewidth);
     }
@@ -525,15 +553,15 @@ export class Bond<TBio> {
       this._drawBond(surface, b, color, linewidth, null, null, linewidth * 1.2);
 
     if (b.b.ring != null) {
-      var p = this.center();
+      const p = this.center();
       surface.createCircle({cx: p.x, cy: p.y, r: linewidth * 3})
         .setStroke({color: color, width: linewidth / 2, style: b.b.ring ? "Solid" : "Dash"});
     }
 
     if (b.b.rcenter != null) {
-      var p = this.center();
-      var d = b.vector().rotate(90).setLength(linewidth * 3);
-      var v = b.vector().setLength(linewidth * (b.b.rcenter == JSDraw2.RXNCENTER.BREAKANDCHANGE ? 1.5 : 1));
+      const p = this.center();
+      let d = b.vector().rotate(90).setLength(linewidth * 3);
+      let v = b.vector().setLength(linewidth * (b.b.rcenter == JSDraw2.RXNCENTER.BREAKANDCHANGE ? 1.5 : 1));
       if (b.b.rcenter == JSDraw2.RXNCENTER.CENTER) {
         JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x + v.x, d.y + v.y), p.clone().offset(-d.x + v.x, -d.y + v.y), color, linewidth / 2);
         JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x - v.x, d.y - v.y), p.clone().offset(-d.x - v.x, -d.y - v.y), color, linewidth / 2);
@@ -557,18 +585,18 @@ export class Bond<TBio> {
     }
   }
 
-  drawSelect(lasso) {
+  drawSelect(lasso: ILasso) {
     lasso.draw(this, this.center());
   }
 
   // -- static --
 
-  static cast<TBio>(a): Bond<TBio> | null {
+  static cast<TBio>(a: any): Bond<TBio> | null {
     return a != null && a.T == 'BOND' ? a : null;
   }
 
   static showHelmAnnotation<TBio>(a1: Atom<TBio>, a2: Atom<TBio>, r1: number): void {
-    if (a1.bio == null || scil.Utils.isNullOrEmpty(a1.bio.annotation))
+    if (a1.bio == null || scil.Utils.isNullOrEmpty(a1.bio.annotation!))
       return;
 
     if (r1 == 2 && a1.p.x > a2.p.x || r1 == 1 && a1.p.x < a2.p.x)

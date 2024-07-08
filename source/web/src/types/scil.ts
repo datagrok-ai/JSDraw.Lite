@@ -54,7 +54,7 @@ export interface IScilUtils {
   indexOf(s: any, token: any, ignorecase?: boolean): number;
   startswith(s: string, token: string, casesensitive?: boolean): boolean;
   endswith(s: string, token: string, casesensitive?: boolean): boolean;
-  escXmlValue(el: object | string): string;
+  escXmlValue(el: object | string | null): string;
 
   containsWord(str: string, word: string, ignorecase: boolean): boolean;
   formatStr(value: number, width: number, d?: number): string;

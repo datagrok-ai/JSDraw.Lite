@@ -3563,7 +3563,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
     JSDraw2.needPro();
   }
 
-  menuSetAtomType(cmd, obj) {
+  menuSetAtomType(cmd: string, obj: any) {
     if (cmd == "..." || cmd == "more") {
       const me = this;
       this.showPT(function(elem) { me.menuSetAtomType2(elem, obj); });
@@ -3572,7 +3572,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
     }
   }
 
-  menuSetAtomType2(elem, obj?: any) {
+  menuSetAtomType2(elem: string, obj?: any) {
     let n = 0;
     const cloned = this.clone();
 

@@ -6,6 +6,15 @@ import type {Rect} from '../Rect';
 import type {Bond, BondB} from '../Bond';
 import type {Mol} from '../Mol';
 import type {Bracket} from '../Bracket';
+import type {Drawer} from '../Drawer';
+
+export const enum DrawSteps {
+  highlight,
+  select,
+  main
+}
+
+export type DrawStep = typeof DrawSteps[keyof typeof DrawSteps];
 
 export const enum BondTypes {
   UNKNOWN = 0,
@@ -55,6 +64,13 @@ const AlignTypes = new class {
   TOP = 3;
 }();
 
+export enum TextAligns {
+  left = 'left',
+  right = 'right',
+}
+
+export type TextAlign = typeof TextAligns[keyof typeof TextAligns];
+
 const AntibodyTypes = new class {
   IgG = 'IgG';
   Fab = 'Fab';
@@ -74,18 +90,6 @@ const BioTypes = new class {
 }();
 
 export type BioType = keyof typeof BioTypes;
-
-// const BioTypes = new class {
-//   AA = 'AA';
-//   //BASE= 'BASE',
-//   ANTIBODY = 'ANTIBODY';
-//   PROTEIN = 'PROTEIN';
-//   GENE = 'GENE';
-//   DNA = 'DNA';
-//   RNA = 'RNA';
-//   BASE_DNA = 'BASEDNA';
-//   BASE_RNA = 'BASERNA';
-// }();
 
 export enum ShapeTypes {
   LINE = 'line',
@@ -110,7 +114,7 @@ export interface ICast<T> {
 
 export interface IGraphics {
   readonly T: string;
-  color: string;
+  color: string | null;
   // atoms: Atom<any>[];
   // _parent: Mol<any>;
   // anchors: any[];
@@ -119,92 +123,24 @@ export interface IGraphics {
   // a: any; // TODO
   // group: any; // TODO
   reject: any; // TODO
-  selected: boolean;
+  selected?: boolean;
   id: number;
-  graphicsid: number;
+  graphicsid?: number;
   rect(): Rect;
   clone(map: any[]): IGraphics;
-  draw(surface: any, linewidth: number, m: any, fontsize: number): void;
+  draw(surface: any, linewidth: number, m: any, fontsize: number, drawStep?: number): void;
 
   [p: string]: any;
 }
 
-// export interface IBracket<TBio> extends IGraphics<TBio>, ICast<IBracket<TBio>> {
-//   atoms: Atom<TBio>[];
-//   color: string;
-//   shape: IShape;
-//   conn: string | null;
-//   expandedatoms: any | null;
-//   sgrouptexts: string;
-//   subscript: string | null;
-//   type: string | null;
-//
-//   _rect: Rect;
-//
-//   new(type: string, rect: Rect | null, shape?: IShape): IBracket<TBio>;
-//
-//   clone(): IBracket<TBio>;
-//
-//   getTexts(m: Mol<TBio>): any;
-//   getType(): string;
-//   getSubscript(m: Mol<TBio>): string;
-//   getXbonds(m: Mol<TBio>): any;
-//   getTypeNum(): string;
-//   createSubscript(mol: Mol<TBio>, repeat?: string): void;
-// }
-
-// export interface IMol<TBio = any> {
-//   atoms: Atom<TBio>[];
-//   bonds: Bond<TBio>[];
-//   graphics: IGraphics[];
-//
-//   bondlength: number;
-//   name: string;
-//   chiral: any;
-//   props: any;
-//   showimplicithydrogens: boolean;
-//   mw: number;
-//   attachpoints: any;
-//
-//   new(showimplicithydrogens?: boolean): IMol<TBio>;
-//
-//   isEmpty(): boolean;
-//   clone(selectedOnly?: boolean): IMol<TBio>;
-//   getSgroupTexts(br: IBracket<TBio>): string;
-//
-//   getXml(width?: number, height?: number, viewonly?: boolean, svg?: any, len?: number): string;
-//   setXml(el: HTMLElement | string): any;
-//   setMolV3000(linses: string[], start: number, rxn: any, pos?: any, endtoken?: any): void;
-//   setJdx(data: any, bondlength: number): IMol<TBio>;
-//
-//   setMolfile(molfile: string): IMol<TBio>;
-//   addGraphics(G: IGraphics): IGraphics;
-//   getFragment(a: Atom<TBio>, parent?: IMol<TBio>): IMol<TBio>;
-//   mergeMol(m: IMol<TBio>): void;
-//
-//   addAtom(a: Atom<TBio>): Atom<TBio> | null;
-//   addBond(b: Bond<TBio>, resetcharge?: boolean, add2group?: boolean): Bond<TBio> | null;
-//   setAtomType(a: Atom<TBio>, elem: string, setCharge?: boolean): boolean;
-//   setHCount(a: Atom<TBio>): void;
-//   setAtomAlias(a: Atom<TBio>, alias: string, len?: number): boolean;
-//   setBondLength(bondlength: number): void;
-//
-//   _addAtom(a1: Atom<TBio>, parent?: IMol<TBio>): void;
-//   _addBond(b1: Bond<TBio>, parent?: IMol<TBio>): void;
-//   _addGraphics(g1: any): void;
-//   _setParent(parent: IMol<TBio>): void;
-//
-//   offset(dx: number, dy: number, selectedOnly?: boolean): void;
-//   getNeighborAtoms(a: Atom<TBio>, oa: Atom<TBio>, excludeDummyBond?: boolean): Atom<TBio>[];
-//   getMaxRIndex(index: number): number;
-//
-//   [p: string]: any;
-// }
-
 export type ColorArray = [number, number, number, number];
 
 export interface IOrgPlugin<TBio> {
+  get jsd(): Editor<TBio>;
+
   new(jsd: IMolHandler<TBio>): IOrgPlugin<TBio>;
+
+  setHelmBlobType(a: Atom<TBio>, type: string): void;
 
   [p: string]: any;
 }
@@ -427,6 +363,21 @@ export interface IJsAtom<TBio> extends IPistoiaBase {
   // get atommapid(): string | null;
 }
 
+export interface IRxn {
+  [p: string]: any;
+}
+
+export interface IText extends ICast<IText> {
+  new(r?: Rect, v?: string): IText;
+
+  [p: string]: any;
+}
+
+export interface ILasso {
+  new(extra: any, linewidth: number, selecting: boolean): ILasso;
+  [p: string]: any;
+}
+
 export type AtomQueryType = {
   t?: boolean;
   sub?: number | '*';
@@ -435,6 +386,11 @@ export type AtomQueryType = {
   als?: string[] | null;
   v?: number;
 };
+
+export interface IGroup {
+
+  [p: string]: any;
+}
 
 // export interface IAtom<TBio = any> extends IJsAtom<TBio> {
 //   elem: string;
@@ -518,7 +474,7 @@ export interface IRGroup<TBio = any> extends ICast<IRGroup<TBio>> {
 
   readHtml(t: HTMLElement, v: any): any;
   html(scale: number): string;
-  clone(selectedOnly: boolean): IRGroup<TBio>;
+  clone(selectedOnly?: boolean): IRGroup<TBio>;
 
   [p: string]: any;
 }
@@ -560,6 +516,16 @@ export type IContextMenu = any;
 
 export type IDialog = any;
 
+export interface IElement {
+  m: number;
+}
+
+export interface IPeriodicTable {
+  [elem: string]: IElement | any;
+
+  isValidAtomList(s: string): boolean;
+}
+
 export type JSDraw2ModuleType<TBio> = {
   password: any;
 
@@ -584,13 +550,13 @@ export type JSDraw2ModuleType<TBio> = {
   Bond: typeof Bond<TBio>;
   BondB: typeof BondB<TBio>; // TODO: Hide
   Bracket: typeof Bracket<TBio>;
-  Drawer: any;
+  Drawer: Drawer;
 
   Editor: typeof Editor;
   MolHandler: IMolHandler<TBio>;
 
   Formulation: any;
-  Group: any;
+  Group: IGroup;
   Mol: typeof Mol;
   Point: typeof Point;
   Rect: typeof Rect;
@@ -598,16 +564,16 @@ export type JSDraw2ModuleType<TBio> = {
   Plates: any;
   Plus: typeof Plus;
   Shape: any;
-  Text: any;
+  Text: IText;
   SequenceEditor: any;
-  Lasso: any;
+  Lasso: ILasso;
   Skin: any;
   Security: any;
 
   AssayCurve: any;
   Spectrum: any;
   Stack: IStack;
-  PT: any;
+  PT: IPeriodicTable;
   TLC: any;
   Base64: any;
   JSDrawIO: any;

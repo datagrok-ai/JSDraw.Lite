@@ -63,7 +63,7 @@ async function loadModules(): Promise<void> {
   require('./FormulaParser.js');
   require('./Toolbar.js');
   require('./Lasso.js');
-  require('./Drawer.js');
+  await import(/* webpackMode: "eager" */ './Drawer');
   require('./Language.js');
   require('./IDGenerator.js');
   require('./Skin.js');

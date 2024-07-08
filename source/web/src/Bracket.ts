@@ -4,13 +4,14 @@
 // http://www.scilligence.com/
 //
 
-// @ts-nocheck
-
 import type {JSDraw2ModuleType, ScilModuleType} from './types';
 
-import type {IGraphics, ShapeType} from './types/jsdraw2';
 import type {Atom} from './Atom';
-import type {Rect} from './Rect';
+import type {CornerType, Rect} from './Rect';
+import type {Mol} from './Mol';
+import type {Bond} from './Bond';
+import type {IGraphics, ILasso, IText, ShapeType} from './types/jsdraw2';
+import {Point} from './Point';
 
 declare const scilligence: ScilModuleType;
 declare const scil: ScilModuleType;
@@ -23,24 +24,25 @@ declare const JSDraw2: JSDraw2ModuleType<any>;
 export class Bracket<TBio> implements IGraphics {
   readonly T: string;
   public atoms: Atom<TBio>[];
-  readonly type: string;
+  readonly type: string | null;
   readonly _rect: Rect;
-  private shape: ShapeType;
-  public sgrouptexts: string;
-  public subscript: string;
+  private shape?: ShapeType;
+  public sgrouptexts?: string;
+  public subscript?: string | null;
   conn: any;
-  expandedatoms: Atom<TBio>[];
+  expandedatoms?: Atom<TBio>[];
 
   // IGraphics
-  public id: number;
-  public color: string;
+  public id!: number;
+  public color: string | null;
   // TODO: IGraphics
   reject: any; // TODO
-  selected: boolean;
-  graphicsid: number;
+  selected?: boolean;
+  graphicsid?: number;
 
+  _parent!: Mol<TBio>;
 
-  constructor(type, rect, shape?: ShapeType) {
+  constructor(type: string | null, rect: Rect, shape?: ShapeType) {
     this.T = "BRACKET";
     this.atoms = [];
     this.type = type;
@@ -56,13 +58,13 @@ export class Bracket<TBio> implements IGraphics {
     return b as IGraphics;
   }
 
-  getXbonds(m) {
-    var list = [];
-    var bonds = m.bonds;
-    for (var i = 0; i < bonds.length; ++i) {
-      var b = bonds[i];
-      var f1 = scil.Utils.indexOf(this.atoms, b.a1) >= 0;
-      var f2 = scil.Utils.indexOf(this.atoms, b.a2) >= 0;
+  getXbonds(m: Mol<TBio>): Bond<TBio>[] {
+    const list: Bond<TBio>[] = [];
+    const bonds = m.bonds;
+    for (let i = 0; i < bonds.length; ++i) {
+      const b = bonds[i];
+      const f1 = scil.Utils.indexOf(this.atoms, b.a1) >= 0;
+      const f2 = scil.Utils.indexOf(this.atoms, b.a2) >= 0;
       if (f1 != f2)
         list.push(b);
     }
@@ -70,10 +72,10 @@ export class Bracket<TBio> implements IGraphics {
     return list;
   }
 
-  allAtomsIn(m) {
+  allAtomsIn(m: Mol<TBio>): boolean {
     if (this.atoms.length == 0)
       return false;
-    for (var i = 0; i < this.atoms.length; ++i) {
+    for (let i = 0; i < this.atoms.length; ++i) {
       if (m.atoms.indexOf(this.atoms[i]) < 0)
         return false;
     }
@@ -83,7 +85,7 @@ export class Bracket<TBio> implements IGraphics {
   getTypeNum() {
     if (this.type == null)
       return null;
-    var type = this.type + "";
+    const type = this.type + "";
     if (type.match(/^[c][0-9]+$/))
       return type.substr(1);
     //        else if (type.match(/^[0-9]+$/))
@@ -94,7 +96,7 @@ export class Bracket<TBio> implements IGraphics {
   getType() {
     if (this.type == null)
       return "";
-    var type = this.type + "";
+    let type = this.type + "";
     if (type.match(/^[c][0-9]+$/))
       type = "c";
     //        else if (type.match(/^[0-9]+$/))
@@ -102,36 +104,36 @@ export class Bracket<TBio> implements IGraphics {
     return type;
   }
 
-  getSubscript(m) {
+  getSubscript(m: Mol<TBio>) {
     const t = m.getSgroupText(this, "BRACKET_TYPE");
     return t == null ? null : t.text;
   }
 
-  createSubscript(m, s) {
+  createSubscript(m: Mol<TBio>, s: string) {
     if (scil.Utils.isNullOrEmpty(s))
       return null;
 
-    var t = m.getSgroupText(this, "BRACKET_TYPE");
+    let t: IText | null = m.getSgroupText(this, "BRACKET_TYPE");
     if (t != null)
       return t;
 
-    var gap = m.medBondLength(1.56) / 2;
+    const gap = m.medBondLength(1.56) / 2;
     t = m.setSgroup(this, "BRACKET_TYPE", s, this._rect.right() + gap / 4, this._rect.bottom() - gap);
     return t;
   }
 
-  html(scale) {
+  html(scale: number): string {
     //if (this.atoms == null || this.atoms.length == 0)
     //    return;
-    var ss = "";
+    let ss = "";
 
     if (this.atoms != null && this.atoms.length > 0) {
       ss = this.atoms[0].id + "";
-      for (var i = 1; i < this.atoms.length; ++i)
+      for (let i = 1; i < this.atoms.length; ++i)
         ss += "," + this.atoms[i].id;
     }
 
-    var s = "<i i='" + this.id + "' x='" + this.T + "' t='" + scilligence.Utils.escXmlValue(this.type) + "'";
+    let s = "<i i='" + this.id + "' x='" + this.T + "' t='" + scilligence.Utils.escXmlValue(this.type) + "'";
     if (this.color != null)
       s += " clr='" + this.color + "'";
     if (this.shape != null)
@@ -141,17 +143,17 @@ export class Bracket<TBio> implements IGraphics {
     return s;
   }
 
-  flipY(y) {
+  flipY(y: number): void {
   }
 
-  flipX(x) {
+  flipX(x: number): void {
   }
 
-  scale(s, origin) {
+  scale(s: number, origin: Point) {
     this._rect.scale(s, origin);
   }
 
-  offset(dx, dy) {
+  offset(dx: number, dy: number) {
     this._rect.offset(dx, dy);
   }
 
@@ -159,89 +161,89 @@ export class Bracket<TBio> implements IGraphics {
     return this._rect;
   }
 
-  toggle(p, tor) {
-    var r = this._rect;
+  toggle(p: Point, tor: number): boolean | undefined {
+    const r = this._rect;
     if (r == null)
       return;
-    var x1 = p.x - r.left;
-    var x2 = r.right() - p.x;
+    const x1 = p.x - r.left;
+    const x2 = r.right() - p.x;
     return p.y >= r.top - tor && p.y <= r.bottom() + tor && (x1 >= -tor / 2 && x1 < tor || x2 >= -tor / 2 && x2 < tor);
   }
 
-  drawCur(surface, r, color, m) {
-    var r2 = this._rect;
+  drawCur(surface: any, r: number, color: string, m?: Mol<TBio>): void {
+    const r2 = this._rect;
     if (r2 == null)
       return;
-    var y = r2.center().y;
+    const y = r2.center().y;
     surface.createCircle({cx: r2.left, cy: y, r: r}).setFill(color);
     surface.createCircle({cx: r2.right(), cy: y, r: r}).setFill(color);
 
     if (m != null) {
-      for (var i = 0; i < this.atoms.length; ++i)
+      for (let i = 0; i < this.atoms.length; ++i)
         this.atoms[i].drawCur(surface, r * 0.75, color);
     }
   }
 
-  draw(surface, linewidth, m, fontsize) {
-    var r = this._rect;
+  draw(surface: any, linewidth: number, m: Mol<TBio>, fontsize: number): void {
+    const r = this._rect;
 
-    var color = this.color == null ? "gray" : this.color;
+    const color = this.color == null ? "gray" : this.color;
     JSDraw2.Drawer.drawBracket(surface, r, color, linewidth);
   }
 
-  drawSelect(lasso) {
+  drawSelect(lasso: ILasso) {
     lasso.draw(this, this._rect.fourPoints());
   }
 
-  cornerTest(p, tor) {
+  cornerTest(p: Point, tor: number) {
     return this._rect.cornerTest(p, tor);
   }
 
-  resize(corner, d, texts) {
+  resize(corner: CornerType, d: Point, texts: any): void {
     this._rect.moveCorner(corner, d);
     if (texts == null)
       return;
     switch (corner) {
     case "topleft":
-      for (var i = 0; i < texts.topleft.length; ++i)
+      for (let i = 0; i < texts.topleft.length; ++i)
         texts.topleft[i]._rect.offset(d.x, d.y);
-      for (var i = 0; i < texts.topright.length; ++i)
+      for (let i = 0; i < texts.topright.length; ++i)
         texts.topright[i]._rect.offset(0, d.y);
-      for (var i = 0; i < texts.bottomleft.length; ++i)
+      for (let i = 0; i < texts.bottomleft.length; ++i)
         texts.bottomleft[i]._rect.offset(d.x, 0);
       break;
     case "topright":
-      for (var i = 0; i < texts.topright.length; ++i)
+      for (let i = 0; i < texts.topright.length; ++i)
         texts.topright[i]._rect.offset(d.x, d.y);
-      for (var i = 0; i < texts.topleft.length; ++i)
+      for (let i = 0; i < texts.topleft.length; ++i)
         texts.topleft[i]._rect.offset(0, d.y);
-      for (var i = 0; i < texts.bottomright.length; ++i)
+      for (let i = 0; i < texts.bottomright.length; ++i)
         texts.bottomright[i]._rect.offset(d.x, 0);
       break;
     case "bottomleft":
-      for (var i = 0; i < texts.bottomleft.length; ++i)
+      for (let i = 0; i < texts.bottomleft.length; ++i)
         texts.bottomleft[i]._rect.offset(d.x, d.y);
-      for (var i = 0; i < texts.bottomright.length; ++i)
+      for (let i = 0; i < texts.bottomright.length; ++i)
         texts.bottomright[i]._rect.offset(0, d.y);
-      for (var i = 0; i < texts.topleft.length; ++i)
+      for (let i = 0; i < texts.topleft.length; ++i)
         texts.topleft[i]._rect.offset(d.x, 0);
       break;
     case "bottomright":
-      for (var i = 0; i < texts.bottomright.length; ++i)
+      for (let i = 0; i < texts.bottomright.length; ++i)
         texts.bottomright[i]._rect.offset(d.x, d.y);
-      for (var i = 0; i < texts.bottomleft.length; ++i)
+      for (let i = 0; i < texts.bottomleft.length; ++i)
         texts.bottomleft[i]._rect.offset(0, d.y);
-      for (var i = 0; i < texts.topright.length; ++i)
+      for (let i = 0; i < texts.topright.length; ++i)
         texts.topright[i]._rect.offset(d.x, 0);
       break;
     }
   }
 
-  removeObject(obj) {
-    var a = JSDraw2.Atom.cast(obj);
+  removeObject(obj: any) {
+    const a = JSDraw2.Atom.cast(obj);
     if (a == null)
       return;
-    for (var i = 0; i < this.atoms.length; ++i) {
+    for (let i = 0; i < this.atoms.length; ++i) {
       if (this.atoms[i] == a) {
         this.atoms.splice(i, 1);
         break;
@@ -249,14 +251,15 @@ export class Bracket<TBio> implements IGraphics {
     }
   }
 
-  getTexts(m) {
-    var ret = {topleft: [], topright: [], bottomleft: [], bottomright: []};
-    var c1 = this._rect.center();
-    for (var i = 0; i < m.graphics.length; ++i) {
-      var t = JSDraw2.Text.cast(m.graphics[i]);
+  getTexts(m: Mol<TBio>) {
+    const ret: { topleft: IText[], topright: IText[], bottomleft: IText[], bottomright: IText[] } =
+      {topleft: [], topright: [], bottomleft: [], bottomright: []};
+    const c1 = this._rect.center();
+    for (let i = 0; i < m.graphics.length; ++i) {
+      const t = JSDraw2.Text.cast(m.graphics[i]);
       if (t == null || t.anchors.length != 1 || t.anchors[0] != this)
         continue;
-      var c = t._rect.center();
+      const c = t._rect.center();
       if (c.x < c1.x) {
         if (c.y < c1.y)
           ret.topleft.push(t);

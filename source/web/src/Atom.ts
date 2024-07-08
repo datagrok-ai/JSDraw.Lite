@@ -8,8 +8,6 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
-// @ts-nocheck
-
 import type {DojoType, DojoxType} from './types/dojo';
 import type {ScilModuleType} from './types/scil';
 import type {OrgType} from './types/org';
@@ -18,7 +16,11 @@ import type {Point} from './Point';
 import type {Rect} from './Rect';
 import type {Bond} from './Bond';
 import type {Mol} from './Mol';
-import type {AtomQueryType, IBio, IRGroup, JSDraw2ModuleType} from './types/jsdraw2';
+import type {
+  AtomQueryType, IGroup, IBio, IRGroup, JSDraw2ModuleType, DrawStep, ILasso
+} from './types/jsdraw2';
+
+import {DrawSteps} from './types/jsdraw2';
 
 declare const dojo: DojoType;
 declare const dojox: DojoxType;
@@ -59,23 +61,24 @@ export class Atom<TBio> {
   public charge: number;
   public isotope: number | null;
   public radical: number | null;
-  public group: any;
-  public alias: string;
+  public group: IGroup | null;
+  public alias: string | null;
   public superatom: any; // TODO: ?
   public attachpoints: any[];
-  public rgroup: IRGroup<TBio>;
-  public bio: IBio<TBio>;
+  public rgroup: IRGroup<TBio> | null;
+  public bio: IBio<TBio> | null;
   private locked: boolean;
-  public hidden: boolean;
-  private ratio: number;
-  private _rect: Rect;
+  public hidden: boolean | null;
+  private ratio?: number;
+  private _rect: Rect | null;
   public elem: string;
-  public color: string;
+  public color: string | null;
 
   public hcount: number | null;
   public selected: boolean;
+  public highlighted: boolean;
   public f: number | string | null;
-  public bonds: Bond<TBio>[];
+  public bonds: Bond<TBio>[] | null;
   public id: number | null;
   public atommapid: number | null;
   public query: AtomQueryType | null;
@@ -84,18 +87,18 @@ export class Atom<TBio> {
   public val: any | null;
   public tag: string | null;
 
-  public _haslabel: boolean;
-  public _parent: Mol<TBio>;
-  public atomid: number;
-  public _outside: boolean;
-  public mol: Mol<TBio>;
-  public iR: number | string | null;
-  public __drawselect: boolean;
+  public _haslabel?: boolean;
+  public _parent!: Mol<TBio>;
+  public atomid?: number;
+  public _outside?: boolean;
+  public mol?: Mol<TBio>;
+  public iR?: number | string | null;
+  public __drawselect?: boolean;
   public ringclosures: any;
-  public aromatic: boolean;
-  public _aaid: number;
+  public aromatic?: boolean;
+  public _aaid?: number;
 
-  public __mol: Mol<TBio>;
+  public __mol?: Mol<TBio>;
 
 
   /**
@@ -132,11 +135,12 @@ export class Atom<TBio> {
         this.elem = elem;
       }
     } else {
-      this.elem = elem;
+      this.elem = elem!;
     }
     this.color = null;
     this.hcount = null;
     this.selected = false;
+    this.highlighted = false;
     this.f = null;
     this.bonds = null;
     this.id = null;
@@ -148,7 +152,7 @@ export class Atom<TBio> {
     this.tag = null;
   }
 
-  clone(selectedOnly: boolean) {
+  clone(selectedOnly?: boolean) {
     const a = new JSDraw2.Atom(this.p.clone(), this.elem, dojo.clone(this.bio));
     a.charge = this.charge;
     a.isotope = this.isotope;
@@ -176,7 +180,7 @@ export class Atom<TBio> {
     return a;
   }
 
-  biotype(): TBio {
+  biotype(): TBio | null {
     return this.bio == null ? null : this.bio.type;
   }
 
@@ -204,14 +208,14 @@ export class Atom<TBio> {
     return this.elem;
   }
 
-  html(scale, len) {
+  html(scale: number, len: number): string {
     var s = '<a i=\'' + this.id + '\' e=\'' + scil.Utils.escXmlValue(this.elem) + '\' p=\'' + this.p.toString(scale) + '\'';
     if (this.bio == null) {
       if (this.charge != 0)
         s += ' c=\'' + this.charge + '\'';
-      if (this.radical >= 1 && this.radical <= 3)
+      if (this.radical! >= 1 && this.radical! <= 3)
         s += ' rad=\'' + this.radical + '\'';
-      if (this.isotope > 0)
+      if (this.isotope! > 0)
         s += ' iso=\'' + this.isotope + '\'';
       if (this.tag != null && this.tag != '')
         s += ' tag=\'' + scil.Utils.escXmlValue(this.tag) + '\'';
@@ -219,7 +223,7 @@ export class Atom<TBio> {
         s += ' alias=\'' + scil.Utils.escXmlValue(this.alias) + '\'';
       if (this.color != null)
         s += ' clr=\'' + this.color + '\'';
-      if (this.atommapid > 0)
+      if (this.atommapid! > 0)
         s += ' ami=\'' + this.atommapid + '\'';
       if (this.locked)
         s += ' locked=\'1\'';
@@ -229,7 +233,7 @@ export class Atom<TBio> {
           apos += (i > 0 ? ',' : '') + this.attachpoints[i];
         s += ' apo=\'' + apos + '\'';
       }
-      if (this.hs > 0)
+      if (this.hs! > 0)
         s += ' hs=\'' + this.hs + '\'';
       if (this.val > 0)
         s += ' val=\'' + this.val + '\'';
@@ -249,18 +253,18 @@ export class Atom<TBio> {
       }
     } else {
       s += ' bio=\'' + this.bio.type + '\'';
-      if (!scil.Utils.isNullOrEmpty(this.bio.subtype))
+      if (!scil.Utils.isNullOrEmpty(this.bio.subtype!))
         s += ' subtype=\'' + this.bio.subtype + '\'';
-      if (!scil.Utils.isNullOrEmpty(this.bio.sequences))
-        s += ' seq=\'' + scil.Utils.escXmlValue(this.bio.sequences) + '\'';
+      if (!scil.Utils.isNullOrEmpty(this.bio.sequences!))
+        s += ' seq=\'' + scil.Utils.escXmlValue(this.bio.sequences!) + '\'';
       if ((this.bio.id as number) > 0)
         s += ' bioid=\'' + scil.Utils.escXmlValue(this.bio.id as string) + '\'';
-      if (!scil.Utils.isNullOrEmpty(this.bio.annotation))
-        s += ' ann=\'' + scil.Utils.escXmlValue(this.bio.annotation) + '\'';
-      if (this.elem == '?' && !scil.Utils.isNullOrEmpty(this.bio.ambiguity))
-        s += ' amb=\'' + scil.Utils.escXmlValue(this.bio.ambiguity) + '\'';
-      if (this.biotype() == org.helm.webeditor.HELM.BLOB && !scil.Utils.isNullOrEmpty(this.bio.blobtype))
-        s += ' blobtype=\'' + scil.Utils.escXmlValue(this.bio.blobtype) + '\'';
+      if (!scil.Utils.isNullOrEmpty(this.bio.annotation!))
+        s += ' ann=\'' + scil.Utils.escXmlValue(this.bio.annotation!) + '\'';
+      if (this.elem == '?' && !scil.Utils.isNullOrEmpty(this.bio.ambiguity!))
+        s += ' amb=\'' + scil.Utils.escXmlValue(this.bio.ambiguity!) + '\'';
+      if (this.biotype() == org.helm.webeditor.HELM.BLOB && !scil.Utils.isNullOrEmpty(this.bio.blobtype!))
+        s += ' blobtype=\'' + scil.Utils.escXmlValue(this.bio.blobtype!) + '\'';
     }
 
     if (this.rgroup == null && this.superatom == null) {
@@ -287,7 +291,7 @@ export class Atom<TBio> {
     return s;
   }
 
-  readHtml(e) {
+  readHtml(e: HTMLElement): void {
     var c = e.getAttribute('c');
     if (c != null)
       this.charge = parseInt(c);
@@ -320,7 +324,7 @@ export class Atom<TBio> {
     if (alias != null && alias != '')
       this.alias = alias;
 
-    var ami = e.getAttribute('ami');
+    var ami: any = e.getAttribute('ami');
     if (ami != null && !isNaN(ami))
       this.atommapid = parseInt(ami);
 
@@ -367,7 +371,7 @@ export class Atom<TBio> {
     if (this.bio != null) {
       this.bio.subtype = e.getAttribute('subtype');
       this.bio.sequences = e.getAttribute('seq');
-      const bioid: number = parseInt(e.getAttribute('bioid'));
+      const bioid: number = parseInt(e.getAttribute('bioid')!);
       if (bioid > 0)
         this.bio.id = bioid;
 
@@ -379,7 +383,7 @@ export class Atom<TBio> {
       if (this.elem == '?' && !scil.Utils.isNullOrEmpty(amb))
         this.bio.ambiguity = amb;
 
-      var blobtype = e.getAttribute('blobtype');
+      const blobtype = e.getAttribute('blobtype');
       if (this.biotype() == org.helm.webeditor.HELM.BLOB && !scil.Utils.isNullOrEmpty(blobtype))
         this.bio.blobtype = blobtype;
     }
@@ -393,7 +397,7 @@ export class Atom<TBio> {
           if (r.readHtml(t, null)) {
             this.rgroup = r;
 
-            r.position = JSDraw2.Point.fromString(e.getAttribute('p'));
+            r.position = JSDraw2.Point.fromString(e.getAttribute('p')!);
             var divs = scil.Utils.getElements(rgEl, 'div');
             for (var i = 0; i < divs.length; ++i) {
               var m = new JSDraw2.Mol();
@@ -422,7 +426,7 @@ export class Atom<TBio> {
     }
   }
 
-  toggle(p, tor) {
+  toggle(p: Point, tor: number): boolean {
     if (this._rect != null)
       return this._rect.contains(p);
     return this.p.distTo(p) <= tor;
@@ -436,7 +440,7 @@ export class Atom<TBio> {
       for (let i = 0; i < list.length; ++i) {
         const b = list[i];
         if (b.type == JSDraw2.BONDTYPES.DUMMY)
-          b.otherAtom(this).drawCur(surface, r * 0.75, color);
+          b.otherAtom(this)!.drawCur(surface, r * 0.75, color);
       }
     }
   }
@@ -449,14 +453,14 @@ export class Atom<TBio> {
   //   return a.elem != 'C' || a.charge != 0 || a.isotope != null || a.hcount == 4;
   // },
 
-  drawBio(surface, linewidth: number, fontsize: number, color) {
+  drawBio(surface: any, linewidth: number, fontsize: number, color: string, drawStep: DrawStep): void {
     var a = this;
     var biotype = this.biotype();
     var p = a.p.clone();
-    if (biotype == JSDraw2.BIO.ANTIBODY) {
+    if (biotype == JSDraw2.BIO.ANTIBODY && DrawSteps.main === drawStep) {
       color = '#00f';
-      var color2 = a.bio.subtype == JSDraw2.ANTIBODY.ScFv ? '#bbb' : color;
-      var color3 = a.bio.subtype == JSDraw2.ANTIBODY.ScFv || a.bio.subtype == JSDraw2.ANTIBODY.Fab ? '#bbb' : color;
+      var color2 = a.bio!.subtype == JSDraw2.ANTIBODY.ScFv ? '#bbb' : color;
+      var color3 = a.bio!.subtype == JSDraw2.ANTIBODY.ScFv || a.bio!.subtype == JSDraw2.ANTIBODY.Fab ? '#bbb' : color;
       surface.createCircle({cx: p.x, cy: p.y, r: fontsize})
         .setFill('white')
         .setStroke({color: color, width: linewidth / 2});
@@ -468,14 +472,14 @@ export class Atom<TBio> {
       JSDraw2.Drawer.drawLine(surface, new JSDraw2.Point(p.x + 2 * linewidth, p.y + fontsize / 1.5), new JSDraw2.Point(p.x + 2 * linewidth + fontsize, p.y - fontsize + fontsize / 1.5), color, linewidth);
       JSDraw2.Drawer.drawLine(surface, new JSDraw2.Point(p.x - linewidth, p.y), new JSDraw2.Point(p.x - linewidth, p.y + fontsize * 2), color3, linewidth);
       JSDraw2.Drawer.drawLine(surface, new JSDraw2.Point(p.x + linewidth, p.y), new JSDraw2.Point(p.x + linewidth, p.y + fontsize * 2), color3, linewidth);
-    } else if (biotype == JSDraw2.BIO.PROTEIN) {
+    } else if (biotype == JSDraw2.BIO.PROTEIN && DrawSteps.main === drawStep) {
       var colors = [{offset: 0, color: '#4ea1fc'}, {offset: linewidth / 20, color: '#0072e5'}, {offset: linewidth / 10, color: '#003b80'}];
       surface.createCircle({cx: this.p.x, cy: this.p.y, r: fontsize})
         .setFill({type: 'radial', cx: this.p.x + fontsize / 4, cy: this.p.y + fontsize / 4, colors: colors});
-    } else if (biotype == JSDraw2.BIO.GENE || biotype == JSDraw2.BIO.DNA || biotype == JSDraw2.BIO.RNA) {
+    } else if ((biotype == JSDraw2.BIO.GENE || biotype == JSDraw2.BIO.DNA || biotype == JSDraw2.BIO.RNA) && DrawSteps.main === drawStep) {
       color = '#00f';
-      var color2 = a.bio.subtype == JSDraw2.ANTIBODY.ScFv ? '#bbb' : color;
-      var color3 = a.bio.subtype == JSDraw2.ANTIBODY.ScFv || a.bio.subtype == JSDraw2.ANTIBODY.Fab ? '#bbb' : color;
+      var color2 = a.bio!.subtype == JSDraw2.ANTIBODY.ScFv ? '#bbb' : color;
+      var color3 = a.bio!.subtype == JSDraw2.ANTIBODY.ScFv || a.bio!.subtype == JSDraw2.ANTIBODY.Fab ? '#bbb' : color;
       surface.createCircle({cx: p.x, cy: p.y, r: fontsize})
         .setFill('white')
         .setStroke({color: color, width: linewidth / 2});
@@ -484,10 +488,10 @@ export class Atom<TBio> {
       this.drawEllipse(surface, p.x - fontsize / 6, p.y + fontsize / 3, fontsize / 6, fontsize / 2, color, +20);
       this.drawEllipse(surface, p.x - fontsize / 6, p.y - fontsize / 3, fontsize / 6, fontsize / 2, color, -20);
     } else if (org.helm.webeditor.isHelmNode(a)) {
-      org.helm.webeditor.Interface.drawMonomer(surface, a, p, fontsize, linewidth, color);
-    } else {
+      org.helm.webeditor.Interface.drawMonomer(surface, a, p, fontsize, linewidth, color, drawStep);
+    } else if (DrawSteps.main === drawStep) {
       if (color == null)
-        color = a.bio.type == JSDraw2.BIO.AA ? '#00F' : (a.bio.type == JSDraw2.BIO.BASE_RNA ? '#278925' : '#FFAA00');
+        color = a.bio!.type == JSDraw2.BIO.AA ? '#00F' : (a.bio!.type == JSDraw2.BIO.BASE_RNA ? '#278925' : '#FFAA00');
       this.drawDiamond(surface, p.x, p.y, fontsize * 0.55, color, linewidth);
       p.offset(0, -1);
       JSDraw2.Drawer.drawLabel(surface, p, a.elem, color, fontsize * (a.elem.length > 1 ? 2 / a.elem.length : 1.0), null, null, null, false);
@@ -497,24 +501,24 @@ export class Atom<TBio> {
     //    this.drawSelect(surface, linewidth);
   }
 
-  drawDiamond(surface, x, y, w, color, linewidth) {
+  drawDiamond(surface: any, x: number, y: number, w: number, color: string, linewidth: number): void {
     surface.createRect({x: x - w, y: y - w, width: 2 * w, height: 2 * w})
       .setTransform([dojox.gfx.matrix.rotategAt(45, x, y)])
       .setFill('white')
       .setStroke({color: color, width: linewidth / 2});
   }
 
-  drawEllipse(surface, x, y, rx, ry, color, deg) {
+  drawEllipse(surface: any, x: number, y: number, rx: number, ry: number, color: string, deg: number) {
     surface.createEllipse({cx: x, cy: y, rx: rx, ry: ry})
       .setFill(color)
       .setTransform([dojox.gfx.matrix.rotategAt(deg, x, y)]);
   }
 
-  hasLabel(m, showcarbon) {
+  hasLabel(m: Mol<TBio>, showcarbon: string): boolean {
     var a = this;
     return a.bio == null && (a.elem != 'C' || a.charge != 0 || a.radical != null ||
       a.elem == 'C' && (showcarbon == 'all' || showcarbon == 'terminal' && m.getNeighborAtoms(a).length == 1) ||
-      a.isotope != null || a.hcount == 4 || a.hs > 0 || a.val > 0 || a.alias != null && a.alias != '' ||
+      a.isotope != null || a.hcount == 4 || a.hs! > 0 || a.val > 0 || a.alias != null && a.alias != '' ||
       a.query != null && (a.query.sub != null || a.query.uns != null || a.query.rbc != null || a.query.als != null && a.query.t != null));
   }
 
@@ -524,7 +528,7 @@ export class Atom<TBio> {
     return (!a.bio && (e == null || e.a >= 0 && a.hasError)) && a.elem != '3\'' && a.elem != '5\'';
   }
 
-  draw(surface, linewidth: number, m: Mol<TBio>, fontsize: number, showError: boolean) {
+  draw(surface: any, linewidth: number, m: Mol<TBio>, fontsize: number, showError: boolean, drawStep: DrawStep): void {
     var a = this;
 
     this._rect = null;
@@ -533,9 +537,10 @@ export class Atom<TBio> {
     var color = a.color;
 
     if (a.bio != null) {
-      this.drawBio(surface, linewidth, fontsize, color);
+      this.drawBio(surface, linewidth, fontsize, color!, drawStep);
       return;
     }
+    if (drawStep != DrawSteps.main) return;
 
     var atomcolor = color;
     if (color == null) {
@@ -552,7 +557,7 @@ export class Atom<TBio> {
       this.drawApo(a, m, surface, linewidth, fontsize, color);
 
     if (a.alias != null && a.alias != '') {
-      this._rect = JSDraw2.Atom.drawAlias(m.calcHDir(a, 4 * linewidth, true), surface, a.p, a.alias, hasError ? 'red' : atomcolor, fontsize);
+      this._rect = JSDraw2.Atom.drawAlias(m.calcHDir(a, 4 * linewidth, true), surface, a.p, a.alias, hasError ? 'red' : atomcolor!, fontsize);
     } else {
       var elem = a.elem;
       var isotope = a.isotope;
@@ -608,7 +613,7 @@ export class Atom<TBio> {
 
         if (isotope != null)
           iso = JSDraw2.Drawer.drawLabel(surface, a.p, isotope + '', color, fontsize / 1.1, false);
-        if (a.query == null && a.hcount > 0 && (this._haslabel || elem != 'C' || a.charge != 0 || a.hcount == 4)) {
+        if (a.query == null && a.hcount! > 0 && (this._haslabel || elem != 'C' || a.charge != 0 || a.hcount == 4)) {
           h = JSDraw2.Drawer.drawLabel(surface, a.p, 'H', color, fontsize, false);
           n = a.hcount == 1 ? null : JSDraw2.Drawer.drawLabel(surface, a.p, a.hcount + '', color, fontsize / 1.4, false);
         }
@@ -697,7 +702,7 @@ export class Atom<TBio> {
       surface.createCircle({cx: a.p.x, cy: a.p.y, r: fontsize * 0.6}).setStroke({color: '#0ff', width: linewidth});
   }
 
-  drawApo(a, m, surface, linewidth, fontsize, color) {
+  drawApo(a: Atom<TBio>, m: Mol<TBio>, surface: any, linewidth: number, fontsize: number, color: string): void {
     var attachpoints = a.attachpoints;
     for (var i = 0; i < attachpoints.length; ++i) {
       var apo = attachpoints[i];
@@ -730,18 +735,18 @@ export class Atom<TBio> {
     }
   }
 
-  drawSelect(lasso) {
+  drawSelect(lasso: ILasso): void {
     var c = this._rect == null ? this.p : this._rect.center();
     lasso.draw(this, c);
   }
 
   // -- static --
 
-  static cast<TBio>(a): Atom<TBio> {
+  static cast<TBio>(a: any): Atom<TBio> | null {
     return a != null && a.T == 'ATOM' ? a : null;
   }
 
-  static match(x, y) {
+  static match<TBio>(x: Atom<TBio>, y: Atom<TBio>) {
     if (!scil.Utils.areListEq(x.attachpoints, y.attachpoints))
       return false;
 
@@ -791,6 +796,7 @@ export class Atom<TBio> {
 
     for (var i = 0; i < list1.length; ++i) {
       for (var j = 0; j < list2.length; ++j) {
+        // @ts-ignore
         f = JSDraw2.Atom.match(list1[i], list2[j]);
         if (f && t1 == t2)
           return true;
@@ -800,7 +806,7 @@ export class Atom<TBio> {
     return t1 != t2;
   }
 
-  static match2(e1, e2): boolean {
+  static match2(e1: string, e2: string): boolean {
     return e1 == e2 || e1 == '*' || e1 == 'A' || e2 == '*' || e2 == 'A' ||
       e1 == 'X' && (e2 == 'F' || e2 == 'Cl' || e2 == 'Br' || e2 == 'I') ||
       e2 == 'X' && (e1 == 'F' || e1 == 'Cl' || e1 == 'Br' || e1 == 'I') ||
@@ -808,7 +814,7 @@ export class Atom<TBio> {
       e2 == 'Q' && (e1 != 'H' && e1 != 'C');
   }
 
-  static drawAlias(dir, surface, p, s, color, fontsize): Rect {
+  static drawAlias(dir: number, surface: any, p: Point, s: string, color: string, fontsize: number): Rect {
     return JSDraw2.Drawer.drawFormula(surface, p, dir == JSDraw2.ALIGN.LEFT, s, color, fontsize);
 
     //        var t = null;

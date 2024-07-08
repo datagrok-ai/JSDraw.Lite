@@ -249,7 +249,7 @@ export class Rect {
    * @param {Rect} r - the Rect to be unioned
    * @returns the rect itself
    */
-  union(r: Rect): Rect {
+  union(r: Rect | null): Rect {
     if (r == null)
       return;
     const right = this.right();

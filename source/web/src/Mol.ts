@@ -11,7 +11,7 @@
 // @ts-nocheck
 
 import type {IndexType, ScilModuleType, IDebug} from './types/scil';
-import type {IGraphics, JSDraw2ModuleType} from './types/jsdraw2';
+import {DrawSteps, IGraphics, JSDraw2ModuleType} from './types/jsdraw2';
 
 import type {Atom} from './Atom';
 import type {Bond} from './Bond';
@@ -1803,7 +1803,8 @@ export class Mol<TBio = any> {
     return hs.length;
   }
 
-  draw(surface, linewidth, fontsize, textonly, dimension, highlighterrors, showcarbon?: boolean, simpledraw?: boolean) {
+  draw(surface: any, linewidth: number, fontsize: number, textonly: boolean, dimension: Point,
+    highlighterrors: boolean, showcarbon?: boolean, simpledraw: boolean = false) {
     if (linewidth == null)
       linewidth = 2;
     if (fontsize == null)
@@ -1821,61 +1822,63 @@ export class Mol<TBio = any> {
         a._haslabel = a.hasLabel(this, showcarbon);
       }
 
-      // draw bonds connect to hidden group atom
-      const bonds = [];
-      for (let i = 0; i < this.bonds.length; ++i) {
-        const b = this.bonds[i];
-        if (b.a1._outside && b.a2._outside && !b.a1.hidden && !b.a2.hidden)
-          continue;
-
-        if (!simpledraw || !b.selected) {
-          if (this.moveHiddenAtomToGroupBorder(b.a1, b.a2) || this.moveHiddenAtomToGroupBorder(b.a2, b.a1))
-            b.draw(surface, linewidth, this, fontsize, simpledraw);
-          else
-            bonds.push(b);
-        }
-      }
-
-      for (let i = 0; i < this.graphics.length; ++i)
-        this.graphics[i].draw(surface, linewidth, this, fontsize);
-
-      for (let i = 0; i < bonds.length; ++i)
-        bonds[i].draw(surface, linewidth, this, fontsize, simpledraw);
-
-      const tor = linewidth * 2;
-      if (simpledraw) {
-        // I#9069
-        for (let i = 0; i < this.atoms.length; ++i) {
-          const a = this.atoms[i];
-          if (a._outside || !a.hasErr())
+      for (const drawStep of [DrawSteps.highlight, DrawSteps.select, DrawSteps.main]) {
+        // draw bonds connect to hidden group atom
+        const bonds = [];
+        for (let i = 0; i < this.bonds.length; ++i) {
+          const b = this.bonds[i];
+          if (b.a1._outside && b.a2._outside && !b.a1.hidden && !b.a2.hidden)
             continue;
 
-          const w = 8;
-          const r = new JSDraw2.Rect(a.p.x - w / 2, a.p.y - w / 2, w, w);
-          JSDraw2.Drawer.drawRect(surface, r, 'red', linewidth).setFill('red');
-        }
-      } else {
-        for (let i = 0; i < this.atoms.length; ++i) {
-          const a = this.atoms[i];
-          if (a._outside)
-            continue;
-
-          // check overlapping
-          for (let k = i + 1; k < this.atoms.length; ++k) {
-            const a1 = this.atoms[k];
-            if (Math.abs(a.p.x - a1.p.x) < tor && Math.abs(a.p.y - a1.p.y) < tor) {
-              const r = new JSDraw2.Rect(a.p.x - fontsize / 2, a.p.y - fontsize / 2, fontsize, fontsize);
-              JSDraw2.Drawer.drawRect(surface, r, 'red', linewidth);
-              break;
-            }
+          if (!simpledraw || !b.selected) {
+            if (this.moveHiddenAtomToGroupBorder(b.a1, b.a2) || this.moveHiddenAtomToGroupBorder(b.a2, b.a1))
+              b.draw(surface, linewidth, this, fontsize, simpledraw, drawStep);
+            else
+              bonds.push(b);
           }
+        }
 
-          a.draw(surface, linewidth, this, fontsize, highlighterrors);
-          if (a.rgroup != null) {
-            if (a.rgroup.text != null)
-              a.rgroup.draw(surface, linewidth, this, fontsize);
-            for (let j = 0; j < a.rgroup.mols.length; ++j)
-              a.rgroup.mols[j].draw(surface, linewidth, fontsize, textonly, dimension, highlighterrors);
+        for (let i = 0; i < this.graphics.length; ++i)
+          this.graphics[i].draw(surface, linewidth, this, fontsize, drawStep);
+
+        for (let i = 0; i < bonds.length; ++i)
+          bonds[i].draw(surface, linewidth, this, fontsize, simpledraw, drawStep);
+
+        const tor = linewidth * 2;
+        if (simpledraw) {
+          // I#9069
+          for (let i = 0; i < this.atoms.length; ++i) {
+            const a = this.atoms[i];
+            if (a._outside || !a.hasErr())
+              continue;
+
+            const w = 8;
+            const r = new JSDraw2.Rect(a.p.x - w / 2, a.p.y - w / 2, w, w);
+            JSDraw2.Drawer.drawRect(surface, r, 'red', linewidth).setFill('red');
+          }
+        } else {
+          for (let i = 0; i < this.atoms.length; ++i) {
+            const a = this.atoms[i];
+            if (a._outside)
+              continue;
+
+            // check overlapping
+            for (let k = i + 1; k < this.atoms.length; ++k) {
+              const a1 = this.atoms[k];
+              if (Math.abs(a.p.x - a1.p.x) < tor && Math.abs(a.p.y - a1.p.y) < tor) {
+                const r = new JSDraw2.Rect(a.p.x - fontsize / 2, a.p.y - fontsize / 2, fontsize, fontsize);
+                JSDraw2.Drawer.drawRect(surface, r, 'red', linewidth);
+                break;
+              }
+            }
+
+            a.draw(surface, linewidth, this, fontsize, highlighterrors, drawStep);
+            if (a.rgroup != null && 2 === drawStep) {
+              if (a.rgroup.text != null)
+                a.rgroup.draw(surface, linewidth, this, fontsize);
+              for (let j = 0; j < a.rgroup.mols.length; ++j)
+                a.rgroup.mols[j].draw(surface, linewidth, fontsize, textonly, dimension, highlighterrors);
+            }
           }
         }
       }
@@ -1891,7 +1894,7 @@ export class Mol<TBio = any> {
         s = 'Chiral';
 
       if (s != null)
-        JSDraw2.Drawer.drawText(surface, new JSDraw2.Point(dimension.x - fontsize * 4, fontsize * 1), s, 'gray', fontsize, 'right');
+        JSDraw2.Drawer.drawText(surface, new JSDraw2.Point(dimension.x - fontsize * 4, fontsize * 1), s, 'gray', fontsize, TextAligns.right);
     }
   }
 
@@ -2031,7 +2034,7 @@ export class Mol<TBio = any> {
     return true;
   }
 
-  calcHDir(a, tor, drawalias) {
+  calcHDir(a: Atom<TBio>, tor: number, drawalias?: boolean): number {
     const atoms = this.getNeighborAtoms(a);
     if (atoms.length == 0 && a.charge == 0)
       return drawalias ? JSDraw2.ALIGN.RIGHT : JSDraw2.ALIGN.LEFT;
@@ -3667,7 +3670,7 @@ export class Mol<TBio = any> {
     return this.getXml(width, height, viewonly, svg, len);
   }
 
-  _getXml(width: number, height: number, viewonly: boolean, svg: any, len: number, inside?: boolean) {
+  _getXml(width: number | null, height: number | null, viewonly: boolean | null, svg: any | null, len: number, inside?: boolean) {
     return null;
   }
 

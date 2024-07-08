@@ -24,9 +24,19 @@ export type DojoType = {
   [p: string]: any;
 }
 
+export interface DojoRect {
+  top: number;
+}
+
+export interface DojoText {
+  _rect: DojoRect;
+}
+
 export type DojoxMatrixType = {
   rotategAt(deg: number, x: number, y: number): any;
   translate(shiftX: number, shiftY?: number, shiftZ?: number): any;
+
+  [p: string]: any;
 }
 
 export type DojoxGfxUtilsType = {
@@ -50,6 +60,7 @@ export type DojoxGfxType = {
 
 export type DojoxType = {
   gfx: DojoxGfxType;
+  storage: any;
 }
 
 export type DojoWindow = {
