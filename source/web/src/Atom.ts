@@ -20,7 +20,7 @@ import type {
   AtomQueryType, IGroup, IBio, IRGroup, JSDraw2ModuleType, DrawStep, ILasso
 } from './types/jsdraw2';
 
-import {DrawSteps} from './types/jsdraw2';
+import {DrawSteps, IObjWithId} from './types/jsdraw2';
 
 declare const dojo: DojoType;
 declare const dojox: DojoxType;
@@ -34,7 +34,7 @@ declare const org: OrgType<any>;
  * Atom class
  * @class scilligence.JSDraw2.Atom
  */
-export class Atom<TBio> {
+export class Atom<TBio> implements IObjWithId {
   /**
    @property {Point} p Atom Coordinate
    */
@@ -253,17 +253,17 @@ export class Atom<TBio> {
       }
     } else {
       s += ' bio=\'' + this.bio.type + '\'';
-      if (!scil.Utils.isNullOrEmpty(this.bio.subtype!))
+      if (!scil.Utils.isNullOrEmpty(this.bio.subtype))
         s += ' subtype=\'' + this.bio.subtype + '\'';
-      if (!scil.Utils.isNullOrEmpty(this.bio.sequences!))
+      if (!scil.Utils.isNullOrEmpty(this.bio.sequences))
         s += ' seq=\'' + scil.Utils.escXmlValue(this.bio.sequences!) + '\'';
       if ((this.bio.id as number) > 0)
         s += ' bioid=\'' + scil.Utils.escXmlValue(this.bio.id as string) + '\'';
-      if (!scil.Utils.isNullOrEmpty(this.bio.annotation!))
+      if (!scil.Utils.isNullOrEmpty(this.bio.annotation))
         s += ' ann=\'' + scil.Utils.escXmlValue(this.bio.annotation!) + '\'';
-      if (this.elem == '?' && !scil.Utils.isNullOrEmpty(this.bio.ambiguity!))
+      if (this.elem == '?' && !scil.Utils.isNullOrEmpty(this.bio.ambiguity))
         s += ' amb=\'' + scil.Utils.escXmlValue(this.bio.ambiguity!) + '\'';
-      if (this.biotype() == org.helm.webeditor.HELM.BLOB && !scil.Utils.isNullOrEmpty(this.bio.blobtype!))
+      if (this.biotype() == org.helm.webeditor.HELM.BLOB && !scil.Utils.isNullOrEmpty(this.bio.blobtype))
         s += ' blobtype=\'' + scil.Utils.escXmlValue(this.bio.blobtype!) + '\'';
     }
 

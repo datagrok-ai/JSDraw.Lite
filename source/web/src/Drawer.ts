@@ -368,7 +368,7 @@ export class Drawer {
     return t;
   }
 
-  drawText(surface, p, s, fontcolor, fontsize, align?: TextAlign, italic?) {
+  drawText(surface, p, s, fontcolor, fontsize, align?: TextAlign | null, italic?) {
     if (align == null)
       align = TextAligns.left;
 

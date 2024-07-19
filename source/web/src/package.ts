@@ -72,7 +72,8 @@ async function loadModules(): Promise<void> {
   require('./JSDraw.Table.js');
   await import(/* webpackMode: "eager" */ './Bracket'); // File not found
   require('./Group.js');
-  require('./Text.js');
+  await import(/* webpackMode: "eager" */ './Text');
+
 
   await import(/* webpackMode: "eager" */ '../form/Lang');
   require('../form/Menu.js');

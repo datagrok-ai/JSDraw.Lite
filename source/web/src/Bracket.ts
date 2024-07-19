@@ -10,7 +10,8 @@ import type {Atom} from './Atom';
 import type {CornerType, Rect} from './Rect';
 import type {Mol} from './Mol';
 import type {Bond} from './Bond';
-import type {IGraphics, ILasso, IText, ShapeType} from './types/jsdraw2';
+import type {Text} from './Text';
+import type {IGraphics, ILasso, ShapeType} from './types/jsdraw2';
 import {Point} from './Point';
 
 declare const scilligence: ScilModuleType;
@@ -113,7 +114,7 @@ export class Bracket<TBio> implements IGraphics {
     if (scil.Utils.isNullOrEmpty(s))
       return null;
 
-    let t: IText | null = m.getSgroupText(this, "BRACKET_TYPE");
+    let t: Text<TBio> | null = m.getSgroupText(this, "BRACKET_TYPE");
     if (t != null)
       return t;
 
@@ -252,11 +253,11 @@ export class Bracket<TBio> implements IGraphics {
   }
 
   getTexts(m: Mol<TBio>) {
-    const ret: { topleft: IText[], topright: IText[], bottomleft: IText[], bottomright: IText[] } =
+    const ret: { topleft: Text<TBio>[], topright: Text<TBio>[], bottomleft: Text<TBio>[], bottomright: Text<TBio>[] } =
       {topleft: [], topright: [], bottomleft: [], bottomright: []};
     const c1 = this._rect.center();
     for (let i = 0; i < m.graphics.length; ++i) {
-      const t = JSDraw2.Text.cast(m.graphics[i]);
+      const t = JSDraw2.Text.cast<TBio>(m.graphics[i]);
       if (t == null || t.anchors.length != 1 || t.anchors[0] != this)
         continue;
       const c = t._rect.center();
@@ -276,7 +277,7 @@ export class Bracket<TBio> implements IGraphics {
     return ret;
   }
 
-  static cast<TBio>(g: IGraphics): Bracket<TBio> {
+  static cast<TBio>(g: any): Bracket<TBio> {
     throw new Error("Not implemented");
   }
 }

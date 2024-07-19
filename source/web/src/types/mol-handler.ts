@@ -8,8 +8,6 @@ export type MolHandlerOptions = typeof defaultMolHandlerOptions;
 
 /** Molecular handler for parser plugin. */
 export interface IMolHandler<TBio> {
-  bondlength: number;
-  m: Mol<TBio>;
-
-  new(): IMolHandler<TBio>;
+  get bondlength(): number;
+  get m(): Mol<TBio>;
 }

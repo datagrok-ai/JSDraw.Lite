@@ -40,7 +40,7 @@ export interface IScilUtils {
   parseXml(s: string): any;
 
   areListEq<T>(list1: T[], list2: T[]): boolean;
-  isNullOrEmpty(s: string | null): boolean;
+  isNullOrEmpty(s: string | null | undefined): boolean;
   isNumber(s: any, allowoperator?: boolean): boolean;
 
   arrayContainsArray<T = any>(superset: T[], subset: T[]): boolean;
@@ -76,7 +76,7 @@ export interface IScilUtils {
   createElement(parent: HTMLElement | null, tag: 'td', html?: string | null, styles?: Partial<CSSStyleDeclaration> | null, attributes?: any, onclick?: Function): HTMLTableCellElement;
   isAttTrue(e: HTMLElement, att: string): boolean;
   isAttFalse(e: HTMLElement, att: string): boolean;
-  getInnerText(e: HTMLElement): string;
+  getInnerText(e: Element): string;
   getFirstElement(parent: HTMLElement, tagName?: string): HTMLElement;
   getElements(parent: HTMLElement, tagName: string): HTMLElement[];
 
@@ -135,7 +135,7 @@ export type ScilModuleType = {
   DnDFile: any;
   Favorite: IFavorite;
 
-  apply<T>(dest: T, atts: Partial<T>, defaults?: Partial<T>): void;
+  apply<T>(dest: T, atts: Partial<T>, defaults?: Partial<T>): T;
   Utils: IScilUtils;
 
   App: any;

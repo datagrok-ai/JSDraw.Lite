@@ -1,5 +1,6 @@
 import type {IMolHandler} from './mol-handler';
 import type {Plus, Point} from '../Point';
+import type {Text} from '../Text';
 import type {Editor} from '../JSDraw.Editor';
 import type {Atom} from '../Atom';
 import type {Rect} from '../Rect';
@@ -7,6 +8,7 @@ import type {Bond, BondB} from '../Bond';
 import type {Mol} from '../Mol';
 import type {Bracket} from '../Bracket';
 import type {Drawer} from '../Drawer';
+import {MolHandler} from '../JSDraw.MolHandler';
 
 export const enum DrawSteps {
   highlight,
@@ -107,6 +109,10 @@ export enum CommandTypes {
 }
 
 export type ShapeType = typeof ShapeTypes[keyof typeof ShapeTypes];
+
+export interface IObjWithId {
+  id?: number | null;
+}
 
 export interface ICast<T> {
   cast(obj: any): T;
@@ -367,12 +373,6 @@ export interface IRxn {
   [p: string]: any;
 }
 
-export interface IText extends ICast<IText> {
-  new(r?: Rect, v?: string): IText;
-
-  [p: string]: any;
-}
-
 export interface ILasso {
   new(extra: any, linewidth: number, selecting: boolean): ILasso;
   [p: string]: any;
@@ -553,7 +553,7 @@ export type JSDraw2ModuleType<TBio> = {
   Drawer: Drawer;
 
   Editor: typeof Editor;
-  MolHandler: IMolHandler<TBio>;
+  MolHandler: typeof MolHandler;
 
   Formulation: any;
   Group: IGroup;
@@ -564,7 +564,7 @@ export type JSDraw2ModuleType<TBio> = {
   Plates: any;
   Plus: typeof Plus;
   Shape: any;
-  Text: IText;
+  Text: typeof Text;
   SequenceEditor: any;
   Lasso: ILasso;
   Skin: any;

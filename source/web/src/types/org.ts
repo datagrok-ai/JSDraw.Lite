@@ -24,7 +24,7 @@ export const enum PolymerTypes {
 /** 'RNA' | 'PEPTIDE' | 'CHEM' | 'BLOB' | 'G' */
 export type PolymerType = `${PolymerTypes}`
 
-export const enum HelmTypes {
+export enum HelmTypes {
   BASE = 'HELM_BASE',
   SUGAR = 'HELM_SUGAR',
   LINKER = 'HELM_LINKER',
@@ -69,13 +69,14 @@ export interface IWebEditorMonomer extends IOrgMonomer, IMonomerColors {
   smiles?: string;
 
   name?: string;
+  oldname?: string;
 }
 
-export type MonomerSetType = { [key: string]: IWebEditorMonomer };
+export type MonomerSetType = { [symbol: string]: IWebEditorMonomer };
 
 export interface IOrgMonomers<TBio> {
   getMonomer(a: Atom<TBio> | TBio, elem?: string): IWebEditorMonomer | null;
-  getMonomerSet(biotype: TBio): MonomerSetType;
+  getMonomerSet(biotype: TBio): MonomerSetType | null;
   getMonomerList(a: Atom<TBio> | TBio): any;
   [p: string]: any;
 }

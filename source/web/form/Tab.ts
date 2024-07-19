@@ -185,6 +185,7 @@ export class TabsInt {
     }
 
     const td = scil.Utils.createElement(tr, 'td', null, style, {key: key || options.tabkey, sciltab: '1'}) as HTMLTableCellElement & { _label: any, clientarea: any }; // TODO
+    td.classList.add('hwe-tab-td');
     const tbody2 = scil.Utils.createTable2(td, null, {cellSpacing: 0, cellPadding: 0});
     const s = (icon != null ? '<img src=\'' + icon + '\'>' : '') + (caption == null ? 'Tab' : scil.Lang.res(caption));
 
