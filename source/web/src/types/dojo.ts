@@ -61,6 +61,7 @@ export type DojoxGfxType = {
 export type DojoxType = {
   gfx: DojoxGfxType;
   storage: any;
+  charting: any;
 }
 
 export type DojoWindow = {

@@ -43,6 +43,9 @@ export async function initJsDrawLite(): Promise<void> {
 }
 
 async function loadModules(): Promise<void> {
+  const logPrefix: string = 'JSDrawLite: _package.loadModules()';
+  console.debug(`${logPrefix}, start`);
+
   // Based on _merge.lite.bat
   require('./Core.js'); // defines window.scilligence (scil)
   require('./Utils.js');
@@ -108,6 +111,8 @@ async function loadModules(): Promise<void> {
   await import(/* webpackMode: "eager" */ '../page/Page.Tree');
 
   require('../Scilligence.JSDraw2.Resources.js');
+
+  console.debug(`${logPrefix}, end`);
 }
 
 // //name: ensureLoadJsDrawLite
