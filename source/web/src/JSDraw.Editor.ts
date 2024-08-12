@@ -93,28 +93,28 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
   public options: any;
   private readonly chiral: any;
   private ptElement: any; // TODO: ?
-  private connectHandlers: any[];
+  private connectHandlers?: any[];
   private maintable: any;
-  public div: HTMLDivElement;
-  private readonly id: string;
-  private readonly movingresolution: number;
-  private readonly dimension: Point;
-  public readonly helm: IOrgPlugin<TBio>;
-  private readonly undocapacity: number;
+  public div!: HTMLDivElement;
+  private readonly id?: string;
+  private readonly movingresolution?: number;
+  public readonly dimension: Point;
+  public readonly helm?: IOrgPlugin<TBio>;
+  private readonly undocapacity?: number;
   private texteditor: any;
   private toolbar: any;
   private surface: any;
-  private readonly loaded: boolean;
+  private readonly loaded?: boolean;
 
-  private angleStop: number;
-  private tor: number;
-  private linewidth: number;
-  private fontsize: number;
+  private angleStop?: number;
+  private tor?: number;
+  private linewidth?: number;
+  private fontsize?: number;
 
-  private activated: boolean;
+  private activated?: boolean;
   private status: any;
-  private modified: boolean;
-  private touching: boolean;
+  private modified?: boolean;
+  private touching: boolean | null;
   private start: any;
   private lastmove: any;
   private end: any;
@@ -123,30 +123,30 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
   private movingClone: any;
   private resizing: any;
   private rotating: any;
-  private mousedownPoint: Point;
+  private mousedownPoint: Point | null;
   private _lastMousedownTm: any;
   private lassolast: any;
   private chaintool: any;
   private ink: any;
 
-  private frozen: boolean;
+  private frozen?: boolean;
   private lastaction: any;
-  private _undostack: IStack<any>;
-  private _redostack: IStack<any>;
+  private _undostack?: IStack<any>;
+  private _redostack?: IStack<any>;
   private erasercache: any;
 
   private contextmenu: IContextMenu;
-  private viewoffset: Point;
-  private _clearing: boolean;
-  private simpledraw: boolean;
+  private viewoffset?: Point;
+  private _clearing?: boolean;
+  private simpledraw?: boolean;
 
   private arrowtool: any;
   private groupPropDlg!: IDialog;
-  private _keypresschar: string;
-  private popuplocked: boolean;
+  private _keypresschar?: string;
+  private popuplocked?: boolean;
   private _testdeactivation: Function | null = null;
-  private _msContentZooming: string;
-  private _overflow: string;
+  private _msContentZooming?: string;
+  private _overflow?: string;
 
   /**
    * Constructor a JSDraw Editor
@@ -340,8 +340,8 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
     this.movingClone = null;
     this.resizing = null;
     this.texteditor = {input: null, text: null, atom: null};
-    this.rotating = null,
-      this.mousedownPoint = null;
+    this.rotating = null;
+    this.mousedownPoint = null;
     this._lastMousedownTm = null;
     this.lassolast = null;
     this.chaintool = null;
@@ -5763,7 +5763,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
    * @param {Mol} mol - the Mol object to be loaded
    * @returns true or false
    */
-  setMol(mol) {
+  setMol(mol: Mol<TBio>): boolean {
     if (mol != null && typeof (mol) == "object" && mol.T == "MOL") {
       this.m = mol;
       this.m.showimplicithydrogens = this.options.showimplicithydrogens;

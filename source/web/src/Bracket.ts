@@ -6,12 +6,14 @@
 
 import type {JSDraw2ModuleType, ScilModuleType} from './types';
 
-import type {Atom} from './Atom';
+import type {Point} from './Point';
 import type {CornerType, Rect} from './Rect';
+import type {Atom} from './Atom';
 import type {Mol} from './Mol';
 import type {Bond} from './Bond';
-import type {IGraphics, ILasso, IText, ShapeType} from './types/jsdraw2';
-import {Point} from './Point';
+import type {Lasso} from './Lasso';
+import type {Text} from './Text';
+import type {IGraphics, ShapeType} from './types/jsdraw2';
 
 declare const scilligence: ScilModuleType;
 declare const scil: ScilModuleType;
@@ -24,7 +26,7 @@ declare const JSDraw2: JSDraw2ModuleType<any>;
 export class Bracket<TBio> implements IGraphics {
   readonly T: string;
   public atoms: Atom<TBio>[];
-  readonly type: string | null;
+  public type: string | null;
   readonly _rect: Rect;
   private shape?: ShapeType;
   public sgrouptexts?: string;
@@ -42,11 +44,11 @@ export class Bracket<TBio> implements IGraphics {
 
   _parent!: Mol<TBio>;
 
-  constructor(type: string | null, rect: Rect, shape?: ShapeType) {
+  constructor(type: string | null, rect: Rect | null, shape?: ShapeType) {
     this.T = "BRACKET";
     this.atoms = [];
     this.type = type;
-    this._rect = rect;
+    this._rect = rect!;
     this.color = null;
     this.shape = shape;
   }
@@ -82,7 +84,7 @@ export class Bracket<TBio> implements IGraphics {
     return true;
   }
 
-  getTypeNum() {
+  getTypeNum(): string | null {
     if (this.type == null)
       return null;
     const type = this.type + "";
@@ -93,7 +95,7 @@ export class Bracket<TBio> implements IGraphics {
     return null;
   }
 
-  getType() {
+  getType(): string {
     if (this.type == null)
       return "";
     let type = this.type + "";
@@ -104,16 +106,16 @@ export class Bracket<TBio> implements IGraphics {
     return type;
   }
 
-  getSubscript(m: Mol<TBio>) {
+  getSubscript(m: Mol<TBio>): number | null {
     const t = m.getSgroupText(this, "BRACKET_TYPE");
-    return t == null ? null : t.text;
+    return t == null ? null : parseInt(t.text);
   }
 
   createSubscript(m: Mol<TBio>, s: string) {
     if (scil.Utils.isNullOrEmpty(s))
       return null;
 
-    let t: IText | null = m.getSgroupText(this, "BRACKET_TYPE");
+    let t: Text<TBio> | null = m.getSgroupText(this, "BRACKET_TYPE");
     if (t != null)
       return t;
 
@@ -191,7 +193,7 @@ export class Bracket<TBio> implements IGraphics {
     JSDraw2.Drawer.drawBracket(surface, r, color, linewidth);
   }
 
-  drawSelect(lasso: ILasso) {
+  drawSelect(lasso: Lasso<TBio>): void {
     lasso.draw(this, this._rect.fourPoints());
   }
 
@@ -252,11 +254,11 @@ export class Bracket<TBio> implements IGraphics {
   }
 
   getTexts(m: Mol<TBio>) {
-    const ret: { topleft: IText[], topright: IText[], bottomleft: IText[], bottomright: IText[] } =
+    const ret: { topleft: Text<TBio>[], topright: Text<TBio>[], bottomleft: Text<TBio>[], bottomright: Text<TBio>[] } =
       {topleft: [], topright: [], bottomleft: [], bottomright: []};
     const c1 = this._rect.center();
     for (let i = 0; i < m.graphics.length; ++i) {
-      const t = JSDraw2.Text.cast(m.graphics[i]);
+      const t = JSDraw2.Text.cast<TBio>(m.graphics[i]);
       if (t == null || t.anchors.length != 1 || t.anchors[0] != this)
         continue;
       const c = t._rect.center();
@@ -276,7 +278,7 @@ export class Bracket<TBio> implements IGraphics {
     return ret;
   }
 
-  static cast<TBio>(g: IGraphics): Bracket<TBio> {
+  static cast<TBio>(g: any): Bracket<TBio> {
     throw new Error("Not implemented");
   }
 }

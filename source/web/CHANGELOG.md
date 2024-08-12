@@ -1,5 +1,9 @@
 # JSDraw.Lite changelog
 
+## 0.0.5 (2024-08-12)
+
+* JSDraw: Typing
+
 ## 0.0.4 (2024-07-08)
 
 ### Features

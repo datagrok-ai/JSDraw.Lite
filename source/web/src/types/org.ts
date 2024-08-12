@@ -24,7 +24,7 @@ export const enum PolymerTypes {
 /** 'RNA' | 'PEPTIDE' | 'CHEM' | 'BLOB' | 'G' */
 export type PolymerType = `${PolymerTypes}`
 
-export const enum HelmTypes {
+export enum HelmTypes {
   BASE = 'HELM_BASE',
   SUGAR = 'HELM_SUGAR',
   LINKER = 'HELM_LINKER',
@@ -69,13 +69,16 @@ export interface IWebEditorMonomer extends IOrgMonomer, IMonomerColors {
   smiles?: string;
 
   name?: string;
+  oldname?: string;
+
+  /** Used by Formula */ stats?: any;
 }
 
-export type MonomerSetType = { [key: string]: IWebEditorMonomer };
+export type MonomerSetType = { [symbol: string]: IWebEditorMonomer };
 
 export interface IOrgMonomers<TBio> {
   getMonomer(a: Atom<TBio> | TBio, elem?: string): IWebEditorMonomer | null;
-  getMonomerSet(biotype: TBio): MonomerSetType;
+  getMonomerSet(biotype: TBio): MonomerSetType | null;
   getMonomerList(a: Atom<TBio> | TBio): any;
   [p: string]: any;
 }
@@ -83,6 +86,14 @@ export interface IOrgMonomers<TBio> {
 export interface IOrgInterface<TBio> {
   drawMonomer(surface: SVGSVGElement, a: Atom<TBio>, p: Point, fontsize: number, linewidth: number, color: string, step?: number): void;
   onContextMenu(ed: Editor<TBio>, e: Event, viewonly: boolean): any[];
+
+  getAtomStats(m: any, atoms: any[]): any;
+  molStats(m: string): any;
+  getElementMass(e: string): number;
+}
+
+export interface IFormula<TBio> {
+
 }
 
 /** scil.helm */
@@ -93,6 +104,7 @@ export type IOrgWebEditor<TBio> = {
   Plugin: IOrgPlugin<TBio>;
   MolViewer: any;
   MonomerExplorer: any;
+  Formula: IFormula<TBio>;
 
   defaultbondratio: number;
 

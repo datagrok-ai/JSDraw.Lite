@@ -16,11 +16,14 @@ import type {Point} from './Point';
 import type {Rect} from './Rect';
 import type {Bond} from './Bond';
 import type {Mol} from './Mol';
+import type {Lasso} from './Lasso';
+import type {Group} from './Group';
+
 import type {
-  AtomQueryType, IGroup, IBio, IRGroup, JSDraw2ModuleType, DrawStep, ILasso
+  AtomQueryType, IBio, IRGroup, JSDraw2ModuleType, DrawStep
 } from './types/jsdraw2';
 
-import {DrawSteps} from './types/jsdraw2';
+import {DrawSteps, IObjWithId} from './types/jsdraw2';
 
 declare const dojo: DojoType;
 declare const dojox: DojoxType;
@@ -34,7 +37,7 @@ declare const org: OrgType<any>;
  * Atom class
  * @class scilligence.JSDraw2.Atom
  */
-export class Atom<TBio> {
+export class Atom<TBio> implements IObjWithId {
   /**
    @property {Point} p Atom Coordinate
    */
@@ -61,10 +64,10 @@ export class Atom<TBio> {
   public charge: number;
   public isotope: number | null;
   public radical: number | null;
-  public group: IGroup | null;
+  public group: Group<TBio> | null;
   public alias: string | null;
   public superatom: any; // TODO: ?
-  public attachpoints: any[];
+  public attachpoints: number[];
   public rgroup: IRGroup<TBio> | null;
   public bio: IBio<TBio> | null;
   private locked: boolean;
@@ -77,7 +80,7 @@ export class Atom<TBio> {
   public hcount: number | null;
   public selected: boolean;
   public highlighted: boolean;
-  public f: number | string | null;
+  public f: any | null;
   public bonds: Bond<TBio>[] | null;
   public id: number | null;
   public atommapid: number | null;
@@ -96,7 +99,7 @@ export class Atom<TBio> {
   public __drawselect?: boolean;
   public ringclosures: any;
   public aromatic?: boolean;
-  public _aaid?: number;
+  public _aaid?: number | null;
 
   public __mol?: Mol<TBio>;
 
@@ -107,9 +110,9 @@ export class Atom<TBio> {
    * @param {string} elem - element symbol
    * @bio {bool} bio - indicate if this is a Bio object
    */
-  constructor(p: Point, elem?: string, bio?: any) {
+  constructor(p: Point | null, elem?: string, bio?: any) {
     this.T = 'ATOM';
-    this.p = p;
+    this.p = p!;
     this.charge = 0;
     this.isotope = null;
     this.radical = null;
@@ -152,7 +155,7 @@ export class Atom<TBio> {
     this.tag = null;
   }
 
-  clone(selectedOnly?: boolean) {
+  clone(selectedOnly?: boolean | null) {
     const a = new JSDraw2.Atom(this.p.clone(), this.elem, dojo.clone(this.bio));
     a.charge = this.charge;
     a.isotope = this.isotope;
@@ -253,17 +256,17 @@ export class Atom<TBio> {
       }
     } else {
       s += ' bio=\'' + this.bio.type + '\'';
-      if (!scil.Utils.isNullOrEmpty(this.bio.subtype!))
+      if (!scil.Utils.isNullOrEmpty(this.bio.subtype))
         s += ' subtype=\'' + this.bio.subtype + '\'';
-      if (!scil.Utils.isNullOrEmpty(this.bio.sequences!))
+      if (!scil.Utils.isNullOrEmpty(this.bio.sequences))
         s += ' seq=\'' + scil.Utils.escXmlValue(this.bio.sequences!) + '\'';
       if ((this.bio.id as number) > 0)
         s += ' bioid=\'' + scil.Utils.escXmlValue(this.bio.id as string) + '\'';
-      if (!scil.Utils.isNullOrEmpty(this.bio.annotation!))
+      if (!scil.Utils.isNullOrEmpty(this.bio.annotation))
         s += ' ann=\'' + scil.Utils.escXmlValue(this.bio.annotation!) + '\'';
-      if (this.elem == '?' && !scil.Utils.isNullOrEmpty(this.bio.ambiguity!))
+      if (this.elem == '?' && !scil.Utils.isNullOrEmpty(this.bio.ambiguity))
         s += ' amb=\'' + scil.Utils.escXmlValue(this.bio.ambiguity!) + '\'';
-      if (this.biotype() == org.helm.webeditor.HELM.BLOB && !scil.Utils.isNullOrEmpty(this.bio.blobtype!))
+      if (this.biotype() == org.helm.webeditor.HELM.BLOB && !scil.Utils.isNullOrEmpty(this.bio.blobtype))
         s += ' blobtype=\'' + scil.Utils.escXmlValue(this.bio.blobtype!) + '\'';
     }
 
@@ -514,7 +517,7 @@ export class Atom<TBio> {
       .setTransform([dojox.gfx.matrix.rotategAt(deg, x, y)]);
   }
 
-  hasLabel(m: Mol<TBio>, showcarbon: string): boolean {
+  hasLabel(m: Mol<TBio>, showcarbon?: string): boolean {
     var a = this;
     return a.bio == null && (a.elem != 'C' || a.charge != 0 || a.radical != null ||
       a.elem == 'C' && (showcarbon == 'all' || showcarbon == 'terminal' && m.getNeighborAtoms(a).length == 1) ||
@@ -735,7 +738,7 @@ export class Atom<TBio> {
     }
   }
 
-  drawSelect(lasso: ILasso): void {
+  drawSelect(lasso: Lasso<TBio>): void {
     var c = this._rect == null ? this.p : this._rect.center();
     lasso.draw(this, c);
   }

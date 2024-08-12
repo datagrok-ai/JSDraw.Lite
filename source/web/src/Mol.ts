@@ -8,20 +8,26 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
-// @ts-nocheck
+// // @ts-nocheck
 
 import type {IndexType, ScilModuleType, IDebug} from './types/scil';
-import {DrawSteps, IGraphics, JSDraw2ModuleType} from './types/jsdraw2';
+import type {IObjWithId, BondType, IGraphics, JSDraw2ModuleType, IRGroup} from './types/jsdraw2';
 
 import type {Atom} from './Atom';
 import type {Bond} from './Bond';
+import type {Bracket} from './Bracket';
+import type {Group} from './Group';
+import type {Text} from './Text';
 import type {Rect} from './Rect';
 import type {Plus, Point} from './Point';
+import type {Lasso} from './Lasso';
 
-import {BondTypes} from './types/jsdraw2';
+import {BondTypes, TextAligns, DrawSteps} from './types/jsdraw2';
+import {TypeVisitor} from '@typescript-eslint/scope-manager/dist/referencer/TypeVisitor';
 
 declare const JSDraw2: JSDraw2ModuleType<any>;
 declare const scil: ScilModuleType;
+declare const scilligence: ScilModuleType;
 
 declare const DEBUG: IDebug;
 
@@ -31,7 +37,20 @@ export enum ChiralTypes {
 }
 
 export type ChiralType = typeof ChiralTypes[keyof typeof ChiralTypes];
+export type IRxn = any;
 
+export type SubGroup = any;
+export type SubMolType<TBio> = { atoms: Atom<TBio>[], bonds: Bond<TBio>[], openbonds: { b: Bond<TBio>, oa: Atom<TBio> }[] };
+
+export type SuperAtomType<TBio> = { a: Atom<TBio>, m: Mol<TBio> };
+
+export type RGroupsType<TBio> = { n: number, list: Atom<TBio>[] };
+
+export type AaMapType<TBio> = { atoms: AaMapAtomType<TBio>[], bonds: AaMapBondType<TBio>[] };
+
+export type AaMapAtomType<TBio> = { q: Atom<TBio>, t: any };
+
+export type AaMapBondType<TBio> = { q: Bond<TBio>, t: any };
 
 /**
  * Mol class - define a Molecule object
@@ -64,19 +83,19 @@ export class Mol<TBio = any> {
    @property {array} graphics Array of Graphics (not Atom and Bond) Objects
    */
 
-  private readonly T: string;
-  private name: string;
+  public readonly T: string;
+  private name: string | null;
   public atoms: Atom<TBio>[];
   public bonds: Bond<TBio>[];
   public graphics: IGraphics[];
   public stats: any;
   public showimplicithydrogens: boolean;
-  private props: any;
-  public bondlength: number;
-  public chiral: ChiralType | boolean | null;
-  private mw: number;
-  private attachpoints: any[] | null;
-  public _addRxnLabel: Function;
+  private props: { [propName: string]: any } | null;
+  public bondlength?: number;
+  public chiral?: ChiralType | boolean | null;
+  private mw?: number;
+  private attachpoints?: any[] | null;
+  public _addRxnLabel?: Function;
 
   /**
    * @constructor Mol
@@ -144,14 +163,14 @@ export class Mol<TBio = any> {
     let max = 0;
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
-      if (a.id > max)
-        max = a.id;
+      if (a.id! > max)
+        max = a.id!;
     }
 
     for (let i = 0; i < this.bonds.length; ++i) {
       const a = this.bonds[i];
-      if (a.id > max)
-        max = a.id;
+      if (a.id! > max)
+        max = a.id!;
     }
 
     for (let i = 0; i < this.graphics.length; ++i) {
@@ -171,7 +190,7 @@ export class Mol<TBio = any> {
     return max;
   }
 
-  getObjectById(id) {
+  getObjectById(id: number) {
     for (let i = 0; i < this.atoms.length; ++i) {
       if (this.atoms[i].id == id)
         return this.atoms[i];
@@ -192,8 +211,8 @@ export class Mol<TBio = any> {
    * @param {boolean} selectedOnly - indicate if cloning only selected objects
    * @return a new Mol object
    */
-  clone(selectedOnly?: boolean) {
-    const m = new JSDraw2.Mol();
+  clone(selectedOnly?: boolean | null): Mol<TBio> {
+    const m = new JSDraw2.Mol<TBio>();
     m.bondlength = this.bondlength;
     m.name = this.name;
     m.chiral = this.chiral;
@@ -202,7 +221,7 @@ export class Mol<TBio = any> {
     m.mw = this.mw;
     m.attachpoints = this.attachpoints;
 
-    const map: (Atom<TBio> | Bond<TBio> | IGraphics)[] = [];
+    const map: (Atom<TBio> | Bond<TBio> | IGraphics | Group<TBio>)[] = [];
     this.resetIds(true);
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
@@ -213,7 +232,7 @@ export class Mol<TBio = any> {
       if (selectedOnly)
         a1.atommapid = null;
       m._addAtom(a1);
-      map[a.id] = a1;
+      map[a.id!] = a1;
     }
 
     for (let i = 0; i < this.bonds.length; ++i) {
@@ -223,7 +242,7 @@ export class Mol<TBio = any> {
 
       const b1 = b.clone();
       m._addBond(b1);
-      map[b.id] = b1;
+      map[b.id!] = b1;
     }
 
     for (let i = 0; i < this.graphics.length; ++i) {
@@ -239,11 +258,11 @@ export class Mol<TBio = any> {
     // fix references
     for (let i = 0; i < this.bonds.length; ++i) {
       const b = this.bonds[i];
-      const b1 = map[b.id] as Bond<TBio>;
+      const b1 = map[b.id!] as Bond<TBio>;
       if (b1 == null)
         continue;
-      b1.a1 = map[b.a1.id] as Atom<TBio>;
-      b1.a2 = map[b.a2.id] as Atom<TBio>;
+      b1.a1 = map[b.a1.id!] as Atom<TBio>;
+      b1.a2 = map[b.a2.id!] as Atom<TBio>;
       if (b1.a1 == null || b.a2 == null)
         i = i;
     }
@@ -254,25 +273,28 @@ export class Mol<TBio = any> {
       if (g1 == null)
         continue;
 
-      if (JSDraw2.Group.cast(g) != null) {
+      if (JSDraw2.Group.cast<TBio>(g) != null) {
         for (let j = 0; j < this.atoms.length; ++j) {
           const a = this.atoms[j];
-          if (a.group == g)
-            (map[a.id] as Atom<TBio>).group = g1;
+          // @ts-ignore
+          if (a.group == g) {
+            // @ts-ignore
+            (map[a.id!] as Atom<TBio>).group = g1;
+          }
         }
         if (g.a != null)
           g1.a = map[g.a.id];
 
         if (g.group != null)
           g1.group = map[g.group.id];
-      } else if (JSDraw2.Bracket.cast(g) != null) {
-        g1.atoms = this._getMappedArray(g.atoms, map);
-      } else if (JSDraw2.Text.cast(g) != null) {
-        g1.anchors = this._getMappedArray(g.anchors, map);
+      } else if (JSDraw2.Bracket.cast<TBio>(g) != null) {
+        g1.atoms = this._getMappedArray<any>(g.atoms, map);
+      } else if (JSDraw2.Text.cast<TBio>(g) != null) {
+        g1.anchors = this._getMappedArray<any>(g.anchors, map);
       } else if (JSDraw2.Shape.cast(g) != null) {
-        g1.froms = this._getMappedArray(g.froms, map);
-        if (g1.reject != null)
-          g1.reject = map[g1.reject.id];
+        g1.froms = this._getMappedArray<any>(g.froms, map);
+        if ((g1 as any).reject != null)
+          (g1 as any).reject = map[g1.reject.id];
       }
     }
 
@@ -280,12 +302,12 @@ export class Mol<TBio = any> {
     return m;
   }
 
-  _getMappedArray(list, map) {
-    const ret = [];
+  _getMappedArray<TObj extends IObjWithId>(list: TObj[], map: TObj[]): TObj[] {
+    const ret: TObj[] = [];
     for (let i = 0; i < list.length; ++i) {
-      const d = list[i];
-      if (d != null && map[d.id] != null)
-        ret.push(map[d.id]);
+      const d: TObj = list[i];
+      if (d != null && map[d.id!] != null)
+        ret.push(map[d.id!]);
     }
     return ret;
   }
@@ -298,11 +320,11 @@ export class Mol<TBio = any> {
       p.offset(1, 0);
       break;
     case 1:
-      p = bonds[0].otherAtom(a).p.clone().rotateAround(a.p, 120);
+      p = bonds[0].otherAtom(a)!.p.clone().rotateAround(a.p, 120);
       break;
     case 2: {
-      const p1 = bonds[0].otherAtom(a).p;
-      const p2 = bonds[1].otherAtom(a).p;
+      const p1 = bonds[0].otherAtom(a)!.p;
+      const p2 = bonds[1].otherAtom(a)!.p;
       const angle = a.p.angleAsOrigin(p1, p2);
       if (Math.abs(angle - 180) <= 1) {
         p = p1.clone();
@@ -315,9 +337,9 @@ export class Mol<TBio = any> {
       break;
     }
     case 3: {
-      const p1 = bonds[0].otherAtom(a).p;
-      const p2 = bonds[1].otherAtom(a).p;
-      const p3 = bonds[2].otherAtom(a).p;
+      const p1 = bonds[0].otherAtom(a)!.p;
+      const p2 = bonds[1].otherAtom(a)!.p;
+      const p3 = bonds[2].otherAtom(a)!.p;
       let a1 = p.angleAsOrigin(p1, p2);
       let a2 = p.angleAsOrigin(p2, p3);
       let a3 = p.angleAsOrigin(p3, p1);
@@ -351,16 +373,16 @@ export class Mol<TBio = any> {
       const a = this.atoms[i];
       if (a.elem != 'R')
         continue;
-      const r: IndexType = scil.Utils.parseIndex(a.alias);
+      const r: IndexType | null = scil.Utils.parseIndex(a.alias);
       if (r == null || r.index == null)
         continue;
 
-      if (r.index > index)
+      if (r.index! > index!)
         index = r.index;
       if (a.rgroup != null) {
         for (let j = 0; j < a.rgroup.mols.length; ++j) {
           const r2 = a.rgroup.mols[j].getMaxRIndex(index);
-          if (r2 > index)
+          if (r2! > index!)
             index = r2;
         }
       }
@@ -375,7 +397,7 @@ export class Mol<TBio = any> {
    * @param {bool} selectedOnly - indicate if only set the color to selected objects
    * @returns null
    */
-  setColor(color, selectedOnly) {
+  setColor(color: string | null, selectedOnly?: boolean): number {
     let n = 0;
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
@@ -479,9 +501,9 @@ export class Mol<TBio = any> {
     return n;
   }
 
-  lassoSelect(extra, start, end, last, linewidth, tor) {
+  lassoSelect(extra: any, start: Point, end: Point, last: Point, linewidth: number, tor: number) {
     for (let i = 0; i < this.atoms.length; ++i) {
-      const a = this.atoms[i];
+      const a: Atom<TBio> = this.atoms[i];
       if (a.p.inTriangle(start, end, last))
         extra.lasso.hit(a);
 
@@ -511,8 +533,8 @@ export class Mol<TBio = any> {
     extra.lasso.endHits(start, end);
   }
 
-  getSelectedAtomInMol() {
-    const list = [];
+  getSelectedAtomInMol(): Atom<TBio>[] {
+    const list: Atom<TBio>[] = [];
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (a.selected) {
@@ -528,7 +550,7 @@ export class Mol<TBio = any> {
     return list;
   }
 
-  bracketSelect(r) {
+  bracketSelect(r: Rect): Atom<TBio>[] {
     let ret: Atom<TBio>[] = [];
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
@@ -578,7 +600,7 @@ export class Mol<TBio = any> {
     return ret;
   }
 
-  selectInRect(r) {
+  selectInRect(r: Rect): number {
     let n = 0;
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
@@ -619,7 +641,7 @@ export class Mol<TBio = any> {
     return n;
   }
 
-  hasAtom(a) {
+  hasAtom(a: Atom<TBio>): boolean {
     for (let i = 0; i < this.atoms.length; ++i) {
       if (this.atoms[i] == a)
         return true;
@@ -627,7 +649,7 @@ export class Mol<TBio = any> {
     return false;
   }
 
-  hasGraphics(g) {
+  hasGraphics(g: IGraphics): boolean {
     for (let i = 0; i < this.graphics.length; ++i) {
       if (this.graphics[i] == g)
         return true;
@@ -635,7 +657,7 @@ export class Mol<TBio = any> {
     return false;
   }
 
-  hasBond(b) {
+  hasBond(b: Bond<TBio>): boolean {
     for (let i = 0; i < this.bonds.length; ++i) {
       if (this.bonds[i] == b)
         return true;
@@ -656,7 +678,7 @@ export class Mol<TBio = any> {
     }
   }
 
-  setHCount(a) {
+  setHCount(a: Atom<TBio>): number | null | void {
     a.hcount = null;
     if (this.showimplicithydrogens == false || a.bio)
       return;
@@ -682,8 +704,8 @@ export class Mol<TBio = any> {
           }
         }
       }
-    } else if (a.hs > 0) {
-      v = a.hs - 1;
+    } else if (a.hs! > 0) {
+      v = a.hs! - 1;
     } else {
       const e = JSDraw2.PT[a.elem];
       if (e != null && e.v != null && e.e != null) {
@@ -701,7 +723,7 @@ export class Mol<TBio = any> {
             else
               sum += 1.5;
           } else {
-            sum += bonds[i].valence();
+            sum += bonds[i].valence()!;
           }
         }
 
@@ -792,7 +814,7 @@ export class Mol<TBio = any> {
    * @param {Atom} a2 - the second atom
    * @returns the bond
    */
-  findBond(a1, a2) {
+  findBond(a1: Atom<TBio>, a2: Atom<TBio>): Bond<TBio> | null {
     for (let i = 0; i < this.bonds.length; ++i) {
       const b = this.bonds[i];
       if (b.a1 == a1 && b.a2 == a2 || b.a1 == a2 && b.a2 == a1)
@@ -808,7 +830,7 @@ export class Mol<TBio = any> {
    * @param {number} height - the height of the view
    * @returns null
    */
-  moveCenter(width, height) {
+  moveCenter(width: number, height: number): void {
     if (this.isEmpty())
       return;
 
@@ -822,7 +844,7 @@ export class Mol<TBio = any> {
    * @function cleanupRxn
    * @returns null
    */
-  cleanupRxn(defaultbondlength) {
+  cleanupRxn(defaultbondlength: number) {
     const rxn = this.parseRxn(true);
     if (rxn == null || rxn.reactants.length == 1 && rxn.products.length == 0 && rxn.arrow == null)
       return false;
@@ -833,7 +855,7 @@ export class Mol<TBio = any> {
     return this._layoutRxn(rxn, bondlength);
   }
 
-  _layoutRxn(rxn, bondlength) {
+  _layoutRxn(rxn: IRxn, bondlength: number): boolean {
     const pluses: Plus[] = [];
     for (let i = 0; i < this.graphics.length; ++i) {
       if (this.graphics[i].T == 'PLUS')
@@ -855,7 +877,7 @@ export class Mol<TBio = any> {
       } else {
         x += bondlength;
         if (pluses.length > 0) {
-          const plus = pluses.pop();
+          const plus = pluses.pop()!;
           plus.p = new JSDraw2.Point(x, y);
         } else {
           const plus = new JSDraw2.Plus(new JSDraw2.Point(x, y));
@@ -941,7 +963,7 @@ export class Mol<TBio = any> {
         if (i > 0) {
           x += bondlength;
           if (pluses.length > 0) {
-            const plus = pluses.pop();
+            const plus = pluses.pop()!;
             plus.p = new JSDraw2.Point(x, y);
           } else {
             const plus = new JSDraw2.Plus(new JSDraw2.Point(x, y));
@@ -967,7 +989,7 @@ export class Mol<TBio = any> {
    * @returns the center as a Point object
    */
   center() {
-    return this.rect().center();
+    return this.rect()!.center();
   }
 
   /**
@@ -976,7 +998,7 @@ export class Mol<TBio = any> {
    * @param {Group} g - the input group
    * @returns a Rect object
    */
-  getGroupRect(g, bondlength) {
+  getGroupRect(g: Group<TBio>, bondlength: number): Rect | null {
     let r = null;
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
@@ -995,16 +1017,17 @@ export class Mol<TBio = any> {
       if (g2.group != g)
         continue;
 
-      const rect = JSDraw2.Group.cast(g2) != null ? this.getGroupRect(g2, bondlength) : g2.rect();
+      // @ts-ignore
+      const rect: Rect | null = JSDraw2.Group.cast<TBio>(g2) != null ? this.getGroupRect(g2, bondlength) : g2.rect();
       if (r == null)
-        r = rect.clone();
+        r = rect!.clone();
       else
         r.union(rect);
     }
 
     if (r != null && g.gap > 0)
       r.inflate(g.gap * bondlength / 15.0, g.gap * bondlength / 15.0);
-    return r;
+    return r!;
   }
 
   /**
@@ -1032,7 +1055,7 @@ export class Mol<TBio = any> {
    * @function rect
    * @returns a Rect object
    */
-  rect(withoutRgroups?: boolean) {
+  rect(withoutRgroups?: boolean): Rect | null {
     if (this.atoms.length == 0) {
       if (this.graphics.length == 0)
         return null;
@@ -1061,19 +1084,19 @@ export class Mol<TBio = any> {
 
       if (p.x < x1)
         x1 = p.x;
-      else if (p.x > x2)
+      else if (p.x > x2!)
         x2 = p.x;
 
-      if (p.y < y1)
+      if (p.y < y1!)
         y1 = p.y;
-      else if (p.y > y2)
+      else if (p.y > y2!)
         y2 = p.y;
     }
 
-    const r: Rect = new JSDraw2.Rect(x1, y1, x2 - x1, y2 - y1);
+    const r: Rect = new JSDraw2.Rect(x1!, y1!, x2! - x1!, y2! - y1!);
     for (let i = 0; i < this.graphics.length; ++i) {
       const g = this.graphics[i];
-      if (JSDraw2.Group.cast(g) != null)
+      if (JSDraw2.Group.cast<TBio>(g) != null)
         continue;
       r.union(g.rect());
     }
@@ -1100,7 +1123,7 @@ export class Mol<TBio = any> {
    * @param {bool} selectedOnly - indicated if moving only selected objects
    * @returns null
    */
-  offset(dx, dy, selectedOnly?: boolean) {
+  offset(dx: number, dy: number, selectedOnly?: boolean): void {
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (selectedOnly != true || a.selected)
@@ -1119,7 +1142,7 @@ export class Mol<TBio = any> {
         this.graphics[i].offset(dx, dy);
       } else {
         if (selectedOnly && !g.selected) {
-          const t = JSDraw2.Text.cast(g);
+          const t = JSDraw2.Text.cast<TBio>(g);
           if (t != null && t.anchors.length > 0) {
             let all = true;
             for (let j = 0; j < t.anchors.length; ++j) {
@@ -1145,7 +1168,7 @@ export class Mol<TBio = any> {
    * @param {number} deg - degrees to be rotated
    * @returns null
    */
-  rotate(origin, deg) {
+  rotate(origin: Point, deg: number): void {
     for (let i = 0; i < this.atoms.length; ++i)
       this.atoms[i].p.rotateAround(origin, deg);
   }
@@ -1156,23 +1179,23 @@ export class Mol<TBio = any> {
    * @param {object} obj - Atom, bond, or graphics to be removed
    * @returns null
    */
-  delObject(obj) {
+  delObject(obj: any): boolean | void {
     if (obj == null)
       return;
 
-    const a = JSDraw2.Atom.cast(obj);
+    const a = JSDraw2.Atom.cast<TBio>(obj);
     if (a != null)
       return this.delAtom(a);
 
-    const b = JSDraw2.Bond.cast(obj);
+    const b = JSDraw2.Bond.cast<TBio>(obj);
     if (b != null)
       return this.delBond(b);
 
     return this.delGraphics(obj);
   }
 
-  delGraphics(obj) {
-    const group = JSDraw2.Group.cast(obj);
+  delGraphics(obj: IGraphics): boolean {
+    const group = JSDraw2.Group.cast<TBio>(obj);
     if (group != null) {
       for (let i = 0; i < this.atoms.length; ++i) {
         if (this.atoms[i].group == group)
@@ -1195,8 +1218,8 @@ export class Mol<TBio = any> {
     return false;
   }
 
-  delAtom(a: Atom<TBio>, checkBonds?: boolean) {
-    const atoms = [];
+  delAtom(a: Atom<TBio>, checkBonds?: boolean): boolean {
+    const atoms: Atom<TBio>[] = [];
     atoms.push(a);
 
     if (checkBonds != false) {
@@ -1205,7 +1228,7 @@ export class Mol<TBio = any> {
         if (b.a1 == a || b.a2 == a) {
           this.bonds.splice(i, 1);
           this.objectRemoved(b);
-          atoms.push(b.otherAtom(a));
+          atoms.push(b.otherAtom(a)!);
           if (a.atommapid != null)
             this.clearAtomMap(a.atommapid);
         }
@@ -1223,7 +1246,7 @@ export class Mol<TBio = any> {
     return n > 0;
   }
 
-  delBond(b, delLoneAtom?: boolean) {
+  delBond(b: Bond<TBio>, delLoneAtom?: boolean): boolean {
     for (let i = 0; i < this.bonds.length; ++i) {
       if (this.bonds[i] == b) {
         this.bonds.splice(i, 1);
@@ -1241,7 +1264,7 @@ export class Mol<TBio = any> {
     return false;
   }
 
-  delLoneAtom(a) {
+  delLoneAtom(a: Atom<TBio>): boolean {
     if (!this.isLoneAtom(a)) {
       this.setHCount(a);
       return false;
@@ -1260,7 +1283,7 @@ export class Mol<TBio = any> {
     return false;
   }
 
-  objectRemoved(obj) {
+  objectRemoved(obj: any): void {
     for (let i = 0; i < this.graphics.length; ++i) {
       const g = this.graphics[i];
       if (g.removeObject != null)
@@ -1339,14 +1362,14 @@ export class Mol<TBio = any> {
     return n;
   }
 
-  setBondLength(d) {
+  setBondLength(d: number): void {
     const s = d / this.medBondLength();
     if (isNaN(s))
-      return false;
+      return /* false */;
     this.scale(s);
   }
 
-  getSketchType() {
+  getSketchType(): string {
     for (let i = 0; i < this.atoms.length; ++i) {
       if (this.atoms[i].bio != null)
         return 'biologics';
@@ -1359,7 +1382,7 @@ export class Mol<TBio = any> {
    * @function mergeMol
    * @param {Mol} m - the Molecule to be merged
    */
-  mergeMol(m, _parent?: any, group?: any) {
+  mergeMol(m: Mol<TBio>, _parent?: Mol<TBio>, group?: Group<TBio>): void {
     for (let i = 0; i < m.atoms.length; ++i) {
       this.addAtom(m.atoms[i]);
       if (group != null)
@@ -1378,7 +1401,7 @@ export class Mol<TBio = any> {
     this._setParent(this);
   }
 
-  replaceAtom(old, newa) {
+  replaceAtom(old: Atom<TBio>, newa: Atom<TBio>): void {
     for (let i = 0; i < this.atoms.length; ++i) {
       if (this.atoms[i] == old) {
         this.atoms[i] = newa;
@@ -1397,7 +1420,7 @@ export class Mol<TBio = any> {
     this.setHCount(newa);
   }
 
-  replaceBond(old, newb) {
+  replaceBond(old: Bond<TBio>, newb: Bond<TBio>): void {
     for (let i = 0; i < this.bonds.length; ++i) {
       if (this.bonds[i] == old) {
         this.bonds[i] = newb;
@@ -1415,7 +1438,7 @@ export class Mol<TBio = any> {
    * @param {Graphics} g - the graphics to be added
    * @returns the Graphics added
    */
-  addGraphics(g) {
+  addGraphics(g: IGraphics): IGraphics | null {
     if (this.hasGraphics(g))
       return null;
 
@@ -1429,7 +1452,7 @@ export class Mol<TBio = any> {
    * @param {Atom} a - the atom to be added
    * @returns the Atom added
    */
-  addAtom(a) {
+  addAtom(a: Atom<TBio>): Atom<TBio> | null {
     if (this.hasAtom(a))
       return null;
 
@@ -1471,7 +1494,7 @@ export class Mol<TBio = any> {
     return b;
   }
 
-  _addBond2RGroupMol(b) {
+  _addBond2RGroupMol(b: Bond<TBio>): void {
     const m = b.a1._parent || b.a2._parent;
     if (m == null || b.a1._parent == b._parent && b.a2._parent == b.a1._parent)
       return;
@@ -1497,7 +1520,7 @@ export class Mol<TBio = any> {
    * @param {string} alias - alias name
    * @returns true of false
    */
-  setAtomAlias(a, alias, len?: number) {
+  setAtomAlias(a: Atom<TBio>, alias: string, len?: number): boolean {
     if (alias == null || alias == '')
       return this.setAtomType(a, alias);
 
@@ -1538,6 +1561,7 @@ export class Mol<TBio = any> {
     a.charge = 0;
     a.alias = alias;
     if (m != null) {
+      //@ts-ignore
       const attach = JSDraw2.SuperAtoms._getFirstAttachAtom(m);
       if (attach != null)
         JSDraw2.SuperAtoms._alignMol(a._parent, a, m, attach, len != null ? len : this.medBondLength(1.56));
@@ -1558,7 +1582,7 @@ export class Mol<TBio = any> {
     return true;
   }
 
-  setAttachPoint(a, apo) {
+  setAttachPoint(a: Atom<TBio>, apo: number): boolean {
     if (apo > 0 && !(a.attachpoints.length == 1 && a.attachpoints[0] == apo)) {
       a.attachpoints = [apo];
       a._parent.setHCount(a);
@@ -1642,8 +1666,8 @@ export class Mol<TBio = any> {
       a.isotope = null;
     a.query = null;
 
-    if (charge > 0 || charge < 0)
-      a.charge = charge;
+    if (charge! > 0 || charge! < 0)
+      a.charge = charge!;
     else if (setCharge)
       a.charge = 0;
 
@@ -1671,7 +1695,7 @@ export class Mol<TBio = any> {
    * @param {number} charge - charges
    * @returns true of false
    */
-  setAtomCharge(a, charge) {
+  setAtomCharge(a: Atom<TBio>, charge: number | null): boolean {
     if (charge == null || isNaN(charge) || a.bio)
       return false;
     charge = Math.round(charge);
@@ -1689,7 +1713,7 @@ export class Mol<TBio = any> {
    * @param {BONDTYPES} type - predefined bond type
    * @returns true of false
    */
-  setBondType(b, type) {
+  setBondType(b: Bond<TBio>, type: BondType) {
     if (b.a1.biotype() == JSDraw2.BIO.AA && b.a2.biotype() == JSDraw2.BIO.AA) {
       if (b.type == JSDraw2.BONDTYPES.DISULFIDE && type == JSDraw2.BONDTYPES.PEPTIDE || b.type == JSDraw2.BONDTYPES.PEPTIDE && type == JSDraw2.BONDTYPES.DISULFIDE) {
         b.type = type;
@@ -1705,7 +1729,7 @@ export class Mol<TBio = any> {
     }
   }
 
-  isLoneAtom(a) {
+  isLoneAtom(a: Atom<TBio>): boolean {
     for (let i = 0; i < this.bonds.length; ++i) {
       const b = this.bonds[i];
       if (b.a1 == a || b.a2 == a)
@@ -1738,7 +1762,7 @@ export class Mol<TBio = any> {
     return d <= 0 ? 1.5 : d;
   }
 
-  _hasDoubleBonds(a) {
+  _hasDoubleBonds(a: Atom<TBio>): boolean {
     for (let i = 0; i < this.bonds.length; ++i) {
       const b = this.bonds[i];
       if (b.type == JSDraw2.BONDTYPES.DOUBLE && (b.a1 == a || b.a2 == a))
@@ -1765,8 +1789,8 @@ export class Mol<TBio = any> {
     return list;
   }
 
-  getNeighborBonds(a, excludeDummyBonds?: boolean) {
-    const list = [];
+  getNeighborBonds(a: Atom<TBio>, excludeDummyBonds?: boolean): Bond<TBio>[] {
+    const list: Bond<TBio>[] = [];
     for (let i = 0; i < this.bonds.length; ++i) {
       const b = this.bonds[i];
       if ((b.a1 == a || b.a2 == a) &&
@@ -1804,7 +1828,7 @@ export class Mol<TBio = any> {
   }
 
   draw(surface: any, linewidth: number, fontsize: number, textonly: boolean, dimension: Point,
-    highlighterrors: boolean, showcarbon?: boolean, simpledraw: boolean = false) {
+    highlighterrors: boolean, showcarbon?: string, simpledraw: boolean = false) {
     if (linewidth == null)
       linewidth = 2;
     if (fontsize == null)
@@ -1898,7 +1922,7 @@ export class Mol<TBio = any> {
     }
   }
 
-  moveHiddenAtomToGroupBorder(a, a2) {
+  moveHiddenAtomToGroupBorder(a: Atom<TBio>, a2: Atom<TBio>): boolean {
     if (!a.hidden)
       return false;
 
@@ -1972,9 +1996,9 @@ export class Mol<TBio = any> {
     return true;
   }
 
-  _findGroup(a) {
+  _findGroup(a: Atom<TBio>): Group<TBio> | null {
     for (let i = 0; i < this.graphics.length; ++i) {
-      const g = JSDraw2.Group.cast(this.graphics[i]);
+      const g = JSDraw2.Group.cast<TBio>(this.graphics[i]);
       if (g != null && g.a == a)
         return g;
     }
@@ -1982,7 +2006,7 @@ export class Mol<TBio = any> {
     return null;
   }
 
-  drawSelect(lasso, simpledraw) {
+  drawSelect(lasso: Lasso<TBio>, simpledraw: boolean): void {
     for (let i = 0; i < this.graphics.length; ++i) {
       if (this.graphics[i].selected)
         this.graphics[i].drawSelect(lasso);
@@ -2014,7 +2038,7 @@ export class Mol<TBio = any> {
     }
   }
 
-  setZOrder(g, z) {
+  setZOrder(g: IGraphics, z: number): boolean {
     const i = scil.Utils.indexOf(this.graphics, g);
     if (i < 0 || this.graphics.length == 1)
       return false;
@@ -2074,7 +2098,7 @@ export class Mol<TBio = any> {
    * @param {string} molfile - the input molfile
    * @returns the Mol object
    */
-  setMolfile(molfile, rxn?: boolean) {
+  setMolfile(molfile: string, rxn?: boolean): Mol<TBio> | null {
     const m = this.setMolfile2(molfile, rxn);
     if (m != null)
       this.guessSuperAtoms();
@@ -2085,7 +2109,7 @@ export class Mol<TBio = any> {
     return 0;
   }
 
-  setMolfile2(molfile, rxn?: boolean) {
+  setMolfile2(molfile: string, rxn?: boolean): Mol<TBio> | null {
     if (molfile != null && molfile.length > 4) {
       if (molfile.substr(0, 4) == '$RXN')
         return this.setRxnfile(molfile);
@@ -2119,7 +2143,7 @@ export class Mol<TBio = any> {
     return null;
   }
 
-  setMolV2000(lines, start, rxn: boolean, rAtoms?: Atom<TBio>[]) {
+  setMolV2000(lines: string[], start: number, rxn?: boolean, rAtoms?: Atom<TBio>[]): Mol<TBio> | null {
     const natoms = parseFloat(lines[start].substr(0, 3));
     const nbonds = parseFloat(lines[start].substr(3, 3));
     const chiral = lines[start].substr(12, 3);
@@ -2186,13 +2210,13 @@ export class Mol<TBio = any> {
       const order = parseInt(line.substr(6, 3));
       const stereo = parseInt(line.substr(9, 3));
       const ring = line.length >= 18 ? parseInt(line.substr(15, 3)) : null;
-      const rcenter = line.length >= 21 ? line.substr(18, 3) : null;
+      const rcenter: string | null = line.length >= 21 ? line.substr(18, 3) : null;
       if (isNaN(sI) || isNaN(eI) || isNaN(order))
         return null;
 
       const a1 = this.atoms[sI];
       const a2 = this.atoms[eI];
-      let b: BondTypes;
+      let b!: BondTypes;
       switch (order) {
       case 0:
         b = JSDraw2.BONDTYPES.UNKNOWN;
@@ -2248,7 +2272,7 @@ export class Mol<TBio = any> {
       this._addBond(bond);
     }
 
-    const sgroups = [];
+    const sgroups: SubGroup[] = [];
     start += nbonds;
     for (let i = start; i < lines.length; ++i) {
       const s = scil.Utils.rtrim(lines[i]);
@@ -2365,7 +2389,7 @@ export class Mol<TBio = any> {
           const sn = s.substr(14 + k * 8, 3);
           let br = null;
           if (sn == 'DAT') {
-            br = new JSDraw2.Text();
+            br = new JSDraw2.Text<TBio>();
           } else if (sn == 'SUP') {
             br = {type: 'SUPERATOM', atoms: []};
           } else {
@@ -2395,7 +2419,7 @@ export class Mol<TBio = any> {
         for (let k = 0; k < n; ++k) {
           const ci = parseInt(s.substr(10 + k * 8, 3));
           const pi = parseInt(s.substr(14 + k * 8, 3));
-          if (JSDraw2.Text.cast(sgroups[ci]) != null && JSDraw2.Bracket.cast(sgroups[pi]) != null)
+          if (JSDraw2.Text.cast<TBio>(sgroups[ci]) != null && JSDraw2.Bracket.cast<TBio>(sgroups[pi]) != null)
             sgroups[ci].anchors = [sgroups[pi]]; // text attached to bracket
         }
       } else if (token == 'M  SCN') {
@@ -2403,7 +2427,7 @@ export class Mol<TBio = any> {
         for (let k = 0; k < n; ++k) {
           const si = parseInt(s.substr(10 + k * 8, 3));
           const conn = s.substr(14 + k * 8, 2);
-          if (JSDraw2.Bracket.cast(sgroups[si]) != null)
+          if (JSDraw2.Bracket.cast<TBio>(sgroups[si]) != null)
             sgroups[si].conn = conn;
         }
       } else if (token == 'M  SNC') {
@@ -2411,7 +2435,7 @@ export class Mol<TBio = any> {
         for (let k = 0; k < n; ++k) {
           const si = parseInt(s.substr(10 + k * 8, 3));
           const num = scil.Utils.trim(s.substr(14 + k * 8, 2));
-          if (JSDraw2.Bracket.cast(sgroups[si]) != null) {
+          if (JSDraw2.Bracket.cast<TBio>(sgroups[si]) != null) {
             if (sgroups[si].type == 'c')
               sgroups[si].type = 'c' + num;
             else if (sgroups[si].type == 'mul')
@@ -2429,9 +2453,9 @@ export class Mol<TBio = any> {
             if (a != null) {
               if (sg.type == 'SUPERATOM')
                 sg.atoms.push(a);
-              else if (JSDraw2.Bracket.cast(sg) != null)
+              else if (JSDraw2.Bracket.cast<TBio>(sg) != null)
                 sg.atoms.push(a);
-              else if (JSDraw2.Text.cast(sg) != null)
+              else if (JSDraw2.Text.cast<TBio>(sg) != null)
                 sg.anchors.push(a);
             }
           }
@@ -2439,7 +2463,7 @@ export class Mol<TBio = any> {
       } else if (token == 'M  SPA') {
         const si = parseInt(s.substr(7, 3));
         const sg = sgroups[si];
-        if (JSDraw2.Bracket.cast(sg) != null && sg.type == 'mul') {
+        if (JSDraw2.Bracket.cast<TBio>(sg) != null && sg.type == 'mul') {
           const n = parseInt(s.substr(10, 3));
           for (let k = 0; k < n; ++k) {
             const ai = parseInt(s.substr(14 + k * 4, 3));
@@ -2458,7 +2482,7 @@ export class Mol<TBio = any> {
         for (let k = 0; k < n; ++k) {
           const bi = parseInt(s.substr(14 + k * 4, 3));
           const b = this.bonds[bi - 1];
-          if (b != null && JSDraw2.Text.cast(sg) != null)
+          if (b != null && JSDraw2.Text.cast<TBio>(sg) != null)
             sg.anchors.push(b);
         }
       } else if (token == 'M  SDI') {
@@ -2478,12 +2502,12 @@ export class Mol<TBio = any> {
       } else if (token == 'M  SDT') {
         const si = parseInt(s.substr(7, 3));
         const sg = sgroups[si];
-        if (JSDraw2.Text.cast(sg) != null)
+        if (JSDraw2.Text.cast<TBio>(sg) != null)
           sg.fieldtype = scil.Utils.trim(s.substr(11, 30));
       } else if (token == 'M  SDD') {
         const si = parseInt(s.substr(7, 3));
         const sg = sgroups[si];
-        if (JSDraw2.Text.cast(sg) != null) {
+        if (JSDraw2.Text.cast<TBio>(sg) != null) {
           const p = new JSDraw2.Point(parseFloat(s.substr(11, 10)), -parseFloat(s.substr(21, 10)));
           if (p.isValid())
             sg._rect = new JSDraw2.Rect(p.x, p.y, 0, 0);
@@ -2491,7 +2515,7 @@ export class Mol<TBio = any> {
       } else if (token == 'M  SED') {
         const si = parseInt(s.substr(7, 3));
         const sg = sgroups[si];
-        if (JSDraw2.Text.cast(sg) != null)
+        if (JSDraw2.Text.cast<TBio>(sg) != null)
           sg.text = scil.Utils.trim(s.substr(11));
       } else if (token3 == 'A  ') {
         const ai = parseInt(s.substr(3, 3));
@@ -2507,7 +2531,7 @@ export class Mol<TBio = any> {
     }
 
     const superatoms = [];
-    const brackets = [];
+    const brackets: Bracket<TBio>[] = [];
     const gap = this.medBondLength(1.56) / 2;
     for (let i = 0; i < sgroups.length; ++i) {
       // post-process sgroups
@@ -2525,6 +2549,7 @@ export class Mol<TBio = any> {
             brackets.push(br);
           if (br.conn != null && br.conn != '')
             this.setSgroup(br, 'BRACKET_CONN', br.conn.toLowerCase(), br._rect.right() + gap / 4, br._rect.top - gap / 4);
+          // @ts-ignore
           JSDraw2.SuperAtoms.collapseRepeat(this, br);
         } else {
           if (scil.Utils.endswith(sg.fieldtype, '_TYPE') && sg.fieldtype != 'BRACKET_TYPE')
@@ -2571,18 +2596,18 @@ export class Mol<TBio = any> {
         case 'AminoAcid':
         case 'AA':
           na.bio = {type: JSDraw2.BIO.AA};
-          na.elem = na.alias;
+          na.elem = na.alias!;
           na.alias = null;
           break;
         case 'BASE':
         case 'DNA':
           na.bio = {type: JSDraw2.BIO.BASE_DNA};
-          na.elem = na.alias;
+          na.elem = na.alias!;
           na.alias = null;
           break;
         case 'RNA':
           na.bio = {type: JSDraw2.BIO.BASE_RNA};
-          na.elem = na.alias;
+          na.elem = na.alias!;
           na.alias = null;
           break;
         }
@@ -2655,11 +2680,11 @@ export class Mol<TBio = any> {
     return this.atoms.length > 999 || this.bonds.length > 999 || this.hasEnhancedStereochemistry();
   }
 
-  getRgfile(rxn, rgroups, superatoms) {
+  getRgfile(rxn: boolean, rgroups: RGroupsType<TBio>, superatoms: any[]): string | null {
     return null;
   }
 
-  _getRgroups(rgroups?: any) {
+  _getRgroups(rgroups?: RGroupsType<TBio>): RGroupsType<TBio> {
     if (rgroups == null)
       rgroups = {n: 0, list: []};
 
@@ -2675,9 +2700,9 @@ export class Mol<TBio = any> {
     return rgroups;
   }
 
-  getSubMol(atoms) {
+  getSubMol(atoms: Atom<TBio>[]): SubMolType<TBio> {
     const m = this;
-    const set = {atoms: scil.clone(atoms), bonds: [], openbonds: []};
+    const set: SubMolType<TBio> = {atoms: scil.clone(atoms), bonds: [], openbonds: []};
     for (let j = 0; j < m.bonds.length; ++j) {
       const b = m.bonds[j];
       const f1 = scil.Utils.indexOf(atoms, b.a1) >= 0;
@@ -2702,7 +2727,7 @@ export class Mol<TBio = any> {
     return set;
   }
 
-  expandSuperAtoms(superatoms2?: any[]) {
+  expandSuperAtoms(superatoms2?: SuperAtomType<TBio>[]): Mol<TBio> {
     const superatoms = [];
 
     const m = this.clone(null);
@@ -2710,7 +2735,8 @@ export class Mol<TBio = any> {
     for (let i = 0; i < list.length; ++i) {
       const a = list[i];
       if (a.superatom != null) {
-        const m2 = JSDraw2.SuperAtoms.addToMol(m, a, a.superatom);
+        //@ts-ignore
+        const m2: Molt<TBio> = JSDraw2.SuperAtoms.addToMol(m, a, a.superatom);
         superatoms.push({a: a, m: m2});
         if (superatoms2 != null)
           superatoms2.push({a: a, m: m2});
@@ -2722,13 +2748,13 @@ export class Mol<TBio = any> {
     }
 
     for (let i = 0; i < m.graphics.length; ++i) {
-      const br = JSDraw2.Bracket.cast(m.graphics[i]);
+      const br = JSDraw2.Bracket.cast<TBio>(m.graphics[i]);
       if (br == null)
         continue;
 
       if (br.atoms != null && superatoms != null) {
         const atoms = [];
-        let m2: Mol<TBio> = null;
+        let m2: Mol<TBio> | null = null;
         for (let k = 0; k < br.atoms.length; ++k) {
           for (let j = 0; j < superatoms.length; ++j) {
             if (br.atoms[k] == superatoms[j].a) {
@@ -2746,6 +2772,7 @@ export class Mol<TBio = any> {
         br.atoms = atoms;
       }
 
+      // @ts-ignore
       JSDraw2.SuperAtoms.expandRepeat(m, br);
     }
 
@@ -2753,8 +2780,8 @@ export class Mol<TBio = any> {
     return m;
   }
 
-  getMolV2000(rxn, excludeDummyBonds) {
-    const superatoms = [];
+  getMolV2000(rxn: boolean, excludeDummyBonds?: boolean): string {
+    const superatoms: SuperAtomType<TBio>[] = [];
     const m = this.expandSuperAtoms(superatoms);
     m.chiral = this.chiral;
 
@@ -2769,7 +2796,7 @@ export class Mol<TBio = any> {
     const hasRgroup = false;
     const rgroups = m._getRgroups();
     if (rgroups.list.length > 0)
-      return m.getRgfile(rxn, rgroups, superatoms);
+      return m.getRgfile(rxn, rgroups, superatoms)!;
 
     let s = (m.name == null ? '' : m.name) + '\n';
     s += m._getMolHeader();
@@ -2824,12 +2851,12 @@ export class Mol<TBio = any> {
     return '   JSDraw2' + this._getMolTime() + '2D\n';
   }
 
-  _getMolV2000(rxn, rgroups, superatoms) {
+  _getMolV2000(rxn: boolean, rgroups: any, superatoms: SuperAtomType<TBio>[]): string {
     if (rgroups != null)
       this._getRgroups(rgroups);
 
-    const len = this.bondlength > 0 ? this.bondlength : this.medBondLength();
-    const scale = len > 0 ? (1.56 / len) : 1.0;
+    const len = this.bondlength! > 0 ? this.bondlength : this.medBondLength();
+    const scale = len! > 0 ? (1.56 / len!) : 1.0;
 
     let s = '';
     s += scil.Utils.formatStr(this.atoms.length, 3, 0);
@@ -2853,8 +2880,8 @@ export class Mol<TBio = any> {
       const a = this.atoms[i];
       if (a.isotope != null)
         isotopes += 'M  ISO' + '  1' + scil.Utils.formatStr(i + 1, 4, 0) + scil.Utils.formatStr(a.isotope, 4, 0) + '\n';
-      if (a.radical >= 1 && a.radical <= 3)
-        radicals += 'M  RAD  1' + scil.Utils.formatStr(i + 1, 4, 0) + scil.Utils.formatStr(a.radical, 4, 0) + '\n';
+      if (a.radical! >= 1 && a.radical! <= 3)
+        radicals += 'M  RAD  1' + scil.Utils.formatStr(i + 1, 4, 0) + scil.Utils.formatStr(a.radical!, 4, 0) + '\n';
       if (a.tag != null && a.tag != '')
         tags += 'V  ' + scil.Utils.formatStr(i + 1, 3, 0) + ' ' + a.tag + '\n';
       if (a.alias != null && a.alias != '')
@@ -2878,7 +2905,7 @@ export class Mol<TBio = any> {
 
       let elem = a.elem;
       if (a.elem == 'R') {
-        if (a.iR > 0) {
+        if ((a.iR as number) > 0) {
           elem = 'R#';
           rgp += 'M  RGP  1' + scil.Utils.formatStr(i + 1, 4, 0) + scil.Utils.formatStr(parseInt(a.iR as string), 4, 0) + '\n';
         } else {
@@ -2921,8 +2948,8 @@ export class Mol<TBio = any> {
       s += scil.Utils.formatStr(c, 3, 0);
 
       s += '  0';
-      if (a.hs > 0)
-        s += scil.Utils.formatStr(a.hs, 3, 0);
+      if (a.hs! > 0)
+        s += scil.Utils.formatStr(a.hs!, 3, 0);
       else
         s += '  0';
 
@@ -2933,8 +2960,8 @@ export class Mol<TBio = any> {
         s += '  0';
 
       s += '  0  0';
-      if (rxn && a.atommapid > 0)
-        s += scil.Utils.formatStr(a.atommapid, 3, 0);
+      if (rxn && a.atommapid! > 0)
+        s += scil.Utils.formatStr(a.atommapid!, 3, 0);
       else
         s += '  0';
       s += '  0  0\n';
@@ -2943,8 +2970,8 @@ export class Mol<TBio = any> {
     for (let i = 0; i < this.bonds.length; ++i) {
       const b = this.bonds[i];
 
-      s += scil.Utils.formatStr(b.a1.id, 3, 0);
-      s += scil.Utils.formatStr(b.a2.id, 3, 0);
+      s += scil.Utils.formatStr(b.a1.id!, 3, 0);
+      s += scil.Utils.formatStr(b.a2.id!, 3, 0);
 
       let order = 0;
       let stereo = 0;
@@ -3038,7 +3065,7 @@ export class Mol<TBio = any> {
 
     const texts = [];
     for (let i = 0; i < this.graphics.length; ++i) {
-      const t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast<TBio>(this.graphics[i]);
       if (t != null)
         texts.push(t);
     }
@@ -3064,10 +3091,11 @@ export class Mol<TBio = any> {
       const k = ++id.k;
       let connectivity = null;
       const sgroup: any = {sty: '', spl: '', data: '', id: id};
-      const tp = br.getType();
-      const snc = br.getTypeNum();
+      const tp: string = br.getType();
+      const snc: string | null = br.getTypeNum();
       sgroup.subscript = tp;
 
+      // @ts-ignore
       let type = JSDraw2.SGroup.stys[tp];
       if (type == null) {
         if (bracketbonds != null && bracketbonds.length == 2)
@@ -3076,7 +3104,8 @@ export class Mol<TBio = any> {
           type = 'GEN';
       }
       sgroup.sty += ' ' + scil.Utils.formatStr(k, 3, 0) + ' ' + type;
-      let fieldtype = JSDraw2.SGroup.fieldtypes[tp];
+      // @ts-ignore
+      let fieldtype = JSDraw2.SGroup.fieldtypes[tp!];
       if (fieldtype == null)
         fieldtype = 'BRACKET';
       const custom = type == null;
@@ -3088,7 +3117,7 @@ export class Mol<TBio = any> {
           if (t.fieldtype == 'BRACKET_CONN') {
             connectivity = t.text;
           } else if (t.fieldtype != 'BRACKET_TYPE' || t.text != tp && tp != 'mul' || custom) {
-            let ft = t.fieldtype;
+            let ft = t.fieldtype!;
             if (fieldtype != null && ft != null && ft.length > 8 && ft.substr(0, 8) == 'BRACKET_') {
               if (ft == 'BRACKET_SUBTYPE')
                 ft = fieldtype + '_TYPE';
@@ -3157,7 +3186,7 @@ export class Mol<TBio = any> {
 
       let k = id.k;
       const sgroup = {sty: '', spl: '', data: '', id: id};
-      this.getDataGroup(t.text, t.fieldtype, t._rect.left * scale, -t._rect.top * scale, null, sgroup);
+      this.getDataGroup(t.text, t.fieldtype!, t._rect.left * scale, -t._rect.top * scale, null, sgroup);
       sgroupdata += 'M  STY' + scil.Utils.formatStr(sgroup.sty.length / 8, 3, 0) + sgroup.sty + '\n';
 
       // I#11604
@@ -3169,10 +3198,10 @@ export class Mol<TBio = any> {
       let sbl = '';
       for (let j = 0; j < t.anchors.length; ++j) {
         const a = t.anchors[j];
-        if (JSDraw2.Atom.cast(a) != null)
-          sal += ' ' + scil.Utils.formatStr(a.atomid, 3, 0);
-        else if (JSDraw2.Bond.cast(a) != null)
-          sbl += ' ' + scil.Utils.formatStr(a.bondid, 3, 0);
+        if (JSDraw2.Atom.cast<TBio>(a) != null)
+          sal += ' ' + scil.Utils.formatStr((a as Atom<TBio>).atomid!, 3, 0);
+        else if (JSDraw2.Bond.cast<TBio>(a) != null)
+          sbl += ' ' + scil.Utils.formatStr((a as Bond<TBio>).bondid!, 3, 0);
       }
       if (sal != '')
         sgroupdata += 'M  SAL ' + scil.Utils.formatStr(k, 3, 0) + scil.Utils.formatStr(sal.length / 4, 3, 0) + sal + '\n';
@@ -3201,8 +3230,8 @@ export class Mol<TBio = any> {
     return ret;
   }
 
-  writeList(prefix, list, key, chars, countperline) {
-    if (list == null || list.Length == 0)
+  writeList(prefix: string, list: any[] | null, key: string, chars: number, countperline: number): string {
+    if (list == null || list.length == 0)
       return '';
 
     let s = '';
@@ -3223,16 +3252,16 @@ export class Mol<TBio = any> {
     return s;
   }
 
-  getMolV3000(rxn) {
-    const superatoms = [];
+  getMolV3000(rxn: boolean): string {
+    const superatoms: SuperAtomType<TBio>[] = [];
     const m = this.expandSuperAtoms(superatoms);
     m.chiral = this.chiral;
     return m._getMolV3000();
   }
 
   _getMolV3000(rxn?: any) {
-    const len = this.bondlength > 0 ? this.bondlength : this.medBondLength();
-    const scale = len > 0 ? (1.56 / len) : 1.0;
+    const len = this.bondlength! > 0 ? this.bondlength : this.medBondLength();
+    const scale = len! > 0 ? (1.56 / len!) : 1.0;
 
     this.resetIds();
 
@@ -3262,7 +3291,7 @@ export class Mol<TBio = any> {
       const a = this.atoms[i];
       let elem = a.elem;
       if (elem == 'R') {
-        if (a.iR > 0)
+        if ((a.iR as number) > 0)
           elem = 'R#';
         else
           elem = 'R';
@@ -3276,10 +3305,10 @@ export class Mol<TBio = any> {
       s += 'M  V30 ' + a.id + ' ' + elem;
       s += ' ' + scil.Utils.formatStr(a.p.x * scale, 0, 4);
       s += ' ' + scil.Utils.formatStr(-a.p.y * scale, 0, 4);
-      s += ' 0 ' + (rxn && a.atommapid > 0 ? a.atommapid : 0);
+      s += ' 0 ' + (rxn && a.atommapid! > 0 ? a.atommapid : 0);
       if (a.charge != null && a.charge != 0)
         s += ' CHG=' + a.charge;
-      if (a.radical >= 1 && a.radical <= 3)
+      if (a.radical! >= 1 && a.radical! <= 3)
         s += ' RAD=' + a.radical;
 
       //if (chiralatoms[a.id] != null)
@@ -3338,7 +3367,7 @@ export class Mol<TBio = any> {
         s += ' CFG=' + stereo;
       if (b.ring != null)
         s += ' TOPO=' + (b.ring ? 1 : 2);
-      if (rxn && b.rcenter > 0)
+      if (rxn && b.rcenter! > 0)
         s += ' RXCTR=' + b.rcenter;
       s += '\n';
     }
@@ -3368,17 +3397,17 @@ export class Mol<TBio = any> {
     return '';
   }
 
-  setMolV3000(lines, start, rxn, pos?: any, endtoken?: any) {
+  setMolV3000(lines: any, start: any, rxn: any, pos?: any, endtoken?: any): Mol<TBio> {
     return this;
   }
 
-  readV30Collections(lines, i, atommap) {
+  readV30Collections(lines: any, i: number, atommap: any): void {
   }
 
-  readV30Bonds(lines, i, atommap, rxn) {
+  readV30Bonds(lines: any, i: number, atommap: any, rxn: boolean): void {
   }
 
-  getChiralAtom(t): Atom<TBio> | null {
+  getChiralAtom(t: Text<TBio>): Atom<TBio> | null {
     if (t == null || t.anchors == null || t.anchors.length != 1 || t.fieldtype != 'CHIRAL')
       return null;
     const a = JSDraw2.Atom.cast<TBio>(t.anchors[0]);
@@ -3387,11 +3416,11 @@ export class Mol<TBio = any> {
     return JSDraw2.Atom.isValidChiral(t.text) ? a : null;
   }
 
-  markChirality(a, c, bondlength) {
+  markChirality(a: Atom<TBio>, c: number, bondlength: number): boolean {
     return false;
   }
 
-  findBestPostion(a, bondlength) {
+  findBestPosition(a: Atom<TBio>, bondlength: number): Point {
     const atoms = a._parent.getNeighborAtoms(a);
     const p = a.p.clone();
     if (atoms != null && atoms.length > 0) {
@@ -3408,7 +3437,7 @@ export class Mol<TBio = any> {
     return p;
   }
 
-  readRxnCenter(bond, s) {
+  readRxnCenter(bond: Bond<TBio>, s: string | null): void {
     const rcenter = s == null ? null : parseInt(s);
     switch (rcenter) {
     case -1:
@@ -3432,36 +3461,36 @@ export class Mol<TBio = any> {
     }
   }
 
-  readV30Atoms(lines, i, atommap, rxn) {
+  readV30Atoms(lines: string[], i: number, atommap: any[], rxn: boolean): any {
 
   }
 
-  readV30Counts(lines, i, counts) {
+  readV30Counts(lines: string[], i: number, counts: number): any {
 
   }
 
-  parseV30Attributes(ss, start) {
+  parseV30Attributes(ss: string, start: number): null {
     return null;
   }
 
-  getDataGroup(data, key, x, y, k2, sgroup) {
+  getDataGroup(data: string, key: string, x: number, y: number, k2: number | null, sgroup: any): void {
 
   }
 
-  containsWord(word) {
+  containsWord(word: string): boolean {
     word = word.toLowerCase();
     for (let i = 0; i < this.graphics.length; ++i) {
-      const t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast<TBio>(this.graphics[i]);
       if (t != null && scil.Utils.containsWord(t.text, word, true))
         return true;
     }
     return false;
   }
 
-  containsText(s) {
+  containsText(s: string): boolean {
     s = s.toLowerCase();
     for (let i = 0; i < this.graphics.length; ++i) {
-      const t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast<TBio>(this.graphics[i]);
       if (t != null && t.text != null && t.text.toLowerCase().indexOf(s) >= 0)
         return true;
     }
@@ -3474,7 +3503,7 @@ export class Mol<TBio = any> {
    * @param {string} k - the property name
    * @returns the property
    */
-  getProp(k) {
+  getProp(k: string): any {
     return this.props == null ? null : this.props[k];
   }
 
@@ -3485,7 +3514,7 @@ export class Mol<TBio = any> {
    * @param {object} v - the property value
    * @returns null
    */
-  setProp(k, v) {
+  setProp(k: string, v: any): void {
     if (v == null) {
       if (this.props != null)
         delete this.props[k];
@@ -3502,11 +3531,11 @@ export class Mol<TBio = any> {
    * @param {string} rgfile - the input rgfile
    * @returns the Mol object
    */
-  setRgfile(rgfile) {
+  setRgfile(rgfile: string): Mol<TBio> | null {
     return null;
   }
 
-  _setParent(m) {
+  _setParent(m: Mol<TBio>): void {
     for (let i = 0; i < this.atoms.length; ++i)
       this.atoms[i]._parent = m;
     for (let i = 0; i < this.bonds.length; ++i)
@@ -3522,7 +3551,7 @@ export class Mol<TBio = any> {
       this.bonds[i].group = g;
   }
 
-  toggleAtom(p, tor) {
+  toggleAtom(p: Point, tor: number): Atom<TBio> | null {
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (a.toggle(p, tor))
@@ -3540,7 +3569,7 @@ export class Mol<TBio = any> {
     return null;
   }
 
-  toggle(p, tor) {
+  toggle(p: Point, tor: number): any {
     for (let i = 0; i < this.atoms.length; ++i) {
       const a = this.atoms[i];
       if (a.toggle(p, tor))
@@ -3552,7 +3581,7 @@ export class Mol<TBio = any> {
       if (a.rgroup.toggle(p, tor))
         return a.rgroup;
 
-      const list = a.rgroup.mols;
+      const list: Mol<TBio>[] = a.rgroup.mols;
       for (let j = 0; j < list.length; ++j) {
         const r = list[j].toggle(p, tor);
         if (r != null)
@@ -3580,17 +3609,17 @@ export class Mol<TBio = any> {
    * @param {string} rxnfile - the input rxnfile
    * @returns the Mol object
    */
-  setRxnfile(rxnfile) {
+  setRxnfile(rxnfile: string): Mol<TBio> {
     return this;
   }
 
-  setRxnV3000(lines) {
+  setRxnV3000(lines: string): Mol<TBio> {
     return this;
   }
 
-  readCtabs(lines, i, n, list, endtoken) {
+  readCtabs(lines: string, i: number, n: number, list: any[], endtoken: string): number {
     for (let k = 0; k < n; ++k) {
-      const m = new JSDraw2.Mol();
+      const m: Mol<TBio> = new JSDraw2.Mol<TBio>();
       const pos: any = {};
       m.setMolV3000(lines, i, true, pos, endtoken);
       i = pos.i;
@@ -3600,11 +3629,11 @@ export class Mol<TBio = any> {
     return i;
   }
 
-  setRxnV2000(lines) {
+  setRxnV2000(lines: string): Mol<TBio> {
     return this;
   }
 
-  setRxn(rxn, bondlength) {
+  setRxn(rxn: boolean, bondlength: number): Mol<TBio> {
     return this;
   }
 
@@ -3615,7 +3644,7 @@ export class Mol<TBio = any> {
    * @param {bool} v3000 - indicate if rendering the rxnfile in V3000 format
    * @returns a string
    */
-  getRxnfile(groupbyplus, v3000) {
+  getRxnfile(groupbyplus: boolean, v3000: boolean): string | null {
     const rxn = this.parseRxn(true, groupbyplus);
     if (rxn == null)
       return null;
@@ -3630,7 +3659,7 @@ export class Mol<TBio = any> {
     const list = [];
     for (let j = 0; j < this.graphics.length; ++j) {
       const b = this.graphics[j];
-      if (JSDraw2.Bracket.cast(b) != null)
+      if (JSDraw2.Bracket.cast<TBio>(b) != null)
         list.push(b);
     }
     return list;
@@ -3640,17 +3669,17 @@ export class Mol<TBio = any> {
     const list = [];
     for (let j = 0; j < this.graphics.length; ++j) {
       const b = this.graphics[j];
-      if (JSDraw2.Text.cast(b) != null)
+      if (JSDraw2.Text.cast<TBio>(b) != null)
         list.push(b);
     }
     return list;
   }
 
-  getRxnV2000(rxn) {
+  getRxnV2000(rxn: boolean): string | null {
     return null;
   }
 
-  getRxnV3000(rxn, groupbyplus?: boolean) {
+  getRxnV3000(rxn: boolean, groupbyplus?: boolean): string | null {
     return null;
   }
 
@@ -3680,7 +3709,7 @@ export class Mol<TBio = any> {
    * @param {string} data - JDX string
    * @returns a Mol object
    */
-  setJdx(data, bondlength) {
+  setJdx(data: string, bondlength: number): Mol<TBio> {
     return this;
   }
 
@@ -3690,15 +3719,15 @@ export class Mol<TBio = any> {
    * @param {string} xml - the input JSDraw html/xml string
    * @returns a Mol object
    */
-  setXml(xml) {
+  setXml(xml: HTMLElement): Mol<TBio> {
     return this;
   }
 
-  setHtml(xml) {
+  setHtml(xml: HTMLElement): Mol<TBio> {
     return this.setXml(xml);
   }
 
-  toScreen(screenBondLength): number {
+  toScreen(screenBondLength: number): number {
     let len = this.medBondLength();
     if (!(len > 0))
       len = 1.56;
@@ -3715,7 +3744,7 @@ export class Mol<TBio = any> {
    * @param {Point} origin - the origin of scaling
    * @returns null
    */
-  scale(scale, origin?: Point): void {
+  scale(scale: number, origin?: Point): void {
     if (!(scale > 0))
       return;
 
@@ -3773,11 +3802,11 @@ export class Mol<TBio = any> {
       this.bonds[i].f = null;
   }
 
-  _connectFragsByPlus(frags, bondlen) {
+  _connectFragsByPlus(frags: Mol<TBio>[], bondlen: number): null {
     return null;
   }
 
-  _splitFrags(frags) {
+  _splitFrags(frags: Mol<TBio>[]): void {
     for (let i = 0; i < frags.length; ++i) {
       const ss = frags[i].splitFragments();
       if (ss.length > 0) {
@@ -3789,22 +3818,22 @@ export class Mol<TBio = any> {
     }
   }
 
-  _connectNextLine(frags, rect, above, arrow, bondlen) {
+  _connectNextLine(frags: Mol<TBio>[], rect: Rect, above: any, arrow: any, bondlen: number): null {
     return null;
   }
 
-  detectRxn(arrow) {
+  detectRxn(arrow: any): null {
     return null;
   }
 
-  _findCloseTexts(t, texts, dy, ret): void {
+  _findCloseTexts(t: Text<TBio>, texts: (Text<TBio> | null)[], dy: number, ret: Text<TBio>[]): void {
     for (let k = 0; k < texts.length; ++k) {
       const x = texts[k];
       if (x == null)
         continue;
 
-      const r1 = t.rect();
-      const r2 = x.rect();
+      const r1 = t.rect()!;
+      const r2 = x.rect()!;
       if (Math.abs(r1.top - r2.top) < dy || Math.abs(r1.top - r2.bottom()) < dy ||
         Math.abs(r1.bottom() - r2.top) < dy || Math.abs(r1.bottom() - r2.bottom()) < dy) {
         const overlap = Math.min(r1.right(), r2.right()) - Math.max(r1.left, r2.left);
@@ -3829,7 +3858,7 @@ export class Mol<TBio = any> {
     return null;
   }
 
-  _groupByPlus(rxn) {
+  _groupByPlus(rxn: IRxn | null): IRxn | null {
     if (rxn == null)
       return rxn;
 
@@ -3852,7 +3881,7 @@ export class Mol<TBio = any> {
       }
     } else {
       // order by x
-      const xx = [];
+      const xx: number[] = [];
       for (let i = 0; i < pluses.length; ++i) {
         const x = pluses[i].p.x;
         let p = xx.length;
@@ -3872,7 +3901,7 @@ export class Mol<TBio = any> {
     return rxn;
   }
 
-  _groupByPlus2(pluses, mols): Mol<TBio>[] {
+  _groupByPlus2(pluses: number[], mols: Mol<TBio>[]): Mol<TBio>[] {
     const list: Mol<TBio>[] = [];
     const n = pluses.length;
     for (let i = 0; i < mols.length; ++i) {
@@ -3911,7 +3940,7 @@ export class Mol<TBio = any> {
    * @function parseRxn
    * @returns a Reaction object: { reactants, products, arrow, above, below }
    */
-  parseRxn(copygraphics?: boolean, groupbyplus?: boolean) {
+  parseRxn(copygraphics?: boolean, groupbyplus?: boolean): IRxn {
     let rxn = this._parseRxn();
     if (groupbyplus)
       rxn = this._groupByPlus(rxn);
@@ -3926,7 +3955,7 @@ export class Mol<TBio = any> {
     return rxn;
   }
 
-  _addGraphicsRxnMol(mols, brackets, texts) {
+  _addGraphicsRxnMol(mols: Mol<TBio>[], brackets: (Bracket<TBio> | null)[], texts: Text<TBio>[]): void {
     for (let i = 0; i < mols.length; ++i) {
       const m = mols[i];
       for (let k = 0; k < brackets.length; ++k) {
@@ -3939,6 +3968,7 @@ export class Mol<TBio = any> {
       for (let k = 0; k < texts.length; ++k) {
         const b = texts[k];
         if (b != null && b.allAnchorsIn(m)) {
+          // @ts-ignore
           m.graphics.push(b);
           brackets[k] = null;
         }
@@ -3946,22 +3976,22 @@ export class Mol<TBio = any> {
     }
   }
 
-  _parseRxn() {
+  _parseRxn(): IRxn | null {
     return null;
   }
 
-  _hasOverlap(left, right, rect) {
+  _hasOverlap(left: number, right: number, rect: Rect): boolean {
     const l = rect.left;
     const r = rect.right();
     return l < right && r > left;
   }
 
-  _sortTextByTop(texts) {
+  _sortTextByTop(texts: Text<TBio>[]): Text<TBio>[] {
     if (texts == null || texts.length == 0)
       return texts;
 
-    const yy = [];
-    const sorted = [];
+    const yy: number[] = [];
+    const sorted: Text<TBio>[] = [];
     for (let i = 0; i < texts.length; ++i) {
       const y = texts[i]._rect.top;
       let p = yy.length;
@@ -3985,15 +4015,15 @@ export class Mol<TBio = any> {
    * @param {Atom} a - the input atom
    * @returns a Mol object
    */
-  getFragment(a: Atom<TBio>, parent?: Mol<TBio>) {
+  getFragment(a: Atom<TBio>, parent?: Mol<TBio>): Mol<TBio> {
     this.setAtomBonds();
     this.clearFlag();
 
     const tree = this._getTree(a).tree;
-    const path = [];
+    const path: any[] = [];
     tree.list(path, 'breadthfirst');
 
-    const m = new JSDraw2.Mol();
+    const m = new JSDraw2.Mol<TBio>();
     for (let k = 0; k < path.length; ++k) {
       const b = path[k];
       if (b.a != null && b.ringclosure == null)
@@ -4075,7 +4105,7 @@ export class Mol<TBio = any> {
 
     // brackets
     for (let i = 0; i < this.graphics.length; ++i) {
-      const br = JSDraw2.Bracket.cast(this.graphics[i]);
+      const br = JSDraw2.Bracket.cast<TBio>(this.graphics[i]);
       if (br == null)
         continue;
 
@@ -4085,9 +4115,11 @@ export class Mol<TBio = any> {
         if (frags[k].containsAllAtoms(br.atoms)) {
           frags[k].graphics.push(br);
           for (let j = 0; j < this.graphics.length; ++j) {
-            const t = JSDraw2.Text.cast(this.graphics[j]);
-            if (t != null && t.anchors != null && t.anchors.length == 1 && t.anchors[0] == br)
+            const t: Text<TBio> | null = JSDraw2.Text.cast<TBio>(this.graphics[j]);
+            if (t != null && t.anchors != null && t.anchors.length == 1 && t.anchors[0] == br) {
+              // @ts-ignore
               frags[k].graphics.push(t);
+            }
           }
         }
       }
@@ -4095,13 +4127,15 @@ export class Mol<TBio = any> {
 
     // attached texts
     for (let i = 0; i < this.graphics.length; ++i) {
-      const t = JSDraw2.Text.cast(this.graphics[i]);
+      const t: Text<TBio> | null = JSDraw2.Text.cast<TBio>(this.graphics[i]);
       if (t == null || t.anchors == null || t.anchors.length == 0)
         continue;
 
       for (let k = 0; k < frags.length; ++k) {
-        if (frags[k].containsAllAtoms(t.anchors))
+        if (frags[k].containsAllAtoms(t.anchors as Atom<TBio>[])) {
+          // @ts-ignore
           frags[k].graphics.push(t);
+        }
       }
     }
 
@@ -4124,7 +4158,7 @@ export class Mol<TBio = any> {
     return frags;
   }
 
-  containsAllAtoms(atoms) {
+  containsAllAtoms(atoms: Atom<TBio>[]): boolean {
     if (atoms == null || atoms.length == 0)
       return false;
     for (let i = 0; i < atoms.length; ++i) {
@@ -4141,7 +4175,7 @@ export class Mol<TBio = any> {
    * @param {Atom} a - the input atom
    * @returns true or false
    */
-  containsAtom(a) {
+  containsAtom(a: Atom<TBio>): boolean {
     for (let i = 0; i < this.atoms.length; ++i) {
       if (this.atoms[i] == a)
         return true;
@@ -4211,8 +4245,8 @@ export class Mol<TBio = any> {
         const b2 = r[k == r.length ? 0 : k];
         if (!(b1.order == 1 && b2.order == 2 ||
           b1.order == 2 && b2.order == 1 ||
-          b1.order == 1.5 && b2.order >= 1 && b2.order <= 2 ||
-          b2.order == 1.5 && b1.order >= 1 && b1.order <= 2)) {
+          b1.order == 1.5 && b2.order! >= 1 && b2.order! <= 2 ||
+          b2.order == 1.5 && b1.order! >= 1 && b1.order! <= 2)) {
           return false;
         }
         b1 = b2;
@@ -4239,8 +4273,9 @@ export class Mol<TBio = any> {
             if (v.elem == 'N' || v.elem == 'O' || v.elem == 'S' || v.elem == 'P') {
               return true;
             } else if (v.elem == 'C') {
-              for (let i = 0; i < v.bonds.length; ++i) {
-                const order = v.bonds[i].order;
+              const bList: Bond<TBio>[] = v.bonds!;
+              for (let i = 0; i < bList.length; ++i) {
+                const order = bList[i].order;
                 if (order == 1.5 || order == 2)
                   return true;
               }
@@ -4262,9 +4297,9 @@ export class Mol<TBio = any> {
     const atoms = JSDraw2.FormulaParser.getAtomStats(this).elements;
     const allrings = this.setBondOrders();
 
-    const bonds = {0: 0, 1: 0, 1.5: 0, 2: 0, 3: 0};
+    const bonds: { [bt: number]: number } = {[0]: 0, [1]: 0, [1.5]: 0, [2]: 0, [3]: 0};
     for (let i = 0; i < this.bonds.length; ++i)
-      ++bonds[this.bonds[i].order];
+      ++bonds[this.bonds[i].order!];
 
     const rings = {n5: 0, a5: 0, n6: 0, a6: 0};
     for (let i = 0; i < allrings.arrings.length; ++i) {
@@ -4303,17 +4338,17 @@ export class Mol<TBio = any> {
     return n;
   }
 
-  getMaxMapId() {
+  getMaxMapId(): number {
     let maxid = 0;
     const list = this.atoms;
     for (let i = 0; i < list.length; ++i) {
-      if (list[i].atommapid != null && list[i].atommapid >= maxid)
-        maxid = list[i].atommapid;
+      if (list[i].atommapid != null && list[i].atommapid! >= maxid)
+        maxid = list[i].atommapid!;
     }
     return maxid + 1;
   }
 
-  screen(target, fullstructure) {
+  screen(target: Mol<TBio>, fullstructure: boolean): boolean {
     if (this.stats == null)
       this.stats = this.prepareScreen();
     if (target.stats == null)
@@ -4370,17 +4405,17 @@ export class Mol<TBio = any> {
   getBrackets() {
     const list = [];
     for (let i = 0; i < this.graphics.length; ++i) {
-      const b = JSDraw2.Bracket.cast(this.graphics[i]);
+      const b = JSDraw2.Bracket.cast<TBio>(this.graphics[i]);
       if (b != null) {
         list.push(b);
-        b.sgrouptexts = this.getSgroupTexts(b);
+        b.sgrouptexts = this.getSgroupTexts(b)!;
       }
     }
     return list;
   }
 
   // todo: match included atoms as well
-  matchBrackets(target): boolean {
+  matchBrackets(target: Mol<TBio>): boolean {
     const list1 = this.getBrackets();
     const list2 = target == null ? [] : target.getBrackets();
     if (list1.length != list2.length)
@@ -4407,7 +4442,7 @@ export class Mol<TBio = any> {
    * @param {Mol} target - the target mol
    * @returns true or false
    */
-  substructureMatch(target) {
+  substructureMatch(target: Mol<TBio>) {
     return this.aamap(target, false) != null;
   }
 
@@ -4419,7 +4454,7 @@ export class Mol<TBio = any> {
    * @param {bool} highlighting - indicate if highlighting mapped atoms and bonds
    * @returns the map result as a dictionary
    */
-  aamap(target, fullstructure, highlighting?: boolean, matchsterebonds?: boolean) {
+  aamap(target: Mol<TBio>, fullstructure: boolean, highlighting?: boolean | null, matchsterebonds?: boolean) {
     const map = this.aamap2(target, fullstructure, matchsterebonds);
 
     if (highlighting) {
@@ -4435,7 +4470,7 @@ export class Mol<TBio = any> {
     return map;
   }
 
-  aamap2(target, fullstructure, matchsterebonds) {
+  aamap2(target: Mol<TBio>, fullstructure: boolean, matchsterebonds?: boolean): AaMapType<TBio> | null {
     if (DEBUG.enable) {
       DEBUG.clear();
     }
@@ -4446,7 +4481,7 @@ export class Mol<TBio = any> {
       return null;
     }
 
-    const path = this._bfPath();
+    const path: any[] = this._bfPath();
     target.setAtomBonds();
     target.clearFlag();
     this.clearFlag();
@@ -4538,11 +4573,11 @@ export class Mol<TBio = any> {
     if (DEBUG.enable)
       DEBUG.print('succeed');
 
-    const atommap = [];
+    const atommap: AaMapAtomType<TBio>[] = [];
     for (let i = 0; i < this.atoms.length; ++i)
       atommap.push({q: this.atoms[i], t: this.atoms[i].f});
 
-    const bondmap = [];
+    const bondmap: AaMapBondType<TBio>[] = [];
     for (let i = 0; i < this.bonds.length; ++i)
       bondmap.push({q: this.bonds[i], t: this.bonds[i].f});
 
@@ -4591,7 +4626,7 @@ export class Mol<TBio = any> {
       if (ret.ri == 0)
         continue;
 
-      const path = [];
+      const path: any[] = [];
       ret.tree.list(path, 'breadthfirst');
 
       for (let k = 0; k < path.length; ++k) {
@@ -4647,8 +4682,8 @@ export class Mol<TBio = any> {
     return rings;
   }
 
-  _bfPath() {
-    const ss = [];
+  _bfPath(): any[] {
+    const ss: any[] = [];
     const trees = this._getTrees();
     for (let i = 0; i < trees.length; ++i)
       trees[i].list(ss, 'breadthfirst');
@@ -4740,12 +4775,12 @@ export class Mol<TBio = any> {
   }
 
   // depth-first
-  _getPath(b) {
+  _getPath(b: any): any[] {
     const stack = new JSDraw2.Stack();
     stack.push({b: b, a: b.a1.bonds.length > b.a2.bonds.length ? b.a1 : b.a2});
 
     b.a1.f = true;
-    const path = [];
+    const path: any[] = [];
     while ((b = stack.pop()) != null) {
       if (b.b.f)
         continue;
@@ -4791,7 +4826,7 @@ export class Mol<TBio = any> {
     return s;
   }
 
-  _getFormula(html): string {
+  _getFormula(html: boolean): string {
     const m = this.expandSuperAtoms();
     const stats = JSDraw2.FormulaParser.getAtomStats(m);
     return JSDraw2.FormulaParser.stats2mf(stats, html);
@@ -4802,9 +4837,9 @@ export class Mol<TBio = any> {
    * @function getMolWeight
    * @returns a number
    */
-  getMolWeight() {
+  getMolWeight(): number | null {
     const mw = this.getMixtureMW();
-    if (mw > 0)
+    if (mw! > 0)
       return mw;
 
     if (this.hasGenericAtom())
@@ -4818,7 +4853,7 @@ export class Mol<TBio = any> {
 
   getMixtureMW() {
     for (let i = 0; i < this.graphics.length; ++i) {
-      const br = JSDraw2.Bracket.cast(this.graphics[i]);
+      const br = JSDraw2.Bracket.cast<TBio>(this.graphics[i]);
       if (br == null || !(br.type == '' || br.type == null))
         continue;
 
@@ -4850,7 +4885,7 @@ export class Mol<TBio = any> {
     return sum == null ? null : Math.round(sum * 10000) / 10000;
   }
 
-  getAllBonds(a) {
+  getAllBonds(a: Atom<TBio>): Bond<TBio>[] {
     const ret = [];
     const bonds = this.bonds;
     for (let i = 0; i < bonds.length; ++i) {
@@ -4889,7 +4924,7 @@ export class Mol<TBio = any> {
     return n;
   }
 
-  setSgroup(br, fieldtype, v, x, y) {
+  setSgroup(br: Bracket<TBio>, fieldtype: string, v: string | null, x: number, y: number): Text<TBio> | null {
     if (v == '')
       v = null;
 
@@ -4901,7 +4936,7 @@ export class Mol<TBio = any> {
     let t = this.getSgroupText(br, fieldtype);
     if (v == null) {
       if (t != null) {
-        this.delGraphics(t);
+        this.delGraphics(t as IGraphics);
         return t;
       }
     } else {
@@ -4915,7 +4950,7 @@ export class Mol<TBio = any> {
         t = new JSDraw2.Text(r, v);
         t.fieldtype = fieldtype;
         t.anchors.push(br);
-        br._parent.addGraphics(t);
+        br._parent.addGraphics(t as IGraphics);
         return t;
       }
     }
@@ -4923,19 +4958,19 @@ export class Mol<TBio = any> {
     return null;
   }
 
-  getSgroupText(br, fieldtype): any {
+  getSgroupText(br: any, fieldtype: string): Text<TBio> | null {
     for (let i = 0; i < this.graphics.length; ++i) {
-      const t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast<TBio>(this.graphics[i]);
       if (t != null && t.fieldtype == fieldtype && t.anchors.length == 1 && t.anchors[0] == br)
         return t;
     }
     return null;
   }
 
-  getSgroupTexts(br): string {
+  getSgroupTexts(br: any): string | null {
     const ss: any[] = [];
     for (let i = 0; i < this.graphics.length; ++i) {
-      const t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast<TBio>(this.graphics[i]);
       if (t != null && t.anchors.length == 1 && t.anchors[0] == br)
         ss.push(t.text);
     }
@@ -4947,12 +4982,12 @@ export class Mol<TBio = any> {
     return scil.Utils.array2str(ss, '; ');
   }
 
-  removeTags(br, fieldtypes) {
+  removeTags(br: any, fieldtypes: any) {
     let n = 0;
     for (let i = this.graphics.length - 1; i >= 0; --i) {
-      const t = JSDraw2.Text.cast(this.graphics[i]);
+      const t = JSDraw2.Text.cast<TBio>(this.graphics[i]);
       if (t != null && t.anchors.length == 1 && t.anchors[0] == br && fieldtypes.indexOf(t.fieldtype + ',') >= 0) {
-        this.delGraphics(t);
+        this.delGraphics(t as IGraphics);
         ++n;
       }
     }

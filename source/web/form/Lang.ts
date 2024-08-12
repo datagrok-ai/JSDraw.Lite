@@ -70,7 +70,7 @@ export class Lang {
     JSDraw2.Language.use(lang);
   }
 
-  static res(s, lang) {
+  static res(s, lang?) {
     if (scil.Utils.isNullOrEmpty(s) || typeof (s) != "string")
       return s;
 

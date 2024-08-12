@@ -14,8 +14,9 @@ import type {OrgType} from './types/org';
 
 import type {Point} from './Point';
 import type {Atom} from './Atom';
+import type {Lasso} from './Lasso';
 import type {Mol} from './Mol';
-import type {BondType, ILasso, JSDraw2ModuleType, RxnCenterType} from './types/jsdraw2';
+import type {BondType, JSDraw2ModuleType, RxnCenterType, IObjWithId} from './types/jsdraw2';
 
 declare const dojo: DojoType;
 declare const dojox: DojoxType;
@@ -31,7 +32,7 @@ export type BondAnnotationType = { ba1: string, ba2: string };
  * Bond class
  * @class scilligence.JSDraw2.Bond
  */
-export class Bond<TBio> {
+export class Bond<TBio> implements IObjWithId {
   /**
    @property {Atom} a1 The First Atom
    */
@@ -47,8 +48,8 @@ export class Bond<TBio> {
   /**
    @property {bool} selected Selecting Flag
    */
-  private T: string;
-  public id!: number;
+  public readonly T: string;
+  public id!: number | null;
   public a1: Atom<TBio>;
   public a2: Atom<TBio>;
   public apo1: number | null;
@@ -585,7 +586,7 @@ export class Bond<TBio> {
     }
   }
 
-  drawSelect(lasso: ILasso) {
+  drawSelect(lasso: Lasso<TBio>) {
     lasso.draw(this, this.center());
   }
 
@@ -596,7 +597,7 @@ export class Bond<TBio> {
   }
 
   static showHelmAnnotation<TBio>(a1: Atom<TBio>, a2: Atom<TBio>, r1: number): void {
-    if (a1.bio == null || scil.Utils.isNullOrEmpty(a1.bio.annotation!))
+    if (a1.bio == null || scil.Utils.isNullOrEmpty(a1.bio.annotation))
       return;
 
     if (r1 == 2 && a1.p.x > a2.p.x || r1 == 1 && a1.p.x < a2.p.x)

@@ -8,7 +8,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
-// @ts-nocheck
+// // @ts-nocheck
 
 import type {DojoType} from '../src/types/dojo';
 import type {ScilModuleType} from '../src/types';
@@ -18,6 +18,39 @@ declare const dojo: DojoType;
 declare const scil: ScilModuleType;
 
 export type FormTabElement = any;
+
+export type TabDescType = {
+  caption: string | null;
+  icon: string;
+  tabkey: string;
+  closable: boolean;
+  visible: boolean;
+  onmenu: (e: MouseEvent) => void;
+  marginBottom: number;
+  style: CSSStyleDeclaration;
+  html: string;
+};
+
+export interface ITabsOptions {
+  tabs: Partial<TabDescType>[];
+  showtabs: boolean;
+  marginBottom: string;
+  border: string;
+  tabgap: string;
+  tabpadding: string;
+  tablocation: string;
+
+  clientareawidth: number;
+  clientareaheight: number;
+
+  onresizeclientarea: (width: number, height: number, tabs: TabsInt) => void;
+  onCreateTab: (td: HTMLTabElement, clientarea: number, tabs: TabsInt) => void;
+  onBeforeShowTab(td: HTMLTabElement, old: HTMLTabElement | null): boolean;
+  onShowTab(td: HTMLTabElement, old: HTMLTabElement | null, tabs: TabsInt): void;
+  onRemoveTab(td: HTMLTabElement, tabs: TabsInt): void;
+}
+
+export type HTMLTabElement = HTMLTableCellElement & { _label: any, clientarea: any };
 
 /**
  * Tabs class - Tabs Control
@@ -46,16 +79,16 @@ export type FormTabElement = any;
  */
 export class TabsInt {
   private readonly T: string;
-  private options: any;
-  private currenttab: HTMLTableCellElement & { clientarea: HTMLElement };
-  private area: HTMLTableCellElement;
-  public dom: HTMLElement;
-  private table: HTMLElement;
+  private options: Partial<ITabsOptions>;
+  private currenttab: HTMLTabElement | null;
+  private area: HTMLTableCellElement | null;
+  public dom: HTMLElement | null;
+  private table: HTMLElement | null;
   private vertical: boolean;
   private tabcontainer: HTMLTableElement;
-  private tr: HTMLTableRowElement;
+  private tr?: HTMLTableRowElement;
 
-  constructor(parent, options) {
+  constructor(parent: HTMLElement, options: Partial<ITabsOptions>) {
     this.T = 'TABS';
     const me = this;
     this.options = options == null ? {} : options;
@@ -69,9 +102,9 @@ export class TabsInt {
     const tbody = scil.Utils.createTable(parent, 0, 0, {width: '100%', marginBottom: this.options.marginBottom == null ? '20px' : this.options.marginBottom});
     this.dom = this.table = tbody.parentElement;
     this.vertical = true;
-    const tabborder = this.options.border ? null : scil.Tabs.kBorderStyle;
+    const tabborder = this.options.border ? undefined : scil.Tabs.kBorderStyle;
     const areapadding = this.options.border ? '5px' : 0;
-    const areaborder = this.options.border ? scil.Tabs.kBorderStyle : null;
+    const areaborder = this.options.border ? scil.Tabs.kBorderStyle : undefined;
     const taggap = this.options.tabgap == null ? '4px' : this.options.tabgap;
     switch (this.options.tablocation) {
     case 'left': {
@@ -105,7 +138,7 @@ export class TabsInt {
       this.tr = scil.Utils.createElement(this.tabcontainer, 'tr');
 
     if (this.options.showtabs == false)
-      this.tr.style.display = 'none';
+      this.tr!.style.display = 'none';
 
     const tabs = this.options.tabs;
     if (tabs != null) {
@@ -119,14 +152,14 @@ export class TabsInt {
     }
   }
 
-  resizeClientarea(width, height) {
-    const list = this.vertical ? this.tr.childNodes : this.tabcontainer.childNodes;
+  resizeClientarea(width: number, height: number): void {
+    const list = this.vertical ? this.tr!.childNodes : this.tabcontainer.childNodes;
     for (let i = 0; i < list.length; ++i) {
-      let td;
+      let td: HTMLTabElement;
       if (this.vertical)
-        td = list[i];
+        td = list[i] as HTMLTabElement;
       else
-        td = list[i].childNodes[0];
+        td = list[i].childNodes[0] as HTMLTabElement;
 
       if (td.clientarea == null)
         continue;
@@ -145,21 +178,21 @@ export class TabsInt {
       this.options.onresizeclientarea(width, height, this);
   }
 
-  addTab(options, key?: any): FormTabElement {
+  addTab(options: Partial<TabDescType>, key?: any): FormTabElement {
     if (this.vertical) {
-      if (this.tr.childNodes.length > 0)
-        scil.Utils.createElement(this.tr, 'td', '&nbsp;');
+      if (this.tr!.childNodes.length > 0)
+        scil.Utils.createElement(this.tr!, 'td', '&nbsp;');
     } else {
       if (this.tabcontainer.childNodes.length > 0)
         scil.Utils.createElement(scil.Utils.createElement(scil.Utils.createElement(this.tabcontainer, 'tr'), 'td'), 'div', null, {height: `5px`});
     }
 
-    var me = this;
-    var caption = options.caption;
-    var icon = options.icon;
-    var padding = this.options.tabpadding == null ? '5px 10px 1px 10px' : this.options.tabpadding;
-    var tr = this.vertical ? this.tr : scil.Utils.createElement(this.tabcontainer, 'tr');
-    var style: Partial<CSSStyleDeclaration> = {border: 'solid 1px #ddd', padding: padding, backgroundColor: '#eee'};
+    const me = this;
+    const caption = options.caption;
+    const icon = options.icon;
+    const padding = this.options.tabpadding == null ? '5px 10px 1px 10px' : this.options.tabpadding;
+    const tr: HTMLTableRowElement = this.vertical ? this.tr! : scil.Utils.createElement(this.tabcontainer, 'tr');
+    const style: Partial<CSSStyleDeclaration> = {border: 'solid 1px #ddd', padding: padding, backgroundColor: '#eee'};
 
     switch (this.options.tablocation) {
     case 'left':
@@ -184,7 +217,9 @@ export class TabsInt {
       break;
     }
 
-    const td = scil.Utils.createElement(tr, 'td', null, style, {key: key || options.tabkey, sciltab: '1'}) as HTMLTableCellElement & { _label: any, clientarea: any }; // TODO
+    const td = scil.Utils.createElement(tr, 'td', null, style, {key: key || options.tabkey, sciltab: '1'}
+    ) as unknown as HTMLTabElement; // TODO
+    td.classList.add('hwe-tab-td');
     const tbody2 = scil.Utils.createTable2(td, null, {cellSpacing: 0, cellPadding: 0});
     const s = (icon != null ? '<img src=\'' + icon + '\'>' : '') + (caption == null ? 'Tab' : scil.Lang.res(caption));
 
@@ -192,7 +227,7 @@ export class TabsInt {
     switch (this.options.tablocation) {
     case 'left':
     case 'right':
-      td._label = scil.Utils.createElement(scil.Utils.createElement(tbody2, 'tr'), 'td', s, null, null, function(e) {
+      td._label = scil.Utils.createElement(scil.Utils.createElement(tbody2, 'tr'), 'td', s, null, null, function(e: MouseEvent) {
         me.showTab(td);
       });
       td2 = scil.Utils.createElement(scil.Utils.createElement(tbody2, 'tr'), 'td');
@@ -200,7 +235,7 @@ export class TabsInt {
     case 'bottom':
     default: // top
       var tr2 = scil.Utils.createElement(tbody2, 'tr');
-      td._label = scil.Utils.createElement(tr2, 'td', s, null, null, function(e) {
+      td._label = scil.Utils.createElement(tr2, 'td', s, null, null, function(e: MouseEvent) {
         me.showTab(td);
       });
       td2 = scil.Utils.createElement(tr2, 'td');
@@ -209,7 +244,7 @@ export class TabsInt {
 
     if (options.closable) {
       const img = scil.Utils.createButton(td2, {
-        src: scil.Utils.imgSrc('img/del2.gif'), title: 'Close', style: {}, onclick: function(e) {
+        src: scil.Utils.imgSrc('img/del2.gif'), title: 'Close', style: {}, onclick: function(e: MouseEvent) {
           me.closeTab(td);
         },
       });
@@ -226,9 +261,9 @@ export class TabsInt {
 
     if (options.onmenu != null) {
       scil.connect(td, 'onmouseup',
-        function(e) {
+        function(e: MouseEvent) {
           if (scil.Utils.isRightButton(e))
-            options.onmenu(e);
+            options.onmenu!(e);
           e.preventDefault();
         });
       scil.Utils.disableContextMenu(td);
@@ -239,7 +274,7 @@ export class TabsInt {
     options.marginBottom = 0;
     options.caption = caption;
 
-    td.clientarea = scil.Utils.createElement(this.area, 'div', null, {display: 'none', width: this.options.clientareawidth, height: this.options.clientareaheight, overflowY: this.options.clientareaheight > 0 ? 'scroll' : null});
+    td.clientarea = scil.Utils.createElement(this.area, 'div', null, {display: 'none', width: String(this.options.clientareawidth), height: String(this.options.clientareaheight), overflowY: this.options.clientareaheight! > 0 ? 'scroll' : undefined});
     if (options.style != null)
       dojo.style(td.clientarea, options.style);
 
@@ -255,14 +290,14 @@ export class TabsInt {
     return td;
   }
 
-  updateTabLabel(key, s) {
-    var td = typeof (key) == 'string' ? this.findTab(key) : key;
+  updateTabLabel(key: HTMLTabElement | string, s: string): void {
+    const td: HTMLTabElement | null = typeof (key) == 'string' ? this.findTab(key) : key;
     if (td != null && td._label != null)
       td._label.innerHTML = s;
   }
 
-  closeTab(td) {
-    var me = this;
+  closeTab(td: HTMLTabElement): void {
+    const me = this;
     scil.Utils.confirmYes('Close this tab?', function() {
       me.removeTab(td);
     });
@@ -272,14 +307,14 @@ export class TabsInt {
     return this.currenttab == null ? null : this.currenttab.getAttribute('key');
   }
 
-  findTab(key) {
-    var list = this.vertical ? this.tr.childNodes : this.tabcontainer.childNodes;
-    for (var i = 0; i < list.length; ++i) {
-      var td;
+  findTab(key: string): HTMLTabElement | null {
+    const list = this.vertical ? this.tr!.childNodes : this.tabcontainer.childNodes;
+    for (let i = 0; i < list.length; ++i) {
+      let td: HTMLTabElement;
       if (this.vertical)
-        td = list[i];
+        td = list[i] as HTMLTabElement;
       else
-        td = list[i].childNodes[0];
+        td = list[i].childNodes[0] as HTMLTabElement;
 
       if (td.getAttribute('key') == key)
         return td;
@@ -287,16 +322,16 @@ export class TabsInt {
     return null;
   }
 
-  removeTab(key) {
-    var td = typeof (key) == 'string' ? this.findTab(key) : key;
+  removeTab(key: HTMLTabElement | string): null | void {
+    const td: HTMLTabElement | null = typeof (key) == 'string' ? this.findTab(key) : key;
     if (td == null)
       return null;
 
     if (this.options.onRemoveTab != null)
       this.options.onRemoveTab(td, this);
 
-    var list = this.allTabsAsArray();
-    var i = scil.Utils.indexOf(list, td);
+    const list = this.allTabsAsArray();
+    const i = scil.Utils.indexOf(list, td);
 
     if (i > 0)
       this.showTab(list[i - 1]);
@@ -307,28 +342,28 @@ export class TabsInt {
     delete td.clientarea;
 
     if (this.vertical) {
-      var td0 = td.previousSibling;
+      const td0: HTMLTabElement = td.previousSibling as HTMLTabElement;
       if (td0 != null && td0.clientarea == null)
-        td0.parentNode.removeChild(td0);
-      td.parentNode.removeChild(td);
+        td0.parentNode!.removeChild(td0);
+      td.parentNode!.removeChild(td);
     } else {
-      var tr = td.parentNode;
-      var tr0 = tr.previousSibling;
+      const tr = td.parentNode!;
+      const tr0 = tr.previousSibling;
       if (tr0 != null)
-        tr0.parentNode.removeChild(tr0);
-      tr.parentNode.removeChild(tr);
+        tr0.parentNode!.removeChild(tr0);
+      tr.parentNode!.removeChild(tr);
     }
   }
 
-  allTabsAsArray() {
-    var ret = [];
-    var list = this.vertical ? this.tr.childNodes : this.tabcontainer.childNodes;
-    for (var i = 0; i < list.length; ++i) {
-      var td;
+  allTabsAsArray(): HTMLTabElement[] {
+    const ret: HTMLTabElement[] = [];
+    const list = this.vertical ? this.tr!.childNodes : this.tabcontainer.childNodes;
+    for (let i = 0; i < list.length; ++i) {
+      let td: HTMLTabElement;
       if (this.vertical)
-        td = list[i];
+        td = list[i] as HTMLTabElement;
       else
-        td = list[i].childNodes[0];
+        td = list[i].childNodes[0] as HTMLTabElement;
 
       if (td.getAttribute('sciltab') == '1')
         ret.push(td);
@@ -336,18 +371,18 @@ export class TabsInt {
     return ret;
   }
 
-  allTabs() {
-    var ret = {};
-    var list = this.vertical ? this.tr.childNodes : this.tabcontainer.childNodes;
-    for (var i = 0; i < list.length; ++i) {
-      var td;
+  allTabs(): { [key: string]: HTMLTabElement } {
+    const ret: { [key: string]: HTMLTabElement } = {};
+    const list = this.vertical ? this.tr!.childNodes : this.tabcontainer.childNodes;
+    for (let i = 0; i < list.length; ++i) {
+      let td: HTMLTabElement;
       if (this.vertical)
-        td = list[i];
+        td = list[i] as HTMLTabElement;
       else
-        td = list[i].childNodes[0];
+        td = list[i].childNodes[0] as HTMLTabElement;
 
       if (td.getAttribute('sciltab') == '1') {
-        var k = td.getAttribute('key');
+        const k = td.getAttribute('key');
         if (k != null && k != '')
           ret[k] = td;
       }
@@ -355,16 +390,16 @@ export class TabsInt {
     return ret;
   }
 
-  showTab(td) {
+  showTab(td: HTMLTabElement | string | number): void {
     if (typeof (td) == 'string') {
-      td = this.findTab(td);
+      td = this.findTab(td)!;
     } else if (typeof (td) == 'number') {
-      var list = this.allTabsAsArray();
+      const list = this.allTabsAsArray();
       td = list[td];
     }
 
     if (td != null && td.tagName != 'TD')
-      td = scil.Utils.getParent(td, 'td');
+      td = scil.Utils.getParent(td, 'td') as HTMLTabElement;
 
     if (td == null)
       return;
@@ -394,11 +429,11 @@ export class TabsInt {
   }
 
   show() {
-    this.table.style.display = '';
+    this.table!.style.display = '';
   }
 
   hide() {
-    this.table.style.display = 'none';
+    this.table!.style.display = 'none';
   }
 }
 

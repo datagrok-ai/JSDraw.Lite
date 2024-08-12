@@ -1,5 +1,6 @@
 import type {IMolHandler} from './mol-handler';
 import type {Plus, Point} from '../Point';
+import type {Text} from '../Text';
 import type {Editor} from '../JSDraw.Editor';
 import type {Atom} from '../Atom';
 import type {Rect} from '../Rect';
@@ -7,6 +8,11 @@ import type {Bond, BondB} from '../Bond';
 import type {Mol} from '../Mol';
 import type {Bracket} from '../Bracket';
 import type {Drawer} from '../Drawer';
+import type {Group} from '../Group';
+import type {Lasso} from '../Lasso';
+
+import {MolHandler} from '../JSDraw.MolHandler';
+import {SuperAtoms} from '../SuperAtoms';
 
 export const enum DrawSteps {
   highlight,
@@ -108,6 +114,10 @@ export enum CommandTypes {
 
 export type ShapeType = typeof ShapeTypes[keyof typeof ShapeTypes];
 
+export interface IObjWithId {
+  id?: number | null;
+}
+
 export interface ICast<T> {
   cast(obj: any): T;
 }
@@ -122,7 +132,7 @@ export interface IGraphics {
 
   // a: any; // TODO
   // group: any; // TODO
-  reject: any; // TODO
+  // reject: any; // TODO // Shape specific
   selected?: boolean;
   id: number;
   graphicsid?: number;
@@ -160,6 +170,7 @@ export interface IEditorOptions {
   showtoolbar: boolean;
   showcustomtemplates: boolean;
   usechemdraw: boolean;
+  abbreviations: string;
 
   showcarbon: boolean;
   pastechemdraw: boolean;
@@ -367,17 +378,6 @@ export interface IRxn {
   [p: string]: any;
 }
 
-export interface IText extends ICast<IText> {
-  new(r?: Rect, v?: string): IText;
-
-  [p: string]: any;
-}
-
-export interface ILasso {
-  new(extra: any, linewidth: number, selecting: boolean): ILasso;
-  [p: string]: any;
-}
-
 export type AtomQueryType = {
   t?: boolean;
   sub?: number | '*';
@@ -386,11 +386,6 @@ export type AtomQueryType = {
   als?: string[] | null;
   v?: number;
 };
-
-export interface IGroup {
-
-  [p: string]: any;
-}
 
 // export interface IAtom<TBio = any> extends IJsAtom<TBio> {
 //   elem: string;
@@ -463,7 +458,7 @@ export interface IGroup {
 // }
 
 export interface IRGroup<TBio = any> extends ICast<IRGroup<TBio>> {
-  color: string;
+  color: string | null;
   selected: boolean;
   id: number;
   position: Point;
@@ -474,7 +469,7 @@ export interface IRGroup<TBio = any> extends ICast<IRGroup<TBio>> {
 
   readHtml(t: HTMLElement, v: any): any;
   html(scale: number): string;
-  clone(selectedOnly?: boolean): IRGroup<TBio>;
+  clone(selectedOnly?: boolean | null): IRGroup<TBio>;
 
   [p: string]: any;
 }
@@ -517,7 +512,7 @@ export type IContextMenu = any;
 export type IDialog = any;
 
 export interface IElement {
-  m: number;
+  /** Mass */ m: number;
 }
 
 export interface IPeriodicTable {
@@ -531,6 +526,8 @@ export type JSDraw2ModuleType<TBio> = {
 
   defaultoptions: Partial<IEditorOptions>;
   version: string;
+
+  abbreviations: string;
 
   __touchmolapp: boolean;
   __currentactived: any;
@@ -553,10 +550,10 @@ export type JSDraw2ModuleType<TBio> = {
   Drawer: Drawer;
 
   Editor: typeof Editor;
-  MolHandler: IMolHandler<TBio>;
+  MolHandler: typeof MolHandler;
 
   Formulation: any;
-  Group: IGroup;
+  Group: typeof Group;
   Mol: typeof Mol;
   Point: typeof Point;
   Rect: typeof Rect;
@@ -564,9 +561,9 @@ export type JSDraw2ModuleType<TBio> = {
   Plates: any;
   Plus: typeof Plus;
   Shape: any;
-  Text: IText;
+  Text: typeof Text;
   SequenceEditor: any;
-  Lasso: ILasso;
+  Lasso: typeof Lasso;
   Skin: any;
   Security: any;
 
@@ -582,7 +579,7 @@ export type JSDraw2ModuleType<TBio> = {
 
   RGroup: IRGroup<TBio>;
   SGroup: ISGroup;
-  SuperAtoms: ISuperAtoms<TBio>;
+  SuperAtoms: SuperAtoms<TBio>;
 
   BA: any;
   IDGenerator: any;
