@@ -8,5 +8,5 @@ export type JSDraw2Window = {
     initPromise?: Promise<void>;
   },
   scil: ScilModuleType;
-  JSDraw2: JSDraw2ModuleType<any>;
+  JSDraw2: JSDraw2ModuleType;
 }

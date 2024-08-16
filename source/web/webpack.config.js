@@ -16,7 +16,7 @@ module.exports = {
   },
   resolve: {
     fallback: {'url': false},
-    extensions: ['.wasm', '.mjs', '.ts', '.tsx', '.json', '.js'],
+    extensions: ['.ts', '.tsx', '.js', '.wasm', '.mjs', '.json'],
   },
   module: {
     rules: [

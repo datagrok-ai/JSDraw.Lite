@@ -13,7 +13,7 @@ import type {OrgType} from './types/org';
 import type {Point} from './Point';
 import type {Atom} from './Atom';
 import type {Mol} from './Mol';
-import type {BondType, IGraphics, JSDraw2ModuleType, RxnCenterType} from './types/jsdraw2';
+import type {BondType, IDrawOptions, IGraphics, JSDraw2ModuleType, RxnCenterType} from './types/jsdraw2';
 import {Rect} from './Rect';
 import {Bracket} from './Bracket';
 import {Bond} from './Bond';
@@ -24,8 +24,8 @@ declare const dojox: DojoxType;
 
 declare const scil: ScilModuleType;
 declare const scilligence: ScilModuleType;
-declare const JSDraw2: JSDraw2ModuleType<any>;
-declare const org: OrgType<any>;
+declare const JSDraw2: JSDraw2ModuleType;
+declare const org: OrgType<any, IDrawOptions>;
 
 export type PosRType = { pos: string, r: string };
 export type BondAnnotationType = { ba1: string, ba2: string };
@@ -236,13 +236,13 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
     }
   }
 
-  draw(surface: any, linewidth: number, m: Mol<TBio>, fontsize: number) {
+  draw(surface: any, m: Mol<TBio>, drawOpts: IDrawOptions) {
     var s = this.text;
     if (s == null)
       return;
 
     var r = this._rect;
-    var fs = fontsize * (this.fontsize > 0 ? this.fontsize : 1.0);
+    var fs = drawOpts.fontsize * (this.fontsize > 0 ? this.fontsize : 1.0);
     var color = this.color == null || this.color.length == 0 ? "black" : this.color;
     var t = JSDraw2.Drawer.drawText(surface, new JSDraw2.Point(r.left, r.top), s, color, fs, null, this.italic);
     r.width = t == null ? 0 : t.getTextWidth();

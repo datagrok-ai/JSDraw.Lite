@@ -22,7 +22,7 @@ import {TextAligns} from './types/jsdraw2';
 declare const dojox: DojoxType;
 
 declare const scil: ScilModuleType;
-declare const JSDraw2: JSDraw2ModuleType<any>;
+declare const JSDraw2: JSDraw2ModuleType;
 
 
 export type FormulaItemType = { num?: number | string, str: string, };

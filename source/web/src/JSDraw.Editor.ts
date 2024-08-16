@@ -15,7 +15,7 @@ import type {JSDraw2ModuleType, ScilModuleType} from './types';
 import type {OrgType} from './types/org';
 
 import type {
-  ColorArray, IContextMenu, IDialog, IEditorOptions, IOrgPlugin, IStack,
+  ColorArray, IContextMenu, IDialog, IDrawOptions, IEditorOptions, IOrgPlugin, IStack,
   JSDraw2Document, JSDraw2Window, ShapeType
 } from './types/jsdraw2';
 import type {IMolHandler} from './types/mol-handler';
@@ -34,8 +34,8 @@ declare const dojo: DojoType;
 declare const dojox: DojoxType;
 declare const scilligence: ScilModuleType;
 declare const scil: ScilModuleType;
-declare const org: OrgType<any>;
-declare const JSDraw2: JSDraw2ModuleType<any>;
+declare const org: OrgType<any, IDrawOptions>;
+declare const JSDraw2: JSDraw2ModuleType;
 declare const JSDrawServices: any;
 
 declare const window: JSDraw2Window & Window;
@@ -69,7 +69,7 @@ declare const document: JSDraw2Document & Document;
  * </pre>
  * @class scilligence.JSDraw2.Editor
  */
-export class EditorInt<TBio = any> implements IMolHandler<TBio> {
+export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolHandler<TBio> {
   /**
    @property {Mol} atoms Mol object
    */
@@ -90,7 +90,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
 
   private readonly T: string;
   private disableundo: boolean;
-  public options: any;
+  public options: Partial<IEditorOptions<TDrawOptions>>;
   private readonly chiral: any;
   private ptElement: any; // TODO: ?
   private connectHandlers?: any[];
@@ -108,8 +108,8 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
 
   private angleStop?: number;
   private tor?: number;
-  private linewidth?: number;
-  private fontsize?: number;
+  private linewidth: number;
+  private fontsize: number;
 
   private activated?: boolean;
   private status: any;
@@ -182,7 +182,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
    * <li>width</li>
    * </ul>
    */
-  constructor(dv: HTMLDivElement | string, options?: Partial<IEditorOptions>) {
+  constructor(dv: HTMLDivElement | string, options?: Partial<IEditorOptions<TDrawOptions>>) {
     this.disableundo = JSDraw2.speedup.disableundo;
 
     this.T = "DRAW";
@@ -308,8 +308,8 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
 
     this.bondlength = JSDraw2.Editor.BONDLENGTH;
     this.tor = JSDraw2.Editor.TOR;
-    this.linewidth = JSDraw2.Editor.LINEWIDTH;
-    this.fontsize = JSDraw2.Editor.FONTSIZE;
+    this.linewidth = this.options?.drawOptions?.linewidth ?? JSDraw2.Editor.LINEWIDTH;
+    this.fontsize = this.options?.drawOptions?.fontsize ?? JSDraw2.Editor.FONTSIZE;
     this.angleStop = JSDraw2.Editor.ANGLESTOP;
     const rect = scil.Utils.styleRect(this.div);
     this.dimension = new JSDraw2.Point(rect.width, rect.height);
@@ -1270,12 +1270,19 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
     this.redraw();
   }
 
+  getDrawOptions(): TDrawOptions {
+    const res: TDrawOptions = Object.assign({}, this.options.drawOptions);
+    res.linewidth = this.linewidth ?? 2;
+    res.fontsize = this.fontsize ?? 14;
+    return res;
+  }
+
   calcTextRect() {
     if (this.surface == null || scil.Utils.isIE8Lower && this.surface.rawNode == null)
       return;
 
     const g = this.createGroup();
-    this.m.draw(g, this.linewidth, this.fontsize, true, null, null, true);
+    this.m.draw(g, this.getDrawOptions(), true, null, null, true);
     this.surface.remove(g);
   }
 
@@ -1331,7 +1338,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
       g.monocolor = this.options.monocolor || JSDraw2.defaultoptions.monocolor;
       this.simpledraw = this.fontsize <= JSDraw2.speedup.fontsize;
       this.updateGroupRect();
-      this.m.draw(g, this.linewidth, this.fontsize, null, this.dimension, this.options.highlighterrors, this.options.showcarbon, this.simpledraw);
+      this.m.draw(g, this.getDrawOptions(), null, this.dimension, this.options.highlighterrors, this.options.showcarbon, this.simpledraw);
     }
 
     const cmd = this.getCmd();
@@ -2416,20 +2423,20 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
             a2 = null;
 
           if (a1 == null) {
-            a1 = new JSDraw2.Atom(pts[i - 1]);
+            a1 = new JSDraw2.Atom<TBio>(pts[i - 1]);
             m.addAtom(a1);
             this._addNewAtomInExistingGroup(a2, [a1]);
             f = true;
           }
           if (a2 == null) {
-            a2 = new JSDraw2.Atom(pts[i]);
+            a2 = new JSDraw2.Atom<TBio>(pts[i]);
             m.addAtom(a2);
             this._addNewAtomInExistingGroup(a1, [a2]);
             f = true;
           }
 
           if (m.findBond(a1, a2) == null) {
-            m.addBond(new JSDraw2.Bond(a1, a2), null, true);
+            m.addBond(new JSDraw2.Bond<TBio>(a1, a2), null, true);
             f = true;
           }
         }
@@ -2580,12 +2587,12 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
 
         const bondtype = this.Cmd2BondType(cmd);
         if (bondtype != null) {
-          const a1 = this.m.addAtom(new JSDraw2.Atom(p2));
+          const a1 = this.m.addAtom(new JSDraw2.Atom<TBio>(p2));
           const p = p2.clone().offset(this.bondlength, 0).rotateAround(p2, -30);
           let a2 = JSDraw2.Atom.cast<TBio>(this.toggle(p));
           if (a2 == null)
-            a2 = this.m.addAtom(new JSDraw2.Atom(p));
-          this.m.addBond(new JSDraw2.Bond(a1, a2));
+            a2 = this.m.addAtom(new JSDraw2.Atom<TBio>(p));
+          this.m.addBond(new JSDraw2.Bond<TBio>(a1, a2));
           f = true;
         }
       }
@@ -2595,7 +2602,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
         const s = cmd == "more" || cmd == "..." ? this.ptElement : cmd;
         const e = JSDraw2.PT[s];
         if (e != null && e.a > 0 || cmd == "antibody" || cmd == "protein" || cmd == "gene" || this.helm != null && this.helm.isHelmCmd(cmd)) {
-          const a = this.m.addAtom(new JSDraw2.Atom(p2));
+          const a = this.m.addAtom(new JSDraw2.Atom<TBio>(p2));
           if (cmd == "antibody") {
             a.bio = {type: JSDraw2.BIO.ANTIBODY as TBio};
             a.elem = "X";
@@ -2665,11 +2672,11 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
       if (c1 != null) {
         // add H or OH on peptide terminal Amino Acid
         if (c1.peptideN == 0 && c1.others == 0)
-          a1 = m.addAtom(new JSDraw2.Atom(p1, "H"));
+          a1 = m.addAtom(new JSDraw2.Atom<TBio>(p1, "H"));
         else if (c1.peptideC == 0 && c1.others == 0)
-          a1 = m.addAtom(new JSDraw2.Atom(p1, "O"));
+          a1 = m.addAtom(new JSDraw2.Atom<TBio>(p1, "O"));
       } else {
-        a1 = m.addAtom(new JSDraw2.Atom(p1));
+        a1 = m.addAtom(new JSDraw2.Atom<TBio>(p1));
       }
     }
 
@@ -2680,11 +2687,11 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
       if (c1 != null) {
         // add H or OH on peptide terminal Amino Acid
         if (c1.peptideN == 0 && c1.others == 0)
-          a2 = m.addAtom(new JSDraw2.Atom(p2, "H"));
+          a2 = m.addAtom(new JSDraw2.Atom<TBio>(p2, "H"));
         else if (c1.peptideC == 0 && c1.others == 0)
-          a2 = m.addAtom(new JSDraw2.Atom(p2, "O"));
+          a2 = m.addAtom(new JSDraw2.Atom<TBio>(p2, "O"));
       } else {
-        a2 = m.addAtom(new JSDraw2.Atom(p2));
+        a2 = m.addAtom(new JSDraw2.Atom<TBio>(p2));
       }
     }
 
@@ -2706,33 +2713,33 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
           if (c1 != null && c2 != null) {
             // connect two amino acids
             if (c1.peptideN == 0 && c2.peptideC == 0)
-              b = new JSDraw2.Bond(a1, a2, JSDraw2.BONDTYPES.PEPTIDE); // peptide bond
+              b = new JSDraw2.Bond<TBio>(a1, a2, JSDraw2.BONDTYPES.PEPTIDE); // peptide bond
             else if (c2.peptideN == 0 && c1.peptideC == 0)
-              b = new JSDraw2.Bond(a2, a1, JSDraw2.BONDTYPES.PEPTIDE); // reversed peptide bond
+              b = new JSDraw2.Bond<TBio>(a2, a1, JSDraw2.BONDTYPES.PEPTIDE); // reversed peptide bond
             else if (ao1.elem == "C" && ao2.elem == "C" && c1.disulfide == 0 && c2.disulfide == 0)
-              b = new JSDraw2.Bond(a1, a2, JSDraw2.BONDTYPES.DISULFIDE);
+              b = new JSDraw2.Bond<TBio>(a1, a2, JSDraw2.BONDTYPES.DISULFIDE);
             else if (ao1.elem == "K" && c1.amide == 0 && c2.peptideC == 0)
-              b = new JSDraw2.Bond(a1, a2, JSDraw2.BONDTYPES.AMIDE); // amide bond to K
+              b = new JSDraw2.Bond<TBio>(a1, a2, JSDraw2.BONDTYPES.AMIDE); // amide bond to K
             else if (ao2.elem == "K" && c2.amide == 0 && c1.peptideC == 0)
-              b = new JSDraw2.Bond(a2, a1, JSDraw2.BONDTYPES.AMIDE); // reversed amide bond to K
+              b = new JSDraw2.Bond<TBio>(a2, a1, JSDraw2.BONDTYPES.AMIDE); // reversed amide bond to K
           } else if (c1 != null) {
             // connect one amino acid to structure
             if (c1.peptideN + c1.peptideC + c1.others < 2)
-              b = new JSDraw2.Bond(a1, a2, a2.elem == "H" ? JSDraw2.BONDTYPES.PEPTIDE : JSDraw2.BONDTYPES.SINGLE);
+              b = new JSDraw2.Bond<TBio>(a1, a2, a2.elem == "H" ? JSDraw2.BONDTYPES.PEPTIDE : JSDraw2.BONDTYPES.SINGLE);
             else if (ao1.elem == "C" && c1.disulfide == 0)
-              b = new JSDraw2.Bond(a1, a2, JSDraw2.BONDTYPES.DISULFIDE); // using sulfide bond to C
+              b = new JSDraw2.Bond<TBio>(a1, a2, JSDraw2.BONDTYPES.DISULFIDE); // using sulfide bond to C
             else if (ao1.elem == "K" && c1.amide == 0)
-              b = new JSDraw2.Bond(a1, a2, JSDraw2.BONDTYPES.AMIDE); // using amide bond to K
+              b = new JSDraw2.Bond<TBio>(a1, a2, JSDraw2.BONDTYPES.AMIDE); // using amide bond to K
           } else if (c2 != null) {
             // connect one amino acid to structure
             if (c2.peptideN + c2.peptideC + c2.others < 2)
-              b = new JSDraw2.Bond(a2, a1, a1.elem == "H" ? JSDraw2.BONDTYPES.PEPTIDE : JSDraw2.BONDTYPES.SINGLE);
+              b = new JSDraw2.Bond<TBio>(a2, a1, a1.elem == "H" ? JSDraw2.BONDTYPES.PEPTIDE : JSDraw2.BONDTYPES.SINGLE);
             else if (ao2.elem == "C" && c2.disulfide == 0)
-              b = new JSDraw2.Bond(a2, a1, JSDraw2.BONDTYPES.DISULFIDE); // using sulfide bond to C
+              b = new JSDraw2.Bond<TBio>(a2, a1, JSDraw2.BONDTYPES.DISULFIDE); // using sulfide bond to C
             else if (ao2.elem == "K" && c2.amide == 0)
-              b = new JSDraw2.Bond(a2, a1, JSDraw2.BONDTYPES.AMIDE); // using amide bond to K
+              b = new JSDraw2.Bond<TBio>(a2, a1, JSDraw2.BONDTYPES.AMIDE); // using amide bond to K
           } else {
-            b = new JSDraw2.Bond(a1, a2, bondtype);
+            b = new JSDraw2.Bond<TBio>(a1, a2, bondtype);
           }
         }
 
@@ -4441,7 +4448,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
       if (iscircle)
         c = c.substr(0, c.length - 1);
 
-      const a = new JSDraw2.Atom(null, c, {type: biotype});
+      const a = new JSDraw2.Atom<TBio>(null, c, {type: biotype});
       switch (biotype) {
       case JSDraw2.BIO.AA:
         a.superatom = JSDraw2.SuperAtoms.getAA(c);
@@ -4500,11 +4507,11 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
     let cterm = null;
     const m = new JSDraw2.Mol(this.options.showimplicithydrogens);
     if (head.length > 0) {
-      nterm = new JSDraw2.Atom(null, "C");
+      nterm = new JSDraw2.Atom<TBio>(null, "C");
       m.addAtom(nterm);
       head.splice(0, 0, nterm);
 
-      const b = new JSDraw2.Bond(head[1], nterm, biotype == JSDraw2.BIO.AA ? JSDraw2.BONDTYPES.PEPTIDE : JSDraw2.BONDTYPES.NUCLEOTIDE);
+      const b = new JSDraw2.Bond<TBio>(head[1], nterm, biotype == JSDraw2.BIO.AA ? JSDraw2.BONDTYPES.PEPTIDE : JSDraw2.BONDTYPES.NUCLEOTIDE);
       b.apo1 = 1;
       m.addBond(b);
     }
@@ -4512,45 +4519,45 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
     m.addAtom(all[0]);
     for (let i = 1; i < all.length; ++i) {
       m.addAtom(all[i]);
-      const b = new JSDraw2.Bond(all[i], all[i - 1], bondtype);
+      const b = new JSDraw2.Bond<TBio>(all[i], all[i - 1], bondtype);
       b.apo1 = 1;
       b.apo2 = 2;
       m.addBond(b);
     }
 
     if (circle == null) {
-      const o = new JSDraw2.Atom(null, biotype == JSDraw2.BIO.AA ? 'O' : "3'");
+      const o = new JSDraw2.Atom<TBio>(null, biotype == JSDraw2.BIO.AA ? 'O' : "3'");
       m.addAtom(o);
       head.push(o);
       cterm = o;
 
-      const b = new JSDraw2.Bond(o, head[head.length - 2], biotype == JSDraw2.BIO.AA ? JSDraw2.BONDTYPES.PEPTIDE : JSDraw2.BONDTYPES.NUCLEOTIDE);
+      const b = new JSDraw2.Bond<TBio>(o, head[head.length - 2], biotype == JSDraw2.BIO.AA ? JSDraw2.BONDTYPES.PEPTIDE : JSDraw2.BONDTYPES.NUCLEOTIDE);
       b.apo2 = 2;
       m.addBond(b);
     } else {
       if (head.length == 0 && (tail == null || tail.length == 0)) {
-        const b = new JSDraw2.Bond(circle[0], circle[circle.length - 1], JSDraw2.BONDTYPES.PEPTIDE);
+        const b = new JSDraw2.Bond<TBio>(circle[0], circle[circle.length - 1], JSDraw2.BONDTYPES.PEPTIDE);
         b.apo1 = 1;
         b.apo2 = 2;
         m.addBond(b);
       } else if (circle[0].elem == 'C' && circle[circle.length - 1].elem == 'C') {
-        const b = new JSDraw2.Bond(circle[0], circle[circle.length - 1], JSDraw2.BONDTYPES.DISULFIDE);
+        const b = new JSDraw2.Bond<TBio>(circle[0], circle[circle.length - 1], JSDraw2.BONDTYPES.DISULFIDE);
         b.apo1 = 3;
         b.apo2 = 3;
         m.addBond(b);
       } else if (circle[0].elem == 'K' && (tail == null || tail.length == 0)) {
-        const b = new JSDraw2.Bond(circle[0], circle[circle.length - 1], JSDraw2.BONDTYPES.AMIDE);
+        const b = new JSDraw2.Bond<TBio>(circle[0], circle[circle.length - 1], JSDraw2.BONDTYPES.AMIDE);
         b.apo1 = 3;
         b.apo2 = 2;
         m.addBond(b);
       }
 
       if (tail != null && tail.length > 0) {
-        cterm = new JSDraw2.Atom(null, "C");
+        cterm = new JSDraw2.Atom<TBio>(null, "C");
         m.addAtom(cterm);
         tail.push(cterm);
 
-        const b = new JSDraw2.Bond(tail[tail.length - 2], cterm, JSDraw2.BONDTYPES.SINGLE);
+        const b = new JSDraw2.Bond<TBio>(tail[tail.length - 2], cterm, JSDraw2.BONDTYPES.SINGLE);
         b.apo1 = 1;
         m.addBond(b);
       }
@@ -4637,8 +4644,8 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
 
         if (nterminal != "H") {
           const p = this._guessAutoBond(attachs[0].a);
-          const a = new JSDraw2.Atom(p, "C");
-          const b = new JSDraw2.Bond(attachs[0].a, a, JSDraw2.BONDTYPES.SINGLE);
+          const a = new JSDraw2.Atom<TBio>(p, "C");
+          const b = new JSDraw2.Bond<TBio>(attachs[0].a, a, JSDraw2.BONDTYPES.SINGLE);
           mol.addAtom(a);
           mol.addBond(b);
 
@@ -4668,7 +4675,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
 
       last.attachpoints = [];
       attachs[0].a.attachpoints = [];
-      const b = new JSDraw2.Bond(last, attachs[0].a, JSDraw2.BONDTYPES.SINGLE);
+      const b = new JSDraw2.Bond<TBio>(last, attachs[0].a, JSDraw2.BONDTYPES.SINGLE);
       mol.addBond(b);
 
       last = attachs[1].a;
@@ -4679,8 +4686,8 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
 
       if (cterminal != "H") {
         const p = this._guessAutoBond(last);
-        const a = new JSDraw2.Atom(p, "C");
-        const b = new JSDraw2.Bond(last, a, JSDraw2.BONDTYPES.SINGLE);
+        const a = new JSDraw2.Atom<TBio>(p, "C");
+        const b = new JSDraw2.Bond<TBio>(last, a, JSDraw2.BONDTYPES.SINGLE);
         mol.addAtom(a);
         mol.addBond(b);
 
@@ -4732,8 +4739,8 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
       return;
 
     this.pushundo();
-    const h = new JSDraw2.Atom(p.clone().offset(-this.bondlength, 0), biotype == JSDraw2.BIO.AA ? 'H' : "5'");
-    const a = new JSDraw2.Atom(p.clone(), c, {type: biotype});
+    const h = new JSDraw2.Atom<TBio>(p.clone().offset(-this.bondlength, 0), biotype == JSDraw2.BIO.AA ? 'H' : "5'");
+    const a = new JSDraw2.Atom<TBio>(p.clone(), c, {type: biotype});
     a.superatom = null;
     if (biotype == JSDraw2.BIO.AA)
       a.superatom = JSDraw2.SuperAtoms.getAA(c);
@@ -4741,16 +4748,16 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
       a.superatom = JSDraw2.SuperAtoms.getDNA(c);
     else if (biotype == JSDraw2.BIO.BASE_RNA)
       a.superatom = JSDraw2.SuperAtoms.getRNA(c);
-    const o = new JSDraw2.Atom(p.clone().offset(this.bondlength, 0), biotype == JSDraw2.BIO.AA ? 'O' : "3'");
+    const o = new JSDraw2.Atom<TBio>(p.clone().offset(this.bondlength, 0), biotype == JSDraw2.BIO.AA ? 'O' : "3'");
     this.m.addAtom(h);
     this.m.addAtom(a);
     this.m.addAtom(o);
 
-    let b = new JSDraw2.Bond(h, a, JSDraw2.BONDTYPES.SINGLE);
+    let b = new JSDraw2.Bond<TBio>(h, a, JSDraw2.BONDTYPES.SINGLE);
     b.apo2 = 2;
     this.m.addBond(b);
 
-    b = new JSDraw2.Bond(a, o, JSDraw2.BONDTYPES.SINGLE);
+    b = new JSDraw2.Bond<TBio>(a, o, JSDraw2.BONDTYPES.SINGLE);
     b.apo1 = 1;
     this.m.addBond(b);
 
@@ -4812,8 +4819,8 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
 
     const next = this.findNextAA(a, true);
     this.pushundo();
-    const na = new JSDraw2.Atom(a.p.clone().offset(dx, 0), c, dojo.clone(a.bio));
-    const nb = new JSDraw2.Bond(na, a, a.biotype() == JSDraw2.BIO.AA ? JSDraw2.BONDTYPES.PEPTIDE : JSDraw2.BONDTYPES.SINGLE);
+    const na = new JSDraw2.Atom<TBio>(a.p.clone().offset(dx, 0), c, dojo.clone(a.bio));
+    const nb = new JSDraw2.Bond<TBio>(na, a, a.biotype() == JSDraw2.BIO.AA ? JSDraw2.BONDTYPES.PEPTIDE : JSDraw2.BONDTYPES.SINGLE);
     this.m.addAtom(na);
     this.m.addBond(nb);
 
@@ -4825,7 +4832,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
       this.m.delBond(next.b, false);
       const mm = this.m.getFragment(next.a);
       mm.offset(dx, 0);
-      const b = new JSDraw2.Bond(next.a, na, a.biotype() == JSDraw2.BIO.AA ? JSDraw2.BONDTYPES.PEPTIDE : JSDraw2.BONDTYPES.SINGLE/*, true */); // TODO: check last true
+      const b = new JSDraw2.Bond<TBio>(next.a, na, a.biotype() == JSDraw2.BIO.AA ? JSDraw2.BONDTYPES.PEPTIDE : JSDraw2.BONDTYPES.SINGLE/*, true */); // TODO: check last true
       b.apo1 = 1;
       b.apo2 = 2;
       this.m.addBond(b);
@@ -5093,7 +5100,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
     }
 
     if (na == null) {
-      na = new JSDraw2.Atom(p, elem);
+      na = new JSDraw2.Atom<TBio>(p, elem);
       this._addNewAtomInExistingGroup(a, [na]);
       m.addAtom(na);
       // attach to existing group
@@ -5104,7 +5111,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
         return false;
     }
 
-    const nb = new JSDraw2.Bond(a, na, bondtype);
+    const nb = new JSDraw2.Bond<TBio>(a, na, bondtype);
     m.addBond(nb, null, true);
     return true;
   }
@@ -5729,7 +5736,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
    * @param {string} filetype - the file type: mol, rxn, xml.  Other file types can be loaded with JSDraw.WebServices
    * @returns the Mol object loaded
    */
-  setFile(data, filetype) {
+  setFile(data: string, filetype: string): Mol<TBio> {
     let m = null;
     if (filetype == "mol")
       m = this.m.setMolfile(data);
@@ -5739,18 +5746,18 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
       m = this.m.setXml(data);
     else if (filetype == "helm") {
       this.setHelm(data);
-      return;
+      return this.m;
     } else if (filetype == "xhelm") {
       this.setXHelm(data);
       return;
     } else if (filetype == "jdx")
       m = this.m.setJdx(data, this.bondlength);
     else
-      return;
+      return this.m;
 
     if (m == null) {
       this.clear(true);
-      return;
+      return this.m;
     }
 
     this.setMol(m);
@@ -5785,7 +5792,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
    * @param {string} molfile - the mol file contents
    * @returns null
    */
-  setMolfile(molfile) {
+  setMolfile(molfile: string) {
     this.setFile(molfile, "mol");
   }
 
@@ -5795,7 +5802,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
    * @param {string} rxnfile - the rxn file contents
    * @returns null
    */
-  setRxnfile(rxnfile) {
+  setRxnfile(rxnfile: string) {
     this.setFile(rxnfile, "rxn");
   }
 
@@ -5815,7 +5822,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
    * @function getSvg
    * @returns the svg string
    */
-  getSvg() {
+  getSvg(): string {
     const g = dojox.gfx;
     if (g.renderer != "svg")
       return null;
@@ -5849,14 +5856,14 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
     }
 
     this.m.bondlength = this.bondlength;
-    return this.m.getXml(width > 0 ? width : this.dimension.x, height > 0 ? height : this.dimension.y, viewonly, svg, this.bondlength);
+    return this.m.getXml(width! > 0 ? width! : this.dimension.x, height! > 0 ? height! : this.dimension.y, viewonly, svg, this.bondlength);
   }
 
-  getHtml(width, height, viewonly, withsvg) {
+  getHtml(width?: number, height?: number, viewonly?: boolean, withsvg?: boolean) {
     return this.getXml(width, height, viewonly, withsvg);
   }
 
-  getSequence(highlightselection) {
+  getSequence(highlightselection: boolean) {
     return this.helm == null ? null : this.helm.getSequence(highlightselection);
   }
 
@@ -5864,7 +5871,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
     return this.helm == null ? null : this.helm.getHelm(highlightselection);
   }
 
-  setHelm(s) {
+  setHelm(s: string) {
     return this.helm == null ? null : this.helm.setHelm(s);
   }
 
@@ -6454,7 +6461,7 @@ export class EditorInt<TBio = any> implements IMolHandler<TBio> {
   }
 }
 
-export class Editor<TBio = any> extends EditorInt<TBio> {
+export class Editor<TBio = any, TDrawOptions extends IDrawOptions> extends EditorInt<TBio, TDrawOptions> {
   static _id: number;
   static _allitems: any;
 

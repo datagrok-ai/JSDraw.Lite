@@ -16,14 +16,14 @@ import type {Point} from './Point';
 import type {Atom} from './Atom';
 import type {Lasso} from './Lasso';
 import type {Mol} from './Mol';
-import type {BondType, JSDraw2ModuleType, RxnCenterType, IObjWithId} from './types/jsdraw2';
+import type {BondType, JSDraw2ModuleType, RxnCenterType, IObjWithId, IEditorOptions, IDrawOptions} from './types/jsdraw2';
 
 declare const dojo: DojoType;
 declare const dojox: DojoxType;
 
 declare const scil: ScilModuleType;
-declare const JSDraw2: JSDraw2ModuleType<any>;
-declare const org: OrgType<any>;
+declare const JSDraw2: JSDraw2ModuleType;
+declare const org: OrgType<any, IDrawOptions>;
 
 export type PosRType = { pos: string, r: string };
 export type BondAnnotationType = { ba1: string, ba2: string };
@@ -60,7 +60,7 @@ export class Bond<TBio> implements IObjWithId {
   public rcenter: RxnCenterType | null;
   public selected: boolean;
   public tag: string | null;
-  public f: number | null;
+  public f: number | boolean | null;
   public r1: number | string | null;
   public r2: number | string | null;
   public ratio1: number | string | null;
@@ -68,7 +68,7 @@ export class Bond<TBio> implements IObjWithId {
   public type: BondType;
 
   public _parent!: Mol<TBio>;
-  private z?: number;
+  public z?: number | boolean;
   public bondid?: number;
   public group: any;
 
@@ -392,10 +392,12 @@ export class Bond<TBio> implements IObjWithId {
     }
   }
 
-  draw(surface: any, linewidth: number, m: Mol<TBio>, fontsize: number, simpledraw: boolean, drawStep: number) {
+  draw(surface: any, m: Mol<TBio>, drawOpts: IDrawOptions,
+    simpledraw: boolean, drawStep: number
+  ): void {
     if (this.type == JSDraw2.BONDTYPES.DUMMY) {
       if ((this.a1.elem == "@" || this.a2.elem == "@") && !this.a1.p.equalsTo(this.a2.p))
-        JSDraw2.Drawer.drawLine(surface, this.a1.p, this.a2.p, "#eee", linewidth / 2);
+        JSDraw2.Drawer.drawLine(surface, this.a1.p, this.a2.p, "#eee", drawOpts.linewidth / 2);
       return;
     }
 
@@ -405,9 +407,9 @@ export class Bond<TBio> implements IObjWithId {
     const b = new JSDraw2.BondB(this);
     if (!simpledraw) {
       if (b.a1._haslabel)
-        b.p1.shrink(b.p2, fontsize * 0.6);
+        b.p1.shrink(b.p2, drawOpts.fontsize * 0.6);
       if (b.a2._haslabel)
-        b.p2.shrink(b.p1, fontsize * 0.6);
+        b.p2.shrink(b.p1, drawOpts.fontsize * 0.6);
     }
 
     const color = scil.Utils.isNullOrEmpty(this.color) ? "black" : this.color!;
@@ -440,13 +442,13 @@ export class Bond<TBio> implements IObjWithId {
     }
     case 2: {
       if (simpledraw || b.type == JSDraw2.BONDTYPES.PEPTIDE || b.type == JSDraw2.BONDTYPES.AMIDE) {
-        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, linewidth);
+        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, drawOpts.linewidth);
         return;
       } else if (b.type == JSDraw2.BONDTYPES.DISULFIDE) {
-        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, linewidth);
+        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, drawOpts.linewidth);
         return;
       } else if (b.type == JSDraw2.BONDTYPES.NUCLEOTIDE) {
-        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, linewidth);
+        JSDraw2.Drawer.drawLine(surface, b.p1, b.p2, color, drawOpts.linewidth);
         return;
       }
       break;
@@ -460,13 +462,13 @@ export class Bond<TBio> implements IObjWithId {
       if (this.z) {
         const p1 = new JSDraw2.Point(b.p1.x, c.y);
         const p2 = new JSDraw2.Point(b.p2.x, c.y);
-        JSDraw2.Drawer.drawLine(surface, b.p1, p1, color1, linewidth, null, "butt");
-        JSDraw2.Drawer.drawLine(surface, p1, c, color1, linewidth, null, "butt");
-        JSDraw2.Drawer.drawLine(surface, c, p2, color2, linewidth, null, "butt");
-        JSDraw2.Drawer.drawLine(surface, p2, b.p2, color2, linewidth, null, "butt");
+        JSDraw2.Drawer.drawLine(surface, b.p1, p1, color1, drawOpts.linewidth, null, "butt");
+        JSDraw2.Drawer.drawLine(surface, p1, c, color1, drawOpts.linewidth, null, "butt");
+        JSDraw2.Drawer.drawLine(surface, c, p2, color2, drawOpts.linewidth, null, "butt");
+        JSDraw2.Drawer.drawLine(surface, p2, b.p2, color2, drawOpts.linewidth, null, "butt");
       } else {
-        JSDraw2.Drawer.drawLine(surface, b.p1, c, color1, linewidth, null, "butt");
-        JSDraw2.Drawer.drawLine(surface, c, b.p2, color2, linewidth, null, "butt");
+        JSDraw2.Drawer.drawLine(surface, b.p1, c, color1, drawOpts.linewidth, null, "butt");
+        JSDraw2.Drawer.drawLine(surface, c, b.p2, color2, drawOpts.linewidth, null, "butt");
         if (this.r1 == 1 && this.r2 == 2 || this.r1 == 2 && this.r2 == 1) {
           JSDraw2.Bond.showHelmAnnotation<TBio>(this.a1, this.a2, this.r1);
           JSDraw2.Bond.showHelmAnnotation<TBio>(this.a2, this.a1, this.r2);
@@ -476,30 +478,30 @@ export class Bond<TBio> implements IObjWithId {
     }
 
     if (!simpledraw)
-      this.drawBondAnnotation(surface, fontsize, b);
+      this.drawBondAnnotation(surface, drawOpts.fontsize, b);
 
     let dir = 8;
     if (b.type == JSDraw2.BONDTYPES.DOUBLE || b.type == JSDraw2.BONDTYPES.DELOCALIZED || b.type == JSDraw2.BONDTYPES.EITHER || b.type == JSDraw2.BONDTYPES.DOUBLEORAROMATIC)
       dir = this._shirftDirection(m, b) ? 8 : -8;
 
     if (b.type == JSDraw2.BONDTYPES.DOUBLE && this._centerDoubleBond(m, b)) {
-      this._drawBond(surface, b, color, linewidth, -dir, 0, null, linewidth);
-      this._drawBond(surface, b, color, linewidth, dir, 0, null, linewidth);
+      this._drawBond(surface, b, color, drawOpts.linewidth, -dir, 0, null, drawOpts.linewidth);
+      this._drawBond(surface, b, color, drawOpts.linewidth, dir, 0, null, drawOpts.linewidth);
     } else if (b.type == JSDraw2.BONDTYPES.SINGLE || b.type == JSDraw2.BONDTYPES.BOLD || b.type == JSDraw2.BONDTYPES.DOUBLE || b.type == JSDraw2.BONDTYPES.TRIPLE || b.type == JSDraw2.BONDTYPES.DELOCALIZED) {
-      this._drawBond(surface, b, color, b.type == JSDraw2.BONDTYPES.BOLD ? 3 * linewidth : linewidth, null, null, null, null, b.type == JSDraw2.BONDTYPES.BOLD ? "butt" : "round");
+      this._drawBond(surface, b, color, b.type == JSDraw2.BONDTYPES.BOLD ? 3 * drawOpts.linewidth : drawOpts.linewidth, null, null, null, null, b.type == JSDraw2.BONDTYPES.BOLD ? "butt" : "round");
 
       if (b.type == JSDraw2.BONDTYPES.DOUBLE || b.type == JSDraw2.BONDTYPES.TRIPLE)
-        this._drawBond(surface, b, color, linewidth, dir, dir);
+        this._drawBond(surface, b, color, drawOpts.linewidth, dir, dir);
 
       if (b.type == JSDraw2.BONDTYPES.TRIPLE)
-        this._drawBond(surface, b, color, linewidth, -dir, -dir);
+        this._drawBond(surface, b, color, drawOpts.linewidth, -dir, -dir);
 
       if (b.type == JSDraw2.BONDTYPES.DELOCALIZED)
-        this._drawBond(surface, b, color, linewidth, dir, dir, 4);
+        this._drawBond(surface, b, color, drawOpts.linewidth, dir, dir, 4);
     }
 
     if (b.type == JSDraw2.BONDTYPES.WEDGE) {
-      const v = b.vector().rotate(90).setLength(linewidth * 2);
+      const v = b.vector().rotate(90).setLength(drawOpts.linewidth * 2);
       surface.createPolyline([
         b.p1.x, b.p1.y,
         b.p2.x + v.x, b.p2.y + v.y,
@@ -511,77 +513,77 @@ export class Bond<TBio> implements IObjWithId {
 
     if (b.type == JSDraw2.BONDTYPES.HASH || b.type == JSDraw2.BONDTYPES.BOLDHASH) {
       const len = b.bondLength();
-      const n = Math.floor(len / (linewidth * 2));
+      const n = Math.floor(len / (drawOpts.linewidth * 2));
       const d = b.vector().scale(1.0 / n);
       const v = b.vector().rotate(90);
       for (let k = 1; k <= n; ++k) {
         const p = b.p1.clone().offset(d.x * k, d.y * k);
-        let vlen = linewidth * 2;
+        let vlen = drawOpts.linewidth * 2;
         if (b.type == JSDraw2.BONDTYPES.HASH)
           vlen *= k / n;
         else
           vlen *= 0.6;
         const vi = v.clone().setLength(vlen);
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(vi.x, vi.y), p.clone().offset(-vi.x, -vi.y), color, linewidth);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(vi.x, vi.y), p.clone().offset(-vi.x, -vi.y), color, drawOpts.linewidth);
       }
     }
 
     if (b.type == JSDraw2.BONDTYPES.WIGGLY)
-      JSDraw2.Drawer.drawCurves(surface, b.p1, b.p2, color, linewidth);
+      JSDraw2.Drawer.drawCurves(surface, b.p1, b.p2, color, drawOpts.linewidth);
 
     if (b.type == JSDraw2.BONDTYPES.EITHER) {
       const d = b.vector().scale(1.0 / Math.abs(dir));
-      const v = b.vector().rotate(dir > 0 ? 90 : -90).setLength(linewidth * 2);
+      const v = b.vector().rotate(dir > 0 ? 90 : -90).setLength(drawOpts.linewidth * 2);
       const p1 = b.p1.clone().offset(d.x + v.x, d.y + v.y);
       const p2 = b.p2.clone().offset(-d.x + v.x, -d.y + v.y);
-      JSDraw2.Drawer.drawLine(surface, b.p1, p2, color, linewidth);
-      JSDraw2.Drawer.drawLine(surface, b.p2, p1, color, linewidth);
+      JSDraw2.Drawer.drawLine(surface, b.p1, p2, color, drawOpts.linewidth);
+      JSDraw2.Drawer.drawLine(surface, b.p2, p1, color, drawOpts.linewidth);
     }
 
     if (b.type == JSDraw2.BONDTYPES.DOUBLEORAROMATIC) {
-      this._drawBond(surface, b, color, linewidth);
-      this._drawBond(surface, b, color, linewidth, dir, dir, 2);
+      this._drawBond(surface, b, color, drawOpts.linewidth);
+      this._drawBond(surface, b, color, drawOpts.linewidth, dir, dir, 2);
     }
 
     if (b.type == JSDraw2.BONDTYPES.SINGLEORDOUBLE || b.type == JSDraw2.BONDTYPES.SINGLEORAROMATIC) {
-      this._drawBond(surface, b, color, linewidth, 0, 0, 2);
+      this._drawBond(surface, b, color, drawOpts.linewidth, 0, 0, 2);
 
-      this._drawBond(surface, b, color, linewidth, dir / 2, dir / 2, null, linewidth * 1.5);
-      this._drawBond(surface, b, color, linewidth, -dir / 2, -dir / 2, b.type == JSDraw2.BONDTYPES.SINGLEORAROMATIC ? 2 : null, linewidth * 1.5);
+      this._drawBond(surface, b, color, drawOpts.linewidth, dir / 2, dir / 2, null, drawOpts.linewidth * 1.5);
+      this._drawBond(surface, b, color, drawOpts.linewidth, -dir / 2, -dir / 2, b.type == JSDraw2.BONDTYPES.SINGLEORAROMATIC ? 2 : null, drawOpts.linewidth * 1.5);
     }
 
     if (b.type == JSDraw2.BONDTYPES.UNKNOWN)
-      this._drawBond(surface, b, color, linewidth, null, null, linewidth * 1.2);
+      this._drawBond(surface, b, color, drawOpts.linewidth, null, null, drawOpts.linewidth * 1.2);
 
     if (b.b.ring != null) {
       const p = this.center();
-      surface.createCircle({cx: p.x, cy: p.y, r: linewidth * 3})
-        .setStroke({color: color, width: linewidth / 2, style: b.b.ring ? "Solid" : "Dash"});
+      surface.createCircle({cx: p.x, cy: p.y, r: drawOpts.linewidth * 3})
+        .setStroke({color: color, width: drawOpts.linewidth / 2, style: b.b.ring ? "Solid" : "Dash"});
     }
 
     if (b.b.rcenter != null) {
       const p = this.center();
-      let d = b.vector().rotate(90).setLength(linewidth * 3);
-      let v = b.vector().setLength(linewidth * (b.b.rcenter == JSDraw2.RXNCENTER.BREAKANDCHANGE ? 1.5 : 1));
+      let d = b.vector().rotate(90).setLength(drawOpts.linewidth * 3);
+      let v = b.vector().setLength(drawOpts.linewidth * (b.b.rcenter == JSDraw2.RXNCENTER.BREAKANDCHANGE ? 1.5 : 1));
       if (b.b.rcenter == JSDraw2.RXNCENTER.CENTER) {
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x + v.x, d.y + v.y), p.clone().offset(-d.x + v.x, -d.y + v.y), color, linewidth / 2);
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x - v.x, d.y - v.y), p.clone().offset(-d.x - v.x, -d.y - v.y), color, linewidth / 2);
-        d = b.vector().rotate(90).setLength(linewidth * 1.6);
-        v = b.vector().setLength(linewidth * 2);
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x + v.x, d.y + v.y), p.clone().offset(d.x - v.x, d.y - v.y), color, linewidth / 2);
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(-d.x + v.x, -d.y + v.y), p.clone().offset(-d.x - v.x, -d.y - v.y), color, linewidth / 2);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x + v.x, d.y + v.y), p.clone().offset(-d.x + v.x, -d.y + v.y), color, drawOpts.linewidth / 2);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x - v.x, d.y - v.y), p.clone().offset(-d.x - v.x, -d.y - v.y), color, drawOpts.linewidth / 2);
+        d = b.vector().rotate(90).setLength(drawOpts.linewidth * 1.6);
+        v = b.vector().setLength(drawOpts.linewidth * 2);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x + v.x, d.y + v.y), p.clone().offset(d.x - v.x, d.y - v.y), color, drawOpts.linewidth / 2);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(-d.x + v.x, -d.y + v.y), p.clone().offset(-d.x - v.x, -d.y - v.y), color, drawOpts.linewidth / 2);
       } else if (b.b.rcenter == JSDraw2.RXNCENTER.NOTCENTER) {
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x + v.x, d.y + v.y), p.clone().offset(-d.x - v.x, -d.y - v.y), color, linewidth / 2);
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x - v.x, d.y - v.y), p.clone().offset(-d.x + v.x, -d.y + v.y), color, linewidth / 2);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x + v.x, d.y + v.y), p.clone().offset(-d.x - v.x, -d.y - v.y), color, drawOpts.linewidth / 2);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x - v.x, d.y - v.y), p.clone().offset(-d.x + v.x, -d.y + v.y), color, drawOpts.linewidth / 2);
       } else if (b.b.rcenter == JSDraw2.RXNCENTER.BREAK) {
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x + v.x, d.y + v.y), p.clone().offset(-d.x + v.x, -d.y + v.y), color, linewidth / 2);
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x - v.x, d.y - v.y), p.clone().offset(-d.x - v.x, -d.y - v.y), color, linewidth / 2);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x + v.x, d.y + v.y), p.clone().offset(-d.x + v.x, -d.y + v.y), color, drawOpts.linewidth / 2);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x - v.x, d.y - v.y), p.clone().offset(-d.x - v.x, -d.y - v.y), color, drawOpts.linewidth / 2);
       } else if (b.b.rcenter == JSDraw2.RXNCENTER.CHANGE) {
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x, d.y), p.clone().offset(-d.x, -d.y), color, linewidth / 2);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x, d.y), p.clone().offset(-d.x, -d.y), color, drawOpts.linewidth / 2);
       } else if (b.b.rcenter == JSDraw2.RXNCENTER.BREAKANDCHANGE) {
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x, d.y), p.clone().offset(-d.x, -d.y), color, linewidth / 2);
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x + v.x, d.y + v.y), p.clone().offset(-d.x + v.x, -d.y + v.y), color, linewidth / 2);
-        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x - v.x, d.y - v.y), p.clone().offset(-d.x - v.x, -d.y - v.y), color, linewidth / 2);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x, d.y), p.clone().offset(-d.x, -d.y), color, drawOpts.linewidth / 2);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x + v.x, d.y + v.y), p.clone().offset(-d.x + v.x, -d.y + v.y), color, drawOpts.linewidth / 2);
+        JSDraw2.Drawer.drawLine(surface, p.clone().offset(d.x - v.x, d.y - v.y), p.clone().offset(-d.x - v.x, -d.y - v.y), color, drawOpts.linewidth / 2);
       }
     }
   }

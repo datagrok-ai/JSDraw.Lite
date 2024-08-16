@@ -14,7 +14,7 @@ import type {JSDraw2ModuleType} from './types';
 import type {IGraphics} from './types/jsdraw2';
 import type {Rect} from './Rect';
 
-declare const JSDraw2: JSDraw2ModuleType<any>;
+declare const JSDraw2: JSDraw2ModuleType;
 
 /**
  * Point class - define a position on the screen

@@ -1,7 +1,7 @@
 import type {Atom} from '../Atom';
 import type {Editor} from '../JSDraw.Editor';
 import type {Point} from '../Point';
-import type {IOrgPlugin} from './jsdraw2';
+import type {IDrawOptions, IEditorOptions, IOrgPlugin} from './jsdraw2';
 
 export const enum MonomerTypes {
   BACKBONE = 'Backbone',
@@ -83,9 +83,10 @@ export interface IOrgMonomers<TBio> {
   [p: string]: any;
 }
 
-export interface IOrgInterface<TBio> {
-  drawMonomer(surface: SVGSVGElement, a: Atom<TBio>, p: Point, fontsize: number, linewidth: number, color: string, step?: number): void;
-  onContextMenu(ed: Editor<TBio>, e: Event, viewonly: boolean): any[];
+export interface IOrgInterface<TBio, TDrawOptions extends IDrawOptions> {
+  drawMonomer(surface: SVGSVGElement, a: Atom<TBio>, p: Point,
+    drawOpts: TDrawOptions, color: string, step?: number): void;
+  onContextMenu(ed: Editor<TBio, TDrawOptions>, e: Event, viewonly: boolean): any[];
 
   getAtomStats(m: any, atoms: any[]): any;
   molStats(m: string): any;
@@ -97,11 +98,11 @@ export interface IFormula<TBio> {
 }
 
 /** scil.helm */
-export type IOrgWebEditor<TBio> = {
+export type IOrgWebEditor<TBio, TDrawOptions extends IDrawOptions> = {
   HELM: typeof HelmTypes;
-  Interface: IOrgInterface<TBio>;
+  Interface: IOrgInterface<TBio, IDrawOptions>;
   Monomers: IOrgMonomers<TBio>;
-  Plugin: IOrgPlugin<TBio>;
+  Plugin: IOrgPlugin<TBio, TDrawOptions>;
   MolViewer: any;
   MonomerExplorer: any;
   Formula: IFormula<TBio>;
@@ -114,10 +115,10 @@ export type IOrgWebEditor<TBio> = {
   about(): void;
 }
 
-export type OrgHelmType<TBio> = {
-  webeditor: IOrgWebEditor<TBio>;
+export type OrgHelmType<TBio, TDrawOptions extends IDrawOptions> = {
+  webeditor: IOrgWebEditor<TBio, TDrawOptions>;
 }
 
-export type OrgType<TBio> = {
-  helm: OrgHelmType<TBio>;
+export type OrgType<TBio, TDrawOptions extends IDrawOptions> = {
+  helm: OrgHelmType<TBio, TDrawOptions>;
 }

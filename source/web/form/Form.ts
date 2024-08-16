@@ -21,7 +21,7 @@ declare const dojo: DojoType;
 declare const dojox: DojoxType;
 
 declare const scil: ScilModuleType;
-declare const JSDraw2: JSDraw2ModuleType<any>;
+declare const JSDraw2: JSDraw2ModuleType;
 declare const JsUtils: IScilUtils;
 declare const CryptoJS: any;
 

@@ -6,7 +6,7 @@ import type {IMolHandler, MolHandlerOptions} from './types/mol-handler';
 import {defaultMolHandlerOptions} from './types/mol-handler';
 import {Mol} from './Mol';
 
-declare const JSDraw2: JSDraw2ModuleType<any>;
+declare const JSDraw2: JSDraw2ModuleType;
 declare const scil: ScilModuleType;
 
 export class MolHandler<TBio> implements IMolHandler<TBio> {

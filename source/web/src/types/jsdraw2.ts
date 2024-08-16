@@ -138,24 +138,35 @@ export interface IGraphics {
   graphicsid?: number;
   rect(): Rect;
   clone(map: any[]): IGraphics;
-  draw(surface: any, linewidth: number, m: any, fontsize: number, drawStep?: number): void;
+  draw(surface: any, m: any, drawOpts: IDrawOptions, drawStep?: number): void;
 
   [p: string]: any;
 }
 
 export type ColorArray = [number, number, number, number];
 
-export interface IOrgPlugin<TBio> {
-  get jsd(): Editor<TBio>;
+export interface IOrgPlugin<TBio, TDrawOptions extends IDrawOptions> {
+  get jsd(): Editor<TBio, TDrawOptions>;
 
-  new(jsd: IMolHandler<TBio>): IOrgPlugin<TBio>;
+  new(jsd: IMolHandler<TBio>): IOrgPlugin<TBio, TDrawOptions>;
 
   setHelmBlobType(a: Atom<TBio>, type: string): void;
 
-  [p: string]: any;
+  setHelm(s: string): void;
+
+  getSequence(highlightselection: boolean): string;
+
+  // [p: string]: any;
 }
 
-export interface IEditorOptions {
+export interface IDrawOptions {
+  linewidth: number;
+  fontsize: number;
+}
+
+export interface IEditorOptions<TDrawOptions extends IDrawOptions> {
+  drawOptions: Partial<TDrawOptions>;
+
   usexdraw: boolean;
   xdraw: string;
   popupwidth: string;
@@ -171,6 +182,7 @@ export interface IEditorOptions {
   showcustomtemplates: boolean;
   usechemdraw: boolean;
   abbreviations: string;
+  helmtoolbar: boolean;
 
   showcarbon: boolean;
   pastechemdraw: boolean;
@@ -314,6 +326,7 @@ export interface IPistoiaBase {
 
 export interface IBio<TBio> {
   id?: number | string | null;
+  continuousId?: number | string | null;
 
   type: TBio;
   subtype?: string | null;
@@ -521,10 +534,10 @@ export interface IPeriodicTable {
   isValidAtomList(s: string): boolean;
 }
 
-export type JSDraw2ModuleType<TBio> = {
+export type JSDraw2ModuleType = {
   password: any;
 
-  defaultoptions: Partial<IEditorOptions>;
+  defaultoptions: Partial<IEditorOptions<IDrawOptions>>;
   version: string;
 
   abbreviations: string;
@@ -543,10 +556,10 @@ export type JSDraw2ModuleType<TBio> = {
   MOLECULETYPES: typeof MoleculeTypes;
   TEXTKEYWORDS: typeof TextKeywords;
 
-  Atom: typeof Atom<TBio>;
-  Bond: typeof Bond<TBio>;
-  BondB: typeof BondB<TBio>; // TODO: Hide
-  Bracket: typeof Bracket<TBio>;
+  Atom: typeof Atom;
+  Bond: typeof Bond;
+  BondB: typeof BondB; // TODO: Hide
+  Bracket: typeof Bracket;
   Drawer: Drawer;
 
   Editor: typeof Editor;
@@ -577,9 +590,9 @@ export type JSDraw2ModuleType<TBio> = {
   Symbol: any;
   Table: any;
 
-  RGroup: IRGroup<TBio>;
+  RGroup: IRGroup;
   SGroup: ISGroup;
-  SuperAtoms: SuperAtoms<TBio>;
+  SuperAtoms: SuperAtoms;
 
   BA: any;
   IDGenerator: any;

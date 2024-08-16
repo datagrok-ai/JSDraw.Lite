@@ -1,5 +1,9 @@
 # JSDraw.Lite changelog
 
+## 0.0.6 (2024-08-16)
+
+* JSDraw: HWE option for continuous numbering, typing
+
 ## 0.0.5 (2024-08-12)
 
 * JSDraw: Typing

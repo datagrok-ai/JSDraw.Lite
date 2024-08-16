@@ -11,7 +11,7 @@
 // // @ts-nocheck
 
 import type {IndexType, ScilModuleType, IDebug} from './types/scil';
-import type {IObjWithId, BondType, IGraphics, JSDraw2ModuleType, IRGroup} from './types/jsdraw2';
+import type {IObjWithId, BondType, IGraphics, JSDraw2ModuleType, IRGroup, IEditorOptions, IDrawOptions} from './types/jsdraw2';
 
 import type {Atom} from './Atom';
 import type {Bond} from './Bond';
@@ -25,7 +25,7 @@ import type {Lasso} from './Lasso';
 import {BondTypes, TextAligns, DrawSteps} from './types/jsdraw2';
 import {TypeVisitor} from '@typescript-eslint/scope-manager/dist/referencer/TypeVisitor';
 
-declare const JSDraw2: JSDraw2ModuleType<any>;
+declare const JSDraw2: JSDraw2ModuleType;
 declare const scil: ScilModuleType;
 declare const scilligence: ScilModuleType;
 
@@ -1467,7 +1467,7 @@ export class Mol<TBio = any> {
    * @param {bool} resetcharge - indicate if reset atoms' charges of bonded atoms
    * @returns the Bond added
    */
-  addBond(b: Bond<TBio>, resetcharge?: boolean, add2rgroup?: boolean) {
+  addBond(b: Bond<TBio>, resetcharge?: boolean, add2rgroup?: boolean): Bond<TBio> | null {
     if (this.hasBond(b))
       return null;
 
@@ -1827,17 +1827,13 @@ export class Mol<TBio = any> {
     return hs.length;
   }
 
-  draw(surface: any, linewidth: number, fontsize: number, textonly: boolean, dimension: Point,
-    highlighterrors: boolean, showcarbon?: string, simpledraw: boolean = false) {
-    if (linewidth == null)
-      linewidth = 2;
-    if (fontsize == null)
-      fontsize = 14;
-
+  draw(surface: any, drawOpts: IDrawOptions, textonly: boolean, dimension: Point,
+    highlighterrors: boolean, showcarbon?: string, simpledraw: boolean = false
+  ): void {
     if (textonly) {
       for (let i = 0; i < this.graphics.length; ++i) {
         if (this.graphics[i].T == 'TEXT')
-          this.graphics[i].draw(surface, linewidth, this, fontsize);
+          this.graphics[i].draw(surface, this, drawOpts);
       }
     } else {
       for (let i = 0; i < this.atoms.length; ++i) {
@@ -1856,19 +1852,19 @@ export class Mol<TBio = any> {
 
           if (!simpledraw || !b.selected) {
             if (this.moveHiddenAtomToGroupBorder(b.a1, b.a2) || this.moveHiddenAtomToGroupBorder(b.a2, b.a1))
-              b.draw(surface, linewidth, this, fontsize, simpledraw, drawStep);
+              b.draw(surface, this, drawOpts, simpledraw, drawStep);
             else
               bonds.push(b);
           }
         }
 
         for (let i = 0; i < this.graphics.length; ++i)
-          this.graphics[i].draw(surface, linewidth, this, fontsize, drawStep);
+          this.graphics[i].draw(surface, this, drawOpts, drawStep);
 
         for (let i = 0; i < bonds.length; ++i)
-          bonds[i].draw(surface, linewidth, this, fontsize, simpledraw, drawStep);
+          bonds[i].draw(surface, this, drawOpts, simpledraw, drawStep);
 
-        const tor = linewidth * 2;
+        const tor = drawOpts.linewidth * 2;
         if (simpledraw) {
           // I#9069
           for (let i = 0; i < this.atoms.length; ++i) {
@@ -1878,7 +1874,7 @@ export class Mol<TBio = any> {
 
             const w = 8;
             const r = new JSDraw2.Rect(a.p.x - w / 2, a.p.y - w / 2, w, w);
-            JSDraw2.Drawer.drawRect(surface, r, 'red', linewidth).setFill('red');
+            JSDraw2.Drawer.drawRect(surface, r, 'red', drawOpts.linewidth).setFill('red');
           }
         } else {
           for (let i = 0; i < this.atoms.length; ++i) {
@@ -1890,24 +1886,24 @@ export class Mol<TBio = any> {
             for (let k = i + 1; k < this.atoms.length; ++k) {
               const a1 = this.atoms[k];
               if (Math.abs(a.p.x - a1.p.x) < tor && Math.abs(a.p.y - a1.p.y) < tor) {
-                const r = new JSDraw2.Rect(a.p.x - fontsize / 2, a.p.y - fontsize / 2, fontsize, fontsize);
-                JSDraw2.Drawer.drawRect(surface, r, 'red', linewidth);
+                const r = new JSDraw2.Rect(a.p.x - drawOpts.fontsize / 2, a.p.y - drawOpts.fontsize / 2, drawOpts.fontsize, drawOpts.fontsize);
+                JSDraw2.Drawer.drawRect(surface, r, 'red', drawOpts.linewidth);
                 break;
               }
             }
 
-            a.draw(surface, linewidth, this, fontsize, highlighterrors, drawStep);
+            a.draw(surface, this, drawOpts, highlighterrors, drawStep);
             if (a.rgroup != null && 2 === drawStep) {
               if (a.rgroup.text != null)
-                a.rgroup.draw(surface, linewidth, this, fontsize);
+                a.rgroup.draw(surface, drawOpts.linewidth, this, drawOpts.fontsize);
               for (let j = 0; j < a.rgroup.mols.length; ++j)
-                a.rgroup.mols[j].draw(surface, linewidth, fontsize, textonly, dimension, highlighterrors);
+                a.rgroup.mols[j].draw(surface, drawOpts, textonly, dimension, highlighterrors);
             }
           }
         }
       }
 
-      this.drawSelect(new JSDraw2.Lasso(surface, linewidth * (simpledraw ? 5 : 1), false), simpledraw);
+      this.drawSelect(new JSDraw2.Lasso(surface, drawOpts.linewidth * (simpledraw ? 5 : 1), false), simpledraw);
 
       let s = null;
       if (this.chiral == 'and')
@@ -1918,7 +1914,7 @@ export class Mol<TBio = any> {
         s = 'Chiral';
 
       if (s != null)
-        JSDraw2.Drawer.drawText(surface, new JSDraw2.Point(dimension.x - fontsize * 4, fontsize * 1), s, 'gray', fontsize, TextAligns.right);
+        JSDraw2.Drawer.drawText(surface, new JSDraw2.Point(dimension.x - drawOpts.fontsize * 4, drawOpts.fontsize * 1), s, 'gray', drawOpts.fontsize, TextAligns.right);
     }
   }
 
@@ -2171,7 +2167,7 @@ export class Mol<TBio = any> {
         alias = e;
         e = 'R';
       }
-      const a = new JSDraw2.Atom(new JSDraw2.Point(x, y), e == 'R#' ? 'R' : e);
+      const a = new JSDraw2.Atom<TBio>(new JSDraw2.Point(x, y), e == 'R#' ? 'R' : e);
       a.alias = alias;
       if (ami > 0)
         a.atommapid = ami;
@@ -2558,7 +2554,7 @@ export class Mol<TBio = any> {
             sg.fieldtype = 'BRACKET_MOD';
         }
       } else if (sg.type == 'SUPERATOM') {
-        const na = new JSDraw2.Atom(null, 'C');
+        const na = new JSDraw2.Atom<TBio>(null, 'C');
         const m = new JSDraw2.Mol();
         superatoms.push({a: na, m: m});
         m.atoms = sg.atoms;
@@ -2595,18 +2591,18 @@ export class Mol<TBio = any> {
         switch (sg.cls) {
         case 'AminoAcid':
         case 'AA':
-          na.bio = {type: JSDraw2.BIO.AA};
+          na.bio = {type: JSDraw2.BIO.AA as TBio};
           na.elem = na.alias!;
           na.alias = null;
           break;
         case 'BASE':
         case 'DNA':
-          na.bio = {type: JSDraw2.BIO.BASE_DNA};
+          na.bio = {type: JSDraw2.BIO.BASE_DNA as TBio};
           na.elem = na.alias!;
           na.alias = null;
           break;
         case 'RNA':
-          na.bio = {type: JSDraw2.BIO.BASE_RNA};
+          na.bio = {type: JSDraw2.BIO.BASE_RNA as TBio};
           na.elem = na.alias!;
           na.alias = null;
           break;
@@ -3691,15 +3687,15 @@ export class Mol<TBio = any> {
    * @param {bool} viewonly - in viewonly mode
    * @returns a string
    */
-  getXml(width: number, height: number, viewonly: boolean, svg: any, len: number) {
+  getXml(width: number, height: number, viewonly: boolean, svg: any, len: number): string | null {
     return this._getXml(width, height, viewonly, svg, len);
   }
 
-  getHtml(width: number, height: number, viewonly: boolean, svg: any, len: number) {
+  getHtml(width: number, height: number, viewonly: boolean, svg: any, len: number): string | null {
     return this.getXml(width, height, viewonly, svg, len);
   }
 
-  _getXml(width: number | null, height: number | null, viewonly: boolean | null, svg: any | null, len: number, inside?: boolean) {
+  _getXml(width: number | null, height: number | null, viewonly: boolean | null, svg: any | null, len: number, inside?: boolean): string | null {
     return null;
   }
 

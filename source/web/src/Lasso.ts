@@ -12,10 +12,11 @@ import type {JSDraw2ModuleType, ScilModuleType} from './types';
 import type {OrgType} from './types/org';
 import {Point} from './Point';
 import {Atom} from './Atom';
+import {IDrawOptions} from './types/jsdraw2';
 
 declare const scil: ScilModuleType;
-declare const JSDraw2: JSDraw2ModuleType<any>;
-declare const org: OrgType<any>;
+declare const JSDraw2: JSDraw2ModuleType;
+declare const org: OrgType<any, IDrawOptions>;
 
 export type LassoNode<TBio> = {
   a: Atom<TBio>;

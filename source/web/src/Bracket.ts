@@ -13,11 +13,11 @@ import type {Mol} from './Mol';
 import type {Bond} from './Bond';
 import type {Lasso} from './Lasso';
 import type {Text} from './Text';
-import type {IGraphics, ShapeType} from './types/jsdraw2';
+import type {IDrawOptions, IGraphics, ShapeType} from './types/jsdraw2';
 
 declare const scilligence: ScilModuleType;
 declare const scil: ScilModuleType;
-declare const JSDraw2: JSDraw2ModuleType<any>;
+declare const JSDraw2: JSDraw2ModuleType;
 
 /**
  * Bracket class
@@ -186,11 +186,11 @@ export class Bracket<TBio> implements IGraphics {
     }
   }
 
-  draw(surface: any, linewidth: number, m: Mol<TBio>, fontsize: number): void {
+  draw(surface: any, m: Mol<TBio>, drawOpts: IDrawOptions): void {
     const r = this._rect;
 
     const color = this.color == null ? "gray" : this.color;
-    JSDraw2.Drawer.drawBracket(surface, r, color, linewidth);
+    JSDraw2.Drawer.drawBracket(surface, r, color, drawOpts.linewidth);
   }
 
   drawSelect(lasso: Lasso<TBio>): void {

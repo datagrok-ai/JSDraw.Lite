@@ -14,7 +14,7 @@ import type {Lasso} from './Lasso';
 import type {JSDraw2ModuleType, ScilModuleType} from './types';
 
 declare const scil: ScilModuleType;
-declare const JSDraw2: JSDraw2ModuleType<any>;
+declare const JSDraw2: JSDraw2ModuleType;
 
 /**
  * Group class - defines Object groups

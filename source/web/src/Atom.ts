@@ -20,7 +20,8 @@ import type {Lasso} from './Lasso';
 import type {Group} from './Group';
 
 import type {
-  AtomQueryType, IBio, IRGroup, JSDraw2ModuleType, DrawStep
+  AtomQueryType, IBio, IRGroup, JSDraw2ModuleType, DrawStep,
+  IDrawOptions
 } from './types/jsdraw2';
 
 import {DrawSteps, IObjWithId} from './types/jsdraw2';
@@ -29,9 +30,9 @@ declare const dojo: DojoType;
 declare const dojox: DojoxType;
 
 declare const scil: ScilModuleType;
-declare const JSDraw2: JSDraw2ModuleType<any>;
+declare const JSDraw2: JSDraw2ModuleType;
 
-declare const org: OrgType<any>;
+declare const org: OrgType<any, IDrawOptions>;
 
 /**
  * Atom class
@@ -155,8 +156,8 @@ export class Atom<TBio> implements IObjWithId {
     this.tag = null;
   }
 
-  clone(selectedOnly?: boolean | null) {
-    const a = new JSDraw2.Atom(this.p.clone(), this.elem, dojo.clone(this.bio));
+  clone(selectedOnly?: boolean | null): Atom<TBio> {
+    const a = new JSDraw2.Atom<TBio>(this.p.clone(), this.elem, dojo.clone(this.bio));
     a.charge = this.charge;
     a.isotope = this.isotope;
     a.radical = this.radical;
@@ -456,8 +457,13 @@ export class Atom<TBio> implements IObjWithId {
   //   return a.elem != 'C' || a.charge != 0 || a.isotope != null || a.hcount == 4;
   // },
 
-  drawBio(surface: any, linewidth: number, fontsize: number, color: string, drawStep: DrawStep): void {
+  drawBio(
+    surface: any, drawOpts: IDrawOptions, color: string,
+    drawStep: DrawStep
+  ): void {
     var a = this;
+    const linewidth: number = drawOpts.linewidth;
+    let fontsize: number = drawOpts.fontsize;
     var biotype = this.biotype();
     var p = a.p.clone();
     if (biotype == JSDraw2.BIO.ANTIBODY && DrawSteps.main === drawStep) {
@@ -491,7 +497,7 @@ export class Atom<TBio> implements IObjWithId {
       this.drawEllipse(surface, p.x - fontsize / 6, p.y + fontsize / 3, fontsize / 6, fontsize / 2, color, +20);
       this.drawEllipse(surface, p.x - fontsize / 6, p.y - fontsize / 3, fontsize / 6, fontsize / 2, color, -20);
     } else if (org.helm.webeditor.isHelmNode(a)) {
-      org.helm.webeditor.Interface.drawMonomer(surface, a, p, fontsize, linewidth, color, drawStep);
+      org.helm.webeditor.Interface.drawMonomer(surface, a, p, drawOpts, color, drawStep);
     } else if (DrawSteps.main === drawStep) {
       if (color == null)
         color = a.bio!.type == JSDraw2.BIO.AA ? '#00F' : (a.bio!.type == JSDraw2.BIO.BASE_RNA ? '#278925' : '#FFAA00');
@@ -531,7 +537,7 @@ export class Atom<TBio> implements IObjWithId {
     return (!a.bio && (e == null || e.a >= 0 && a.hasError)) && a.elem != '3\'' && a.elem != '5\'';
   }
 
-  draw(surface: any, linewidth: number, m: Mol<TBio>, fontsize: number, showError: boolean, drawStep: DrawStep): void {
+  draw(surface: any, m: Mol<TBio>, drawOpts: IDrawOptions, showError: boolean, drawStep: DrawStep): void {
     var a = this;
 
     this._rect = null;
@@ -540,7 +546,7 @@ export class Atom<TBio> implements IObjWithId {
     var color = a.color;
 
     if (a.bio != null) {
-      this.drawBio(surface, linewidth, fontsize, color!, drawStep);
+      this.drawBio(surface, drawOpts, color!, drawStep);
       return;
     }
     if (drawStep != DrawSteps.main) return;
@@ -557,10 +563,10 @@ export class Atom<TBio> implements IObjWithId {
     }
 
     if (a.attachpoints.length > 0)
-      this.drawApo(a, m, surface, linewidth, fontsize, color);
+      this.drawApo(a, m, surface, drawOpts, color);
 
     if (a.alias != null && a.alias != '') {
-      this._rect = JSDraw2.Atom.drawAlias(m.calcHDir(a, 4 * linewidth, true), surface, a.p, a.alias, hasError ? 'red' : atomcolor!, fontsize);
+      this._rect = JSDraw2.Atom.drawAlias(m.calcHDir(a, 4 * drawOpts.linewidth, true), surface, a.p, a.alias, hasError ? 'red' : atomcolor!, drawOpts.fontsize);
     } else {
       var elem = a.elem;
       var isotope = a.isotope;
@@ -591,7 +597,7 @@ export class Atom<TBio> implements IObjWithId {
       var x2n: number = 0;
       var y2: number = 0;
       if (hasError || this._haslabel) {
-        var t = JSDraw2.Drawer.drawLabel(surface, a.p, elem, atomcolor, fontsize, hasError ? '#f00' : false);
+        var t = JSDraw2.Drawer.drawLabel(surface, a.p, elem, atomcolor, drawOpts.fontsize, hasError ? '#f00' : false);
         var c = null;
         var h = null;
         var n = null;
@@ -612,25 +618,25 @@ export class Atom<TBio> implements IObjWithId {
           break;
         }
         if (s != '')
-          c = JSDraw2.Drawer.drawLabel(surface, a.p, s, color, fontsize / 1.2, false);
+          c = JSDraw2.Drawer.drawLabel(surface, a.p, s, color, drawOpts.fontsize / 1.2, false);
 
         if (isotope != null)
-          iso = JSDraw2.Drawer.drawLabel(surface, a.p, isotope + '', color, fontsize / 1.1, false);
+          iso = JSDraw2.Drawer.drawLabel(surface, a.p, isotope + '', color, drawOpts.fontsize / 1.1, false);
         if (a.query == null && a.hcount! > 0 && (this._haslabel || elem != 'C' || a.charge != 0 || a.hcount == 4)) {
-          h = JSDraw2.Drawer.drawLabel(surface, a.p, 'H', color, fontsize, false);
-          n = a.hcount == 1 ? null : JSDraw2.Drawer.drawLabel(surface, a.p, a.hcount + '', color, fontsize / 1.4, false);
+          h = JSDraw2.Drawer.drawLabel(surface, a.p, 'H', color, drawOpts.fontsize, false);
+          n = a.hcount == 1 ? null : JSDraw2.Drawer.drawLabel(surface, a.p, a.hcount + '', color, drawOpts.fontsize / 1.4, false);
         }
 
         var tw = t.getTextWidth();
         if (c != null || h != null || n != null || iso != null) {
-          var extra = scil.Utils.isOpera ? Math.round(fontsize / 4) : 0;
+          var extra = scil.Utils.isOpera ? Math.round(drawOpts.fontsize / 4) : 0;
           var hw = h == null ? 0 : h.getTextWidth() + extra;
           var nw = n == null ? 0 : n.getTextWidth() + extra;
           var cw = c == null ? 0 : c.getTextWidth() + extra;
           var iw = iso == null ? 0 : iso.getTextWidth() + extra;
 
           var noAdj: boolean = true; //scil.Utils.isIE || scil.Utils.isTouch;
-          switch (m.calcHDir(a, 4 * linewidth)) {
+          switch (m.calcHDir(a, 4 * drawOpts.linewidth)) {
           case JSDraw2.ALIGN.RIGHT:
             if (iso != null)
               iso.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw / 2 + (noAdj ? 0 : 2)), -4)]);
@@ -657,24 +663,24 @@ export class Atom<TBio> implements IObjWithId {
             if (iso != null)
               iso.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw / 2 + (noAdj ? 0 : 2)), -4)]);
             if (h != null)
-              h.setTransform([dojox.gfx.matrix.translate(0, fontsize)]);
+              h.setTransform([dojox.gfx.matrix.translate(0, drawOpts.fontsize)]);
             if (n != null)
-              n.setTransform([dojox.gfx.matrix.translate(hw / 2 + nw / 2 + (noAdj ? 0 : 2), fontsize + 4)]);
+              n.setTransform([dojox.gfx.matrix.translate(hw / 2 + nw / 2 + (noAdj ? 0 : 2), drawOpts.fontsize + 4)]);
             if (c != null)
-              c.setTransform([dojox.gfx.matrix.translate((h == null ? tw / 2 : hw / 2 + nw) + cw / 2 + (noAdj ? 0 : 4), (h == null ? 0 : fontsize) - 4)]);
+              c.setTransform([dojox.gfx.matrix.translate((h == null ? tw / 2 : hw / 2 + nw) + cw / 2 + (noAdj ? 0 : 4), (h == null ? 0 : drawOpts.fontsize) - 4)]);
             x2n = (h == null ? tw / 2 : hw / 2 + nw) + cw + (noAdj ? 0 : 4);
             break;
           case JSDraw2.ALIGN.TOP:
             if (iso != null)
               iso.setTransform([dojox.gfx.matrix.translate(-(tw / 2 + iw / 2 + (noAdj ? 0 : 2)), -4)]);
             if (h != null)
-              h.setTransform([dojox.gfx.matrix.translate(0, -fontsize)]);
+              h.setTransform([dojox.gfx.matrix.translate(0, -drawOpts.fontsize)]);
             if (n != null)
-              n.setTransform([dojox.gfx.matrix.translate(hw / 2 + nw / 2 + (noAdj ? 0 : 2), -fontsize + 4)]);
+              n.setTransform([dojox.gfx.matrix.translate(hw / 2 + nw / 2 + (noAdj ? 0 : 2), -drawOpts.fontsize + 4)]);
             if (c != null)
-              c.setTransform([dojox.gfx.matrix.translate((h == null ? tw / 2 : hw / 2 + nw) + cw / 2 + (noAdj ? 0 : 4), (h == null ? 0 : -fontsize) - 4)]);
+              c.setTransform([dojox.gfx.matrix.translate((h == null ? tw / 2 : hw / 2 + nw) + cw / 2 + (noAdj ? 0 : 4), (h == null ? 0 : -drawOpts.fontsize) - 4)]);
             x2n = (h == null ? tw / 2 : hw / 2 + nw) + cw + (noAdj ? 0 : 4);
-            y2 = (h == null ? 0 : -fontsize) - 4;
+            y2 = (h == null ? 0 : -drawOpts.fontsize) - 4;
             break;
           }
         } else {
@@ -684,33 +690,33 @@ export class Atom<TBio> implements IObjWithId {
 
       if (a.atommapid != null) {
         var p = a.p.clone();
-        var t = JSDraw2.Drawer.drawText(surface, p.offset(x2n, y2 - fontsize - 2), '(' + a.atommapid + ')', '#f55', fontsize / 1.4);
+        var t = JSDraw2.Drawer.drawText(surface, p.offset(x2n, y2 - drawOpts.fontsize - 2), '(' + a.atommapid + ')', '#f55', drawOpts.fontsize / 1.4);
         x2n += t.getTextWidth();
       }
 
       if (a.val > 0) {
         var p = a.p.clone();
-        var t = JSDraw2.Drawer.drawText(surface, p.offset(x2n, y2 - fontsize - 2), '(' + (a.val == 15 ? 0 : a.val) + ')', '#000', fontsize / 1.2);
+        var t = JSDraw2.Drawer.drawText(surface, p.offset(x2n, y2 - drawOpts.fontsize - 2), '(' + (a.val == 15 ? 0 : a.val) + ')', '#000', drawOpts.fontsize / 1.2);
         x2n += t.getTextWidth();
       }
 
       if (a.tag != null && a.tag != '') {
         var p = a.p.clone();
-        var t = JSDraw2.Drawer.drawText(surface, p.offset(x2n, y2 - fontsize - 2), '<' + a.tag + '>', '#000', fontsize / 1.2);
+        var t = JSDraw2.Drawer.drawText(surface, p.offset(x2n, y2 - drawOpts.fontsize - 2), '<' + a.tag + '>', '#000', drawOpts.fontsize / 1.2);
         x2n += t.getTextWidth();
       }
     }
 
     if (a.locked)
-      surface.createCircle({cx: a.p.x, cy: a.p.y, r: fontsize * 0.6}).setStroke({color: '#0ff', width: linewidth});
+      surface.createCircle({cx: a.p.x, cy: a.p.y, r: drawOpts.fontsize * 0.6}).setStroke({color: '#0ff', width: drawOpts.linewidth});
   }
 
-  drawApo(a: Atom<TBio>, m: Mol<TBio>, surface: any, linewidth: number, fontsize: number, color: string): void {
+  drawApo(a: Atom<TBio>, m: Mol<TBio>, surface: any, drawOpts: IDrawOptions, color: string): void {
     var attachpoints = a.attachpoints;
     for (var i = 0; i < attachpoints.length; ++i) {
       var apo = attachpoints[i];
 
-      var d = fontsize * 1.5;
+      var d = drawOpts.fontsize * 1.5;
       var p = m.guessBond(a, d, i);
       if (p == null) {
         p = a.p.clone();
@@ -719,21 +725,21 @@ export class Atom<TBio> implements IObjWithId {
 
       var ap = a.p.clone();
       if (a._haslabel)
-        ap.shrink(p, fontsize * 0.6);
+        ap.shrink(p, drawOpts.fontsize * 0.6);
 
-      JSDraw2.Drawer.drawLine(surface, ap, p, color, linewidth / 2, apo == 99 ? 2 : 0);
+      JSDraw2.Drawer.drawLine(surface, ap, p, color, drawOpts.linewidth / 2, apo == 99 ? 2 : 0);
       if (apo == 99 || apo == 98) { // Basis
-        var v = new JSDraw2.Point(ap.x - p.x, ap.y - p.y).rotate(90).setLength(fontsize);
+        var v = new JSDraw2.Point(ap.x - p.x, ap.y - p.y).rotate(90).setLength(drawOpts.fontsize);
         var p1 = p.clone().offset(v.x, v.y);
         var p2 = p.clone().offset(-v.x, -v.y);
 
         if (apo == 99)
-          JSDraw2.Drawer.drawBasis(surface, p1, p2, color, linewidth / 2);
+          JSDraw2.Drawer.drawBasis(surface, p1, p2, color, drawOpts.linewidth / 2);
         else
-          JSDraw2.Drawer.drawCurves(surface, p1, p2, color, linewidth / 2);
+          JSDraw2.Drawer.drawCurves(surface, p1, p2, color, drawOpts.linewidth / 2);
       } else {
-        this.drawDiamond(surface, p.x, p.y, fontsize * 0.3, color, linewidth / 3);
-        JSDraw2.Drawer.drawText(surface, p.offset(-fontsize * 0.2, -fontsize * 0.6), apo + '', color, fontsize * 0.7);
+        this.drawDiamond(surface, p.x, p.y, drawOpts.fontsize * 0.3, color, drawOpts.linewidth / 3);
+        JSDraw2.Drawer.drawText(surface, p.offset(-drawOpts.fontsize * 0.2, -drawOpts.fontsize * 0.6), apo + '', color, drawOpts.fontsize * 0.7);
       }
     }
   }

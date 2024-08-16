@@ -14,7 +14,7 @@ import type {JSDraw2ModuleType} from './types';
 
 import type {Point} from './Point';
 
-declare const JSDraw2: JSDraw2ModuleType<any>;
+declare const JSDraw2: JSDraw2ModuleType;
 
 export enum CornerTypes {
   TOPLEFT = "topleft",
