@@ -99,9 +99,9 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
       return false;
     for (var i = 0; i < this.anchors.length; ++i) {
       var a = this.anchors[i];
-      if (JSDraw2.Atom.cast(a) != null && m.atoms.indexOf(a as Atom<TBio>) < 0 ||
-        JSDraw2.Bond.cast(a) != null && m.bonds.indexOf(a as Bond<TBio>) < 0 ||
-        JSDraw2.Bracket.cast(a) != null && m.graphics.indexOf(a as Bracket<TBio>) < 0)
+      if (JSDraw2.Atom.cast<TBio>(a) != null && m.atoms.indexOf(a as Atom<TBio>) < 0 ||
+        JSDraw2.Bond.cast<TBio>(a) != null && m.bonds.indexOf(a as Bond<TBio>) < 0 ||
+        JSDraw2.Bracket.cast<TBio>(a) != null && m.graphics.indexOf(a as Bracket<TBio>) < 0)
         return false;
     }
     return true;
@@ -109,15 +109,15 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
 
   attach(obj: any) {
     // anchors can contain one bracket, or any number of atoms and/or bonds
-    if (JSDraw2.Bracket.cast(obj) != null) {
+    if (JSDraw2.Bracket.cast<TBio>(obj) != null) {
       this.anchors = [obj];
       return true;
     }
 
-    if (JSDraw2.Atom.cast(obj) == null && JSDraw2.Bond.cast(obj) == null)
+    if (JSDraw2.Atom.cast<TBio>(obj) == null && JSDraw2.Bond.cast<TBio>(obj) == null)
       return false;
 
-    if (this.anchors.length == 1 && JSDraw2.Bracket.cast(this.anchors[0]) != null)
+    if (this.anchors.length == 1 && JSDraw2.Bracket.cast<TBio>(this.anchors[0]) != null)
       this.objects = [];
 
     for (var i = 0; i < this.anchors.length; ++i) {
@@ -184,7 +184,7 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
       var ss = s2.split(',');
       for (var j = 0; j < ss.length; ++j) {
         var a = map[parseInt(ss[j])];
-        if (a != null && (JSDraw2.Atom.cast(a) != null || JSDraw2.Bond.cast(a) != null || JSDraw2.Bracket.cast(a) != null))
+        if (a != null && (JSDraw2.Atom.cast<TBio>(a) != null || JSDraw2.Bond.cast<TBio>(a) != null || JSDraw2.Bracket.cast<TBio>(a) != null))
           anchors.push(a);
       }
       this.anchors = anchors;
@@ -253,7 +253,7 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
     //    var c = ss[0].substr(0, ss[0].indexOf('='));
     //    c = scilligence.Utils.trim(c);
     //    for (var i = 0; i < this.anchors.length; ++i) {
-    //        var b = JSDraw2.Bond.cast(this.anchors[i]);
+    //        var b = JSDraw2.Bond.cast<TBio>(this.anchors[i]);
     //        if (b != null)
     //            JSDraw2.Drawer.drawLabel(surface, b.center(), c, color, fontsize * 0.85);
     //    }

@@ -899,7 +899,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
   }
 
   showTextEditor(obj: any, p?: Point, str?: string) {
-    const text = this.texteditor.text = JSDraw2.Text.cast(obj);
+    const text = this.texteditor.text = JSDraw2.Text.cast<TBio>(obj);
     if (text != null && text.readonly)
       return;
 
@@ -911,9 +911,9 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
     }
 
     const a = this.texteditor.atom = JSDraw2.Atom.cast<TBio>(obj);
-    const t = JSDraw2.Text.cast(obj);
+    const t = JSDraw2.Text.cast<TBio>(obj);
     const shp = this.texteditor.shape = JSDraw2.Shape.cast(obj);
-    const br = t != null && t.anchors != null && t.anchors.length == 1 ? JSDraw2.Bracket.cast(t.anchors[0]) : null;
+    const br = t != null && t.anchors != null && t.anchors.length == 1 ? JSDraw2.Bracket.cast<TBio>(t.anchors[0]) : null;
     if (a != null) {
       p.x -= 6 * this.bondlength / 30;
       p.y -= 9 * this.bondlength / 30;
@@ -1153,7 +1153,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
           this.texteditor.text._parent.delObject(this.texteditor.text);
         else
           this.texteditor.text.text = s;
-        if (this.texteditor.text.fieldtype == "BRACKET_TYPE" && this.texteditor.text.anchors.length == 1 && JSDraw2.Bracket.cast(this.texteditor.text.anchors[0]) != null) {
+        if (this.texteditor.text.fieldtype == "BRACKET_TYPE" && this.texteditor.text.anchors.length == 1 && JSDraw2.Bracket.cast<TBio>(this.texteditor.text.anchors[0]) != null) {
           if (scil.Utils.isNumber(s))
             this.texteditor.text.anchors[0].type = "mul";
           else
@@ -1477,7 +1477,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
 
   updateGroupRect() {
     for (let i = 0; i < this.m.graphics.length; ++i) {
-      const g = JSDraw2.Group.cast(this.m.graphics[i]);
+      const g = JSDraw2.Group.cast<TBio>(this.m.graphics[i]);
       if (g != null)
         g._updateRect(this.m, this.bondlength);
     }
@@ -1640,7 +1640,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
     if (corner != null) {
       const list = [];
       this.resizing = {corner: corner, obj: obj, start: p, list: list};
-      const br = JSDraw2.Bracket.cast(obj);
+      const br = JSDraw2.Bracket.cast<TBio>(obj);
       if (br != null)
         this.resizing.texts = br.getTexts(this.m);
     }
@@ -1782,8 +1782,8 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
           if (cmd == "selfrag") {
             a = JSDraw2.Atom.cast<TBio>(obj);
             const b = JSDraw2.Bond.cast<TBio>(obj);
-            const g = JSDraw2.Group.cast(obj);
-            br = JSDraw2.Bracket.cast(obj);
+            const g = JSDraw2.Group.cast<TBio>(obj);
+            br = JSDraw2.Bracket.cast<TBio>(obj);
             if (b != null)
               a = b.a1;
           }
@@ -2151,7 +2151,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
       } else {
         const obj1 = p1.atom != null ? p1.atom : this.toggle(p1);
         const obj2 = this.toggle(p2);
-        if (JSDraw2.Text.cast(obj1) != null) {
+        if (JSDraw2.Text.cast<TBio>(obj1) != null) {
           const cloned = this.clone();
           if (obj1.attach(obj2))
             this.pushundo(cloned);
@@ -2467,8 +2467,8 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
         if (t != null)
           this.showTextEditor(t, null, "");
       } else {
-        const t = JSDraw2.Text.cast(this.curObject);
-        if (t != null && t.fieldtype == "BRACKET_TYPE" && t.anchors.length == 1 && JSDraw2.Bracket.cast(t.anchors[0]) != null)
+        const t = JSDraw2.Text.cast<TBio>(this.curObject);
+        if (t != null && t.fieldtype == "BRACKET_TYPE" && t.anchors.length == 1 && JSDraw2.Bracket.cast<TBio>(t.anchors[0]) != null)
           this.showTextEditor(t, null, t.text);
       }
       return;
@@ -2753,7 +2753,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
   }
 
   _bracketReselectAtoms() {
-    const br = JSDraw2.Bracket.cast(this.curObject);
+    const br = JSDraw2.Bracket.cast<TBio>(this.curObject);
     if (br == null)
       return;
 
@@ -2777,7 +2777,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
 
       // attach to existing brackets
       for (let i = 0; i < this.m.graphics.length; ++i) {
-        const br = JSDraw2.Bracket.cast(this.m.graphics[i]);
+        const br = JSDraw2.Bracket.cast<TBio>(this.m.graphics[i]);
         if (br == null || br.atoms == null)
           continue;
 
@@ -2919,7 +2919,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
   hideChirarlities(selectonly?: boolean) {
     const texts = [];
     for (let i = 0; i < this.m.graphics.length; ++i) {
-      const t = JSDraw2.Text.cast(this.m.graphics[i]);
+      const t = JSDraw2.Text.cast<TBio>(this.m.graphics[i]);
       if (t != null && t.anchors != null && t.anchors.length == 1 && t.fieldtype == "CHIRAL") {
         const a = JSDraw2.Atom.cast<TBio>(t.anchors[0]);
         if (!selectonly || a.selected)
@@ -3366,7 +3366,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
   }
 
   setGroupProperties(obj) {
-    const g = JSDraw2.Group.cast(obj);
+    const g = JSDraw2.Group.cast<TBio>(obj);
     if (g == null)
       return;
 
@@ -3710,10 +3710,10 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
     if (obj == null)
       return false;
 
-    const br = JSDraw2.Bracket.cast(obj);
+    const br = JSDraw2.Bracket.cast<TBio>(obj);
     if (br != null) {
       for (let i = 0; i < this.m.graphics.length; ++i) {
-        const t = JSDraw2.Text.cast(this.m.graphics[i]);
+        const t = JSDraw2.Text.cast<TBio>(this.m.graphics[i]);
         if (t != null && scil.Utils.indexOf(t.anchors, br) >= 0)
           this.m.delObject(t);
       }
@@ -4244,7 +4244,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
       return;
     }
 
-    const txt = JSDraw2.Text.cast(this.curObject);
+    const txt = JSDraw2.Text.cast<TBio>(this.curObject);
     if (txt != null) {
       this.showTextEditor(txt);
       e.preventDefault();
@@ -5872,7 +5872,8 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
   }
 
   setHelm(s: string) {
-    return this.helm == null ? null : this.helm.setHelm(s);
+    const res = this.helm == null ? null : this.helm.setHelm(s);
+    if (this.options.ondatachange) this.options.ondatachange(this);
   }
 
   getXHelm() {

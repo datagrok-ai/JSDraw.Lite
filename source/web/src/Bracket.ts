@@ -242,7 +242,7 @@ export class Bracket<TBio> implements IGraphics {
   }
 
   removeObject(obj: any) {
-    const a = JSDraw2.Atom.cast(obj);
+    const a = JSDraw2.Atom.cast<TBio>(obj);
     if (a == null)
       return;
     for (let i = 0; i < this.atoms.length; ++i) {
@@ -278,8 +278,8 @@ export class Bracket<TBio> implements IGraphics {
     return ret;
   }
 
-  static cast<TBio>(g: any): Bracket<TBio> {
-    throw new Error("Not implemented");
+  static cast<TBio>(a: any): Bracket<TBio> {
+    return a != null && a.T == 'BRACKET' ? a : null;
   }
 }
 

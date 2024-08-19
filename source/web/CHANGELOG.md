@@ -1,5 +1,12 @@
 # JSDraw.Lite changelog
 
+## 0.0.7 (2024-08-19)
+
+### Bug fixes
+
+* Fix error Not implemented on right click on editor
+* Fix fill-in Helm tab while default
+
 ## 0.0.6 (2024-08-16)
 
 * JSDraw: HWE option for continuous numbering, typing
