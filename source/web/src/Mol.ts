@@ -84,7 +84,7 @@ export class Mol<TBio = any> {
    */
 
   public readonly T: string;
-  private name: string | null;
+  public name: string | null;
   public atoms: Atom<TBio>[];
   public bonds: Bond<TBio>[];
   public graphics: IGraphics[];
