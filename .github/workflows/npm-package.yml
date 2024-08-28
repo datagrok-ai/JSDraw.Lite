@@ -102,6 +102,7 @@ jobs:
         working-directory: ./source/web
         if: contains(needs.version.outputs.job_name, 'test')
       - run: npm install -g datagrok-tools@latest
+      - run: grok --help
       - run: grok check
         working-directory: ./source/web
       - id: publish
