@@ -13,6 +13,11 @@ module.exports = {
   mode: mode,
   entry: {
     package: './src/package.ts',
+    test: {
+      filename: 'package-test.js',
+      library: {type: 'var', name: `${packageName}_test`},
+      import: './src/package-test.ts',
+    },
   },
   resolve: {
     fallback: {'url': false},

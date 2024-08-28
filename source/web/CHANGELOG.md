@@ -3,6 +3,7 @@
 ## 0.0.8 (2024-08-27)
 
 Public Mol.name attribute
+Output package-test.ts for grok check
 
 ## 0.0.7 (2024-08-19)
 
