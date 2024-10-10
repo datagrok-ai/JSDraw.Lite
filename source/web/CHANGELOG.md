@@ -1,5 +1,16 @@
 # JSDraw.Lite changelog
 
+## 0.0.9 (2024-10-10)
+
+### New features
+
+* Add typing .options for Editor and MolHandler
+
+### Bug fixes
+
+* Fix moving IMonomerColors to HELMWebEditor
+* Fix splitting IWebEditorMonomer to IMonomer without colors
+
 ## 0.0.8 (2024-08-27)
 
 Public Mol.name attribute

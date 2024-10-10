@@ -46,14 +46,7 @@ export interface IOrgMonomer {
   id?: string;
 }
 
-export interface IMonomerColors {
-  linecolor?: string;
-  backgroundcolor?: string;
-  textcolor?: string;
-  nature?: string;
-}
-
-export interface IWebEditorMonomer extends IOrgMonomer, IMonomerColors {
+export interface IMonomer extends IOrgMonomer {
   /** symbol */ id?: string;
   /** name */ n?: string;
   /** natural analog */ na?: string;
@@ -74,19 +67,19 @@ export interface IWebEditorMonomer extends IOrgMonomer, IMonomerColors {
   /** Used by Formula */ stats?: any;
 }
 
-export type MonomerSetType = { [symbol: string]: IWebEditorMonomer };
+export type MonomerSetType = { [symbol: string]: IMonomer };
 
 export interface IOrgMonomers<TBio> {
-  getMonomer(a: Atom<TBio> | TBio, elem?: string): IWebEditorMonomer | null;
+  getMonomer(a: Atom<TBio> | TBio, elem?: string): IMonomer | null;
   getMonomerSet(biotype: TBio): MonomerSetType | null;
   getMonomerList(a: Atom<TBio> | TBio): any;
   [p: string]: any;
 }
 
-export interface IOrgInterface<TBio, TDrawOptions extends IDrawOptions> {
+export interface IOrgInterface<TBio, TEditorOptions extends IEditorOptions> {
   drawMonomer(surface: SVGSVGElement, a: Atom<TBio>, p: Point,
-    drawOpts: TDrawOptions, color: string, step?: number): void;
-  onContextMenu(ed: Editor<TBio, TDrawOptions>, e: Event, viewonly: boolean): any[];
+    drawOpts: IDrawOptions, color: string, step?: number): void;
+  onContextMenu(ed: Editor<TBio, TEditorOptions>, e: Event, viewonly: boolean): any[];
 
   getAtomStats(m: any, atoms: any[]): any;
   molStats(m: string): any;
@@ -98,11 +91,11 @@ export interface IFormula<TBio> {
 }
 
 /** scil.helm */
-export type IOrgWebEditor<TBio, TDrawOptions extends IDrawOptions> = {
+export type IOrgWebEditor<TBio, TEditorOptions extends IEditorOptions> = {
   HELM: typeof HelmTypes;
-  Interface: IOrgInterface<TBio, IDrawOptions>;
+  Interface: IOrgInterface<TBio, TEditorOptions>;
   Monomers: IOrgMonomers<TBio>;
-  Plugin: IOrgPlugin<TBio, TDrawOptions>;
+  Plugin: IOrgPlugin<TBio, TEditorOptions>;
   MolViewer: any;
   MonomerExplorer: any;
   Formula: IFormula<TBio>;
@@ -115,10 +108,10 @@ export type IOrgWebEditor<TBio, TDrawOptions extends IDrawOptions> = {
   about(): void;
 }
 
-export type OrgHelmType<TBio, TDrawOptions extends IDrawOptions> = {
-  webeditor: IOrgWebEditor<TBio, TDrawOptions>;
+export type OrgHelmType<TBio, TEditorOptions extends IEditorOptions> = {
+  webeditor: IOrgWebEditor<TBio, TEditorOptions>;
 }
 
-export type OrgType<TBio, TDrawOptions extends IDrawOptions> = {
-  helm: OrgHelmType<TBio, TDrawOptions>;
+export type OrgType<TBio, TEditorOptions extends IEditorOptions> = {
+  helm: OrgHelmType<TBio, TEditorOptions>;
 }

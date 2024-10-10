@@ -145,10 +145,10 @@ export interface IGraphics {
 
 export type ColorArray = [number, number, number, number];
 
-export interface IOrgPlugin<TBio, TDrawOptions extends IDrawOptions> {
-  get jsd(): Editor<TBio, TDrawOptions>;
+export interface IOrgPlugin<TBio, TEditorOptions extends IEditorOptions> {
+  get jsd(): Editor<TBio, TEditorOptions>;
 
-  new(jsd: IMolHandler<TBio>): IOrgPlugin<TBio, TDrawOptions>;
+  new(jsd: IMolHandler<TBio, TEditorOptions>): IOrgPlugin<TBio, TEditorOptions>;
 
   setHelmBlobType(a: Atom<TBio>, type: string): void;
 
@@ -164,8 +164,8 @@ export interface IDrawOptions {
   fontsize: number;
 }
 
-export interface IEditorOptions<TDrawOptions extends IDrawOptions> {
-  drawOptions: Partial<TDrawOptions>;
+export interface IEditorOptions {
+  drawOptions: Partial<IDrawOptions>;
 
   usexdraw: boolean;
   xdraw: string;
@@ -537,7 +537,7 @@ export interface IPeriodicTable {
 export type JSDraw2ModuleType = {
   password: any;
 
-  defaultoptions: Partial<IEditorOptions<IDrawOptions>>;
+  defaultoptions: Partial<IEditorOptions>;
   version: string;
 
   abbreviations: string;

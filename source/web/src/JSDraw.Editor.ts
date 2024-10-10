@@ -34,7 +34,7 @@ declare const dojo: DojoType;
 declare const dojox: DojoxType;
 declare const scilligence: ScilModuleType;
 declare const scil: ScilModuleType;
-declare const org: OrgType<any, IDrawOptions>;
+declare const org: OrgType<any, IEditorOptions>;
 declare const JSDraw2: JSDraw2ModuleType;
 declare const JSDrawServices: any;
 
@@ -69,7 +69,7 @@ declare const document: JSDraw2Document & Document;
  * </pre>
  * @class scilligence.JSDraw2.Editor
  */
-export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolHandler<TBio> {
+export class EditorInt<TBio, TEditorOptions extends IEditorOptions> implements IMolHandler<TBio, TEditorOptions> {
   /**
    @property {Mol} atoms Mol object
    */
@@ -90,7 +90,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
 
   private readonly T: string;
   private disableundo: boolean;
-  public options: Partial<IEditorOptions<TDrawOptions>>;
+  public options: Partial<IEditorOptions>;
   private readonly chiral: any;
   private ptElement: any; // TODO: ?
   private connectHandlers?: any[];
@@ -182,7 +182,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
    * <li>width</li>
    * </ul>
    */
-  constructor(dv: HTMLDivElement | string, options?: Partial<IEditorOptions<TDrawOptions>>) {
+  constructor(dv: HTMLDivElement | string, options?: Partial<TEditorOptions>) {
     this.disableundo = JSDraw2.speedup.disableundo;
 
     this.T = "DRAW";
@@ -1270,7 +1270,7 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
     this.redraw();
   }
 
-  getDrawOptions(): TDrawOptions {
+  getDrawOptions(): IDrawOptions {
     const res: TDrawOptions = Object.assign({}, this.options.drawOptions);
     res.linewidth = this.linewidth ?? 2;
     res.fontsize = this.fontsize ?? 14;
@@ -6462,7 +6462,8 @@ export class EditorInt<TBio, TDrawOptions extends IDrawOptions> implements IMolH
   }
 }
 
-export class Editor<TBio = any, TDrawOptions extends IDrawOptions> extends EditorInt<TBio, TDrawOptions> {
+export class Editor<TBio = any, TEditorOptions extends IEditorOptions>
+  extends EditorInt<TBio, TEditorOptions> {
   static _id: number;
   static _allitems: any;
 

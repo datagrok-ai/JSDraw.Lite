@@ -21,7 +21,7 @@ import type {Group} from './Group';
 
 import type {
   AtomQueryType, IBio, IRGroup, JSDraw2ModuleType, DrawStep,
-  IDrawOptions
+  IEditorOptions, IDrawOptions,
 } from './types/jsdraw2';
 
 import {DrawSteps, IObjWithId} from './types/jsdraw2';
@@ -32,7 +32,7 @@ declare const dojox: DojoxType;
 declare const scil: ScilModuleType;
 declare const JSDraw2: JSDraw2ModuleType;
 
-declare const org: OrgType<any, IDrawOptions>;
+declare const org: OrgType<any, IEditorOptions>;
 
 /**
  * Atom class

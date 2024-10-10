@@ -23,7 +23,7 @@ declare const dojox: DojoxType;
 
 declare const scil: ScilModuleType;
 declare const JSDraw2: JSDraw2ModuleType;
-declare const org: OrgType<any, IDrawOptions>;
+declare const org: OrgType<any, IEditorOptions>;
 
 export type PosRType = { pos: string, r: string };
 export type BondAnnotationType = { ba1: string, ba2: string };

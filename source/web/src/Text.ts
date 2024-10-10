@@ -13,11 +13,11 @@ import type {OrgType} from './types/org';
 import type {Point} from './Point';
 import type {Atom} from './Atom';
 import type {Mol} from './Mol';
-import type {BondType, IDrawOptions, IGraphics, JSDraw2ModuleType, RxnCenterType} from './types/jsdraw2';
-import {Rect} from './Rect';
-import {Bracket} from './Bracket';
-import {Bond} from './Bond';
-import {Lasso} from './Lasso';
+import type {BondType, IDrawOptions, IEditorOptions, IGraphics, JSDraw2ModuleType, RxnCenterType} from './types/jsdraw2';
+import type {Rect} from './Rect';
+import type {Bracket} from './Bracket';
+import type {Bond} from './Bond';
+import type {Lasso} from './Lasso';
 
 declare const dojo: DojoType;
 declare const dojox: DojoxType;
@@ -25,7 +25,7 @@ declare const dojox: DojoxType;
 declare const scil: ScilModuleType;
 declare const scilligence: ScilModuleType;
 declare const JSDraw2: JSDraw2ModuleType;
-declare const org: OrgType<any, IDrawOptions>;
+declare const org: OrgType<any, IEditorOptions>;
 
 export type PosRType = { pos: string, r: string };
 export type BondAnnotationType = { ba1: string, ba2: string };
