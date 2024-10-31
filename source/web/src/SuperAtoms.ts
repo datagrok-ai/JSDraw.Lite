@@ -14,16 +14,16 @@ import type {Mol} from './Mol';
 
 import type {JSDraw2ModuleType, ScilModuleType} from './types';
 import type {OrgType} from './types/org';
-import type {IEditorOptions} from './types/jsdraw2';
+import type {IBio, IEditorOptions} from './types/jsdraw2';
 
 declare const scil: ScilModuleType;
 declare const JSDraw2: JSDraw2ModuleType;
-declare const org: OrgType<any, IEditorOptions>;
+declare const org: OrgType<any, IBio<any>, IEditorOptions>;
 
-export class SuperAtoms<TBio = any> {
+export class SuperAtoms<TBio, TBioType extends IBio<TBio>> {
   sdf: string = "\nMolEngine02241412152D\n\n  6  6  0  0  0  0            999 V2000\n    1.3510    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.0000    0.7800    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.0000    2.3400    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.7020    0.7800    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.7020    2.3400    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.3510    3.1200    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  2  0  0  0  0\n  2  3  1  0  0  0  0\n  1  4  1  0  0  0  0\n  4  5  2  0  0  0  0\n  5  6  1  0  0  0  0\n  6  3  2  0  0  0  0\nM  END\n> <T>\nBenzene\n\n$$$$\n\nMolEngine02241412152D\n\n  6  6  0  0  0  0            999 V2000\n    1.3510    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.0000    0.7800    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.0000    2.3400    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.3510    3.1200    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.7020    2.3400    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.7020    0.7800    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  2  3  1  0  0  0  0\n  3  4  1  0  0  0  0\n  4  5  1  0  0  0  0\n  5  6  1  0  0  0  0\n  6  1  1  0  0  0  0\nM  END\n> <T>\nHexane\n\n$$$$\n\nMolEngine02241412152D\n\n  5  5  0  0  0  0            999 V2000\n    0.0000    0.4821    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.4836    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.4006    1.2621    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.4836    2.5242    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.0000    2.0421    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  2  3  1  0  0  0  0\n  3  4  1  0  0  0  0\n  4  5  1  0  0  0  0\n  5  1  1  0  0  0  0\nM  END\n> <T>\nPentane\n\n$$$$\n\nMolEngine02241412152D\n\n  3  3  0  0  0  0            999 V2000\n    0.7800    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.0000    1.3510    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.5600    1.3510    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  1  3  1  0  0  0  0\n  2  3  1  0  0  0  0\nM  END\n> <T>\nPropane\n\n$$$$\n\nMolEngine02241412152D\n\n  4  4  0  0  0  0            999 V2000\n    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.0000    1.5600    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.5600    1.5600    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.5600    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  2  3  1  0  0  0  0\n  3  4  1  0  0  0  0\n  4  1  1  0  0  0  0\nM  END\n> <T>\nButane\n\n$$$$\n\nMolEngine02241412152D\n\n  7  7  0  0  0  0            999 V2000\n    0.0000    0.9727    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.2196    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.7405    0.3471    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.4174    1.7527    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.7405    3.1581    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.2196    3.5054    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.0000    2.5327    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  2  3  1  0  0  0  0\n  3  4  1  0  0  0  0\n  4  5  1  0  0  0  0\n  5  6  1  0  0  0  0\n  6  7  1  0  0  0  0\n  7  1  1  0  0  0  0\nM  END\n> <T>\nHeptane\n\n$$$$\n\nMolEngine02241412152D\n\n  8  8  0  0  0  0            999 V2000\n    0.0000    1.1031    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.1031    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.6631    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.7660    1.1031    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.7660    2.6631    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.6631    3.7662    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.1031    3.7662    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.0000    2.6631    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  2  3  1  0  0  0  0\n  3  4  1  0  0  0  0\n  4  5  1  0  0  0  0\n  5  6  1  0  0  0  0\n  6  7  1  0  0  0  0\n  7  8  1  0  0  0  0\n  8  1  1  0  0  0  0\nM  END\n> <T>\nOctane\n\n$$$$\n";
 
-  dict: { [name: string]: Mol<TBio> } | null = null;
+  dict: { [name: string]: Mol<TBio, TBioType> } | null = null;
   reversible: { [name: string]: any } = {};
   AminoAcids: { [name: string]: any } = {};
   DNAs: { [name: string]: any } = {};
@@ -64,7 +64,7 @@ export class SuperAtoms<TBio = any> {
 
   get(name: string): any {
     this.read();
-    let m: Mol<TBio> | null = this.dict![name];
+    let m: Mol<TBio, TBioType> | null = this.dict![name];
     if (m == null)
       m = this.nterminals[name];
     if (m == null)
@@ -177,7 +177,7 @@ export class SuperAtoms<TBio = any> {
       const template = r.props["T"];
       const customtemplate = r.props["CT"];
       const strname = r.props["Name"];
-      const m: Mol<TBio> = new JSDraw2.Mol();
+      const m: Mol<TBio, TBioType> = new JSDraw2.Mol();
       m.setMolfile(r.molfile);
       //this.normalize(m);
       if (template != null) {
@@ -188,11 +188,11 @@ export class SuperAtoms<TBio = any> {
     }
   }
 
-  _getAttachAtoms(m: Mol<TBio>) {
+  _getAttachAtoms(m: Mol<TBio, TBioType>) {
     const list = [];
     if (m != null) {
       for (let i = 0; i < m.atoms.length; ++i) {
-        const a: Atom<TBio> = m.atoms[i];
+        const a: Atom<TBio, TBioType> = m.atoms[i];
         for (var k = 0; k < a.attachpoints.length; ++k)
           list[a.attachpoints[k] - 1] = {apo: a.attachpoints[k], a: a};
       }
@@ -200,7 +200,7 @@ export class SuperAtoms<TBio = any> {
     return list;
   }
 
-  _alignMol(dest: Mol<TBio>, a: Atom<TBio>, src: Mol<TBio>, a0: Atom<TBio>, len: number): boolean {
+  _alignMol(dest: Mol<TBio, TBioType>, a: Atom<TBio, TBioType>, src: Mol<TBio, TBioType>, a0: Atom<TBio, TBioType>, len: number): boolean {
     if (len > 0)
       src.setBondLength(len);
 
@@ -214,7 +214,7 @@ export class SuperAtoms<TBio = any> {
       const b = bonds[0];
       // rotate to the reversed direction
       const deg = b.otherAtom(a)!.p.angleTo(a.p);
-      const bs: Bond<TBio>[] = src.getNeighborBonds(a0);
+      const bs: Bond<TBio, TBioType>[] = src.getNeighborBonds(a0);
       if (bs.length == 1)
         src.rotate(a.p, deg + 60 - a0.p.angleTo(bs[0].otherAtom(a0)!.p));
       else if (bs.length == 2)
@@ -225,7 +225,7 @@ export class SuperAtoms<TBio = any> {
 
       // rotate to the reversed direction
       const deg = a.p.middleAngle(bonds[0].otherAtom(a)!.p, bonds[1].otherAtom(a)!.p);
-      const bs: Bond<TBio>[] = src.getNeighborBonds(a0);
+      const bs: Bond<TBio, TBioType>[] = src.getNeighborBonds(a0);
       if (bs.length == 1)
         src.rotate(a.p, deg + 60 - a0.p.angleTo(bs[0].otherAtom(a0)!.p));
       else if (bs.length == 2)

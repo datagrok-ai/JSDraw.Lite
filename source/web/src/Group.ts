@@ -12,6 +12,7 @@ import type {Mol} from './Mol';
 import type {Lasso} from './Lasso';
 
 import type {JSDraw2ModuleType, ScilModuleType} from './types';
+import type {IBio} from './types/jsdraw2';
 
 declare const scil: ScilModuleType;
 declare const JSDraw2: JSDraw2ModuleType;
@@ -20,7 +21,7 @@ declare const JSDraw2: JSDraw2ModuleType;
  * Group class - defines Object groups
  * @class scilligence.JSDraw2.Group
  */
-export class Group<TBio> {
+export class Group<TBio, TBioType extends IBio<TBio>> {
   public readonly T: string;
   public type: string;
   private name: string;
@@ -28,7 +29,7 @@ export class Group<TBio> {
   private _rect: Rect | null;
   private p: Point | null;
   public gap: number;
-  public group: Group<TBio> | null;
+  public group: Group<TBio, TBioType> | null;
   private color: string | null;
   public a: any | null;
   private ratio: string | null;
@@ -108,7 +109,7 @@ export class Group<TBio> {
       p.x >= r.left && p.x <= r.right() && (Math.abs(p.y - r.top) < tor / 2 || Math.abs(p.y - r.bottom()) < tor / 2);
   }
 
-  drawCur(surface: any, r: number, color: string, m: Mol<TBio>): void {
+  drawCur(surface: any, r: number, color: string, m: Mol<TBio, TBioType>): void {
     const r2 = this._rect;
     if (r2 == null)
       return;
@@ -132,13 +133,13 @@ export class Group<TBio> {
     }
   }
 
-  _updateRect(m: Mol<TBio>, bondlength: number): Rect | null {
+  _updateRect(m: Mol<TBio, TBioType>, bondlength: number): Rect | null {
     const r = m.getGroupRect(this, bondlength);
     this._rect = r;
     return r;
   }
 
-  draw(surface: any, linewidth: number, m: Mol<TBio>, fontsize: number): void {
+  draw(surface: any, linewidth: number, m: Mol<TBio, TBioType>, fontsize: number): void {
     const r = this._rect;
     if (r == null)
       return;
@@ -158,11 +159,11 @@ export class Group<TBio> {
       JSDraw2.Drawer.drawLabel(surface, new JSDraw2.Point(r.right(), r.bottom() + fontsize / 2), "ratio: " + this.ratio, "black", fontsize, false, "end");
   }
 
-  drawSelect(lasso: Lasso<TBio>): void {
+  drawSelect(lasso: Lasso<TBio, TBioType>): void {
     lasso.draw(this, this._rect!.fourPoints());
   }
 
-  static cast<TBio = any>(a: any): Group<TBio> | null {
+  static cast<TBio, TBioType extends IBio<TBio>>(a: any): Group<TBio, TBioType> | null {
     return a != null && a.T == 'GROUP' ? a : null;
   };
 }

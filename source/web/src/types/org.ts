@@ -1,7 +1,7 @@
 import type {Atom} from '../Atom';
 import type {Editor} from '../JSDraw.Editor';
 import type {Point} from '../Point';
-import type {IDrawOptions, IEditorOptions, IOrgPlugin} from './jsdraw2';
+import type {IBio, IDrawOptions, IEditorOptions, IOrgPlugin} from './jsdraw2';
 
 export const enum MonomerTypes {
   BACKBONE = 'Backbone',
@@ -69,17 +69,17 @@ export interface IMonomer extends IOrgMonomer {
 
 export type MonomerSetType = { [symbol: string]: IMonomer };
 
-export interface IOrgMonomers<TBio> {
-  getMonomer(a: Atom<TBio> | TBio, elem?: string): IMonomer | null;
+export interface IOrgMonomers<TBio, TBioType extends IBio<TBio>> {
+  getMonomer(a: Atom<TBio, TBioType> | TBio, elem?: string): IMonomer | null;
   getMonomerSet(biotype: TBio): MonomerSetType | null;
-  getMonomerList(a: Atom<TBio> | TBio): any;
+  getMonomerList(a: Atom<TBio, TBioType> | TBio): any;
   [p: string]: any;
 }
 
-export interface IOrgInterface<TBio, TEditorOptions extends IEditorOptions> {
-  drawMonomer(surface: SVGSVGElement, a: Atom<TBio>, p: Point,
+export interface IOrgInterface<TBio, TBioType extends IBio<TBio>, TEditorOptions extends IEditorOptions> {
+  drawMonomer(surface: SVGSVGElement, a: Atom<TBio, TBioType>, p: Point,
     drawOpts: IDrawOptions, color: string, step?: number): void;
-  onContextMenu(ed: Editor<TBio, TEditorOptions>, e: Event, viewonly: boolean): any[];
+  onContextMenu(ed: Editor<TBio, TBioType, TEditorOptions>, e: Event, viewonly: boolean): any[];
 
   getAtomStats(m: any, atoms: any[]): any;
   molStats(m: string): any;
@@ -91,11 +91,11 @@ export interface IFormula<TBio> {
 }
 
 /** scil.helm */
-export type IOrgWebEditor<TBio, TEditorOptions extends IEditorOptions> = {
+export type IOrgWebEditor<TBio, TBioType extends IBio<TBio>, TEditorOptions extends IEditorOptions> = {
   HELM: typeof HelmTypes;
-  Interface: IOrgInterface<TBio, TEditorOptions>;
-  Monomers: IOrgMonomers<TBio>;
-  Plugin: IOrgPlugin<TBio, TEditorOptions>;
+  Interface: IOrgInterface<TBio, TBioType, TEditorOptions>;
+  Monomers: IOrgMonomers<TBio, TBioType>;
+  Plugin: IOrgPlugin<TBio, TBioType, TEditorOptions>;
   MolViewer: any;
   MonomerExplorer: any;
   Formula: IFormula<TBio>;
@@ -108,10 +108,10 @@ export type IOrgWebEditor<TBio, TEditorOptions extends IEditorOptions> = {
   about(): void;
 }
 
-export type OrgHelmType<TBio, TEditorOptions extends IEditorOptions> = {
-  webeditor: IOrgWebEditor<TBio, TEditorOptions>;
+export type OrgHelmType<TBio, TBioType extends IBio<TBio>, TEditorOptions extends IEditorOptions> = {
+  webeditor: IOrgWebEditor<TBio, TBioType, TEditorOptions>;
 }
 
-export type OrgType<TBio, TEditorOptions extends IEditorOptions> = {
-  helm: OrgHelmType<TBio, TEditorOptions>;
+export type OrgType<TBio, TBioType extends IBio<TBio>, TEditorOptions extends IEditorOptions> = {
+  helm: OrgHelmType<TBio, TBioType, TEditorOptions>;
 }

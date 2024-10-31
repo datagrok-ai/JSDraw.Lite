@@ -1,5 +1,11 @@
 # JSDraw.Lite changelog
 
+## 0.0.10 (2024-10-31)
+
+### New features
+
+* Add generic typing for Atom.bio
+
 ## 0.0.9 (2024-10-10)
 
 ### New features

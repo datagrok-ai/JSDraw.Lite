@@ -32,13 +32,13 @@ declare const dojox: DojoxType;
 declare const scil: ScilModuleType;
 declare const JSDraw2: JSDraw2ModuleType;
 
-declare const org: OrgType<any, IEditorOptions>;
+declare const org: OrgType<any, IBio<any>, IEditorOptions>;
 
 /**
  * Atom class
  * @class scilligence.JSDraw2.Atom
  */
-export class Atom<TBio> implements IObjWithId {
+export class Atom<TBio, TBioType extends IBio<TBio>> implements IObjWithId {
   /**
    @property {Point} p Atom Coordinate
    */
@@ -65,12 +65,12 @@ export class Atom<TBio> implements IObjWithId {
   public charge: number;
   public isotope: number | null;
   public radical: number | null;
-  public group: Group<TBio> | null;
+  public group: Group<TBio, TBioType> | null;
   public alias: string | null;
   public superatom: any; // TODO: ?
   public attachpoints: number[];
-  public rgroup: IRGroup<TBio> | null;
-  public bio: IBio<TBio> | null;
+  public rgroup: IRGroup<TBio, TBioType> | null;
+  public bio: TBioType | null;
   private locked: boolean;
   public hidden: boolean | null;
   private ratio?: number;
@@ -82,7 +82,7 @@ export class Atom<TBio> implements IObjWithId {
   public selected: boolean;
   public highlighted: boolean;
   public f: any | null;
-  public bonds: Bond<TBio>[] | null;
+  public bonds: Bond<TBio, TBioType>[] | null;
   public id: number | null;
   public atommapid: number | null;
   public query: AtomQueryType | null;
@@ -92,17 +92,17 @@ export class Atom<TBio> implements IObjWithId {
   public tag: string | null;
 
   public _haslabel?: boolean;
-  public _parent!: Mol<TBio>;
+  public _parent!: Mol<TBio, TBioType>;
   public atomid?: number;
   public _outside?: boolean;
-  public mol?: Mol<TBio>;
+  public mol?: Mol<TBio, TBioType>;
   public iR?: number | string | null;
   public __drawselect?: boolean;
   public ringclosures: any;
   public aromatic?: boolean;
   public _aaid?: number | null;
 
-  public __mol?: Mol<TBio>;
+  public __mol?: Mol<TBio, TBioType>;
 
 
   /**
@@ -156,8 +156,8 @@ export class Atom<TBio> implements IObjWithId {
     this.tag = null;
   }
 
-  clone(selectedOnly?: boolean | null): Atom<TBio> {
-    const a = new JSDraw2.Atom<TBio>(this.p.clone(), this.elem, dojo.clone(this.bio));
+  clone(selectedOnly?: boolean | null): Atom<TBio, TBioType> {
+    const a = new JSDraw2.Atom<TBio, TBioType>(this.p.clone(), this.elem, dojo.clone(this.bio));
     a.charge = this.charge;
     a.isotope = this.isotope;
     a.radical = this.radical;
@@ -393,18 +393,18 @@ export class Atom<TBio> implements IObjWithId {
     }
 
     if (this.elem != null) {
-      var rgEl = scil.Utils.getFirstElement(e, 'rgroup');
+      const rgEl = scil.Utils.getFirstElement(e, 'rgroup');
       if (rgEl) {
-        var t = scil.Utils.getFirstElement(rgEl, 'i');
+        const t = scil.Utils.getFirstElement(rgEl, 'i');
         if (t != null) {
-          var r: IRGroup = new JSDraw2.RGroup();
+          const r: IRGroup<TBio, TBioType> = new JSDraw2.RGroup<TBio, TBioType>();
           if (r.readHtml(t, null)) {
             this.rgroup = r;
 
             r.position = JSDraw2.Point.fromString(e.getAttribute('p')!);
             var divs = scil.Utils.getElements(rgEl, 'div');
             for (var i = 0; i < divs.length; ++i) {
-              var m = new JSDraw2.Mol();
+              var m = new JSDraw2.Mol<TBio, TBioType>();
               if (m.setXml(divs[i]) != null)
                 r.mols.push(m);
             }
@@ -417,7 +417,7 @@ export class Atom<TBio> implements IObjWithId {
       var superatom = scil.Utils.getFirstElement(e, 'superatom');
       var div = superatom == null ? null : scil.Utils.getFirstElement(superatom, 'div');
       if (div != null) {
-        var m = new JSDraw2.Mol();
+        var m = new JSDraw2.Mol<TBio, TBioType>();
         if (m.setXml(div) != null) {
           if (m.atoms.length == 1 && m.atoms[0].elem == this.alias) {
             this.elem = this.alias;
@@ -436,7 +436,7 @@ export class Atom<TBio> implements IObjWithId {
     return this.p.distTo(p) <= tor;
   }
 
-  drawCur(surface: any, r: number, color: string, m?: Mol<TBio>) {
+  drawCur(surface: any, r: number, color: string, m?: Mol<TBio, TBioType>) {
     const c = this._rect == null ? this.p : this._rect.center();
     surface.createCircle({cx: c.x, cy: c.y, r: r}).setFill(color);
     if (this.elem == '@' && m != null) {
@@ -523,7 +523,7 @@ export class Atom<TBio> implements IObjWithId {
       .setTransform([dojox.gfx.matrix.rotategAt(deg, x, y)]);
   }
 
-  hasLabel(m: Mol<TBio>, showcarbon?: string): boolean {
+  hasLabel(m: Mol<TBio, TBioType>, showcarbon?: string): boolean {
     var a = this;
     return a.bio == null && (a.elem != 'C' || a.charge != 0 || a.radical != null ||
       a.elem == 'C' && (showcarbon == 'all' || showcarbon == 'terminal' && m.getNeighborAtoms(a).length == 1) ||
@@ -537,7 +537,7 @@ export class Atom<TBio> implements IObjWithId {
     return (!a.bio && (e == null || e.a >= 0 && a.hasError)) && a.elem != '3\'' && a.elem != '5\'';
   }
 
-  draw(surface: any, m: Mol<TBio>, drawOpts: IDrawOptions, showError: boolean, drawStep: DrawStep): void {
+  draw(surface: any, m: Mol<TBio, TBioType>, drawOpts: IDrawOptions, showError: boolean, drawStep: DrawStep): void {
     var a = this;
 
     this._rect = null;
@@ -711,7 +711,7 @@ export class Atom<TBio> implements IObjWithId {
       surface.createCircle({cx: a.p.x, cy: a.p.y, r: drawOpts.fontsize * 0.6}).setStroke({color: '#0ff', width: drawOpts.linewidth});
   }
 
-  drawApo(a: Atom<TBio>, m: Mol<TBio>, surface: any, drawOpts: IDrawOptions, color: string): void {
+  drawApo(a: Atom<TBio, TBioType>, m: Mol<TBio, TBioType>, surface: any, drawOpts: IDrawOptions, color: string): void {
     var attachpoints = a.attachpoints;
     for (var i = 0; i < attachpoints.length; ++i) {
       var apo = attachpoints[i];
@@ -744,18 +744,18 @@ export class Atom<TBio> implements IObjWithId {
     }
   }
 
-  drawSelect(lasso: Lasso<TBio>): void {
+  drawSelect(lasso: Lasso<TBio, TBioType>): void {
     var c = this._rect == null ? this.p : this._rect.center();
     lasso.draw(this, c);
   }
 
   // -- static --
 
-  static cast<TBio>(a: any): Atom<TBio> | null {
+  static cast<TBio, TBioType extends IBio<TBio>>(a: any): Atom<TBio, TBioType> | null {
     return a != null && a.T == 'ATOM' ? a : null;
   }
 
-  static match<TBio>(x: Atom<TBio>, y: Atom<TBio>) {
+  static match<TBio, TBioType extends IBio<TBio>>(x: Atom<TBio, TBioType>, y: Atom<TBio, TBioType>) {
     if (!scil.Utils.areListEq(x.attachpoints, y.attachpoints))
       return false;
 

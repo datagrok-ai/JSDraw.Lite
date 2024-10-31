@@ -1,7 +1,7 @@
 {
   "name": "@datagrok-libraries/js-draw-lite",
   "friendlyName": "JsDrawLite",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "JSDraw.Lite forked from http://www.scilligence.com/",
   "devDependencies": {
     "@types/node": "^18.11.18",

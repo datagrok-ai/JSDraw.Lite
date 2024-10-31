@@ -15,7 +15,7 @@ import type {JSDraw2ModuleType, ScilModuleType} from './types';
 import type {OrgType} from './types/org';
 
 import type {
-  ColorArray, IContextMenu, IDialog, IDrawOptions, IEditorOptions, IOrgPlugin, IStack,
+  ColorArray, IBio, IContextMenu, IDialog, IDrawOptions, IEditorOptions, IOrgPlugin, IStack,
   JSDraw2Document, JSDraw2Window, ShapeType
 } from './types/jsdraw2';
 import type {IMolHandler} from './types/mol-handler';
@@ -25,9 +25,9 @@ import type {Mol} from './Mol';
 
 import {ShapeTypes} from './types/jsdraw2';
 
-type EventPoint<TBio = any> = Point & { tm: number, clientX: number, clientY: number, atom: Atom<TBio> }
-type EditorClone<TBio = any> = {
-  mol: Mol<TBio>, bondlength: number, tor: number, linewidth: number, fontsize: number, angleStop: number
+type EventPoint<TBio, TBioType extends IBio<TBio>> = Point & { tm: number, clientX: number, clientY: number, atom: Atom<TBio, TBioType> }
+type EditorClone<TBio, TBioType extends IBio<TBio>> = {
+  mol: Mol<TBio, TBioType>, bondlength: number, tor: number, linewidth: number, fontsize: number, angleStop: number
 }
 
 declare const dojo: DojoType;
@@ -6462,7 +6462,7 @@ export class EditorInt<TBio, TEditorOptions extends IEditorOptions> implements I
   }
 }
 
-export class Editor<TBio = any, TEditorOptions extends IEditorOptions>
+export class Editor<TBio, TBioType extends IBio<TBio>, TEditorOptions extends IEditorOptions>
   extends EditorInt<TBio, TEditorOptions> {
   static _id: number;
   static _allitems: any;

@@ -145,12 +145,12 @@ export interface IGraphics {
 
 export type ColorArray = [number, number, number, number];
 
-export interface IOrgPlugin<TBio, TEditorOptions extends IEditorOptions> {
-  get jsd(): Editor<TBio, TEditorOptions>;
+export interface IOrgPlugin<TBio, TBioType extends IBio<TBio>, TEditorOptions extends IEditorOptions> {
+  get jsd(): Editor<TBio, TBioType, TEditorOptions>;
 
-  new(jsd: IMolHandler<TBio, TEditorOptions>): IOrgPlugin<TBio, TEditorOptions>;
+  new(jsd: IMolHandler<TBio, TBioType, TEditorOptions>): IOrgPlugin<TBio, TBioType, TEditorOptions>;
 
-  setHelmBlobType(a: Atom<TBio>, type: string): void;
+  setHelmBlobType(a: Atom<TBio, TBioType>, type: string): void;
 
   setHelm(s: string): void;
 
@@ -326,7 +326,6 @@ export interface IPistoiaBase {
 
 export interface IBio<TBio> {
   id?: number | string | null;
-  continuousId?: number | string | null;
 
   type: TBio;
   subtype?: string | null;
@@ -470,19 +469,19 @@ export type AtomQueryType = {
 //   reverse(): void;
 // }
 
-export interface IRGroup<TBio = any> extends ICast<IRGroup<TBio>> {
+export interface IRGroup<TBio, TBioType extends IBio<TBio>> extends ICast<IRGroup<TBio, TBioType>> {
   color: string | null;
   selected: boolean;
   id: number;
   position: Point;
-  mols: Mol<TBio>[];
+  mols: Mol<TBio, TBioType>[];
   text: string;
 
-  new(): IRGroup<TBio>;
+  new<TBio, TBioType extends IBio<TBio>>(): IRGroup<TBio, TBioType>;
 
   readHtml(t: HTMLElement, v: any): any;
   html(scale: number): string;
-  clone(selectedOnly?: boolean | null): IRGroup<TBio>;
+  clone(selectedOnly?: boolean | null): IRGroup<TBio, TBioType>;
 
   [p: string]: any;
 }
@@ -496,20 +495,20 @@ export interface ISGroup {
   getDisplayTypes(): any;
 }
 
-export interface ISuperAtoms<TBio> {
-  addToMol(m: Mol<TBio>, a: Atom<TBio>, superatom: Mol<TBio>): void;
+export interface ISuperAtoms<TBio, TBioType extends IBio<TBio>> {
+  addToMol(m: Mol<TBio, TBioType>, a: Atom<TBio, TBioType>, superatom: Mol<TBio, TBioType>): void;
   get(name: string): any | null;
   guessOne(name: string): any | null;
 
-  collapseRepeat(m: Mol<TBio>, br: Bracket<TBio>): void;
-  expandRepeat(m: Mol<TBio>, br: Bracket<TBio>): void;
+  collapseRepeat(m: Mol<TBio, TBioType>, br: Bracket<TBio, TBioType>): void;
+  expandRepeat(m: Mol<TBio, TBioType>, br: Bracket<TBio, TBioType>): void;
 
   _getFirstAttachAtom(m: any): any;
-  _alignMol(dest: Mol<TBio>, a: Atom<TBio>, src: Mol<TBio>, a0: Atom<TBio>, len?: number): boolean;
+  _alignMol(dest: Mol<TBio, TBioType>, a: Atom<TBio, TBioType>, src: Mol<TBio, TBioType>, a0: Atom<TBio, TBioType>, len?: number): boolean;
 
-  getAA(name: string): Mol<TBio>;
-  getRNA(name: string): Mol<TBio>;
-  getDNA(name: string): Mol<TBio>;
+  getAA(name: string): Mol<TBio, TBioType>;
+  getRNA(name: string): Mol<TBio, TBioType>;
+  getDNA(name: string): Mol<TBio, TBioType>;
   [p: string]: any;
 }
 
@@ -590,9 +589,9 @@ export type JSDraw2ModuleType = {
   Symbol: any;
   Table: any;
 
-  RGroup: IRGroup;
+  RGroup: IRGroup<any, IBio<any>>;
   SGroup: ISGroup;
-  SuperAtoms: SuperAtoms;
+  SuperAtoms: SuperAtoms<any, IBio<any>>;
 
   BA: any;
   IDGenerator: any;

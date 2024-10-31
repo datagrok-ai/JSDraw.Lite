@@ -13,7 +13,7 @@ import type {Mol} from './Mol';
 import type {Bond} from './Bond';
 import type {Lasso} from './Lasso';
 import type {Text} from './Text';
-import type {IDrawOptions, IGraphics, ShapeType} from './types/jsdraw2';
+import type {IBio, IDrawOptions, IGraphics, ShapeType} from './types/jsdraw2';
 
 declare const scilligence: ScilModuleType;
 declare const scil: ScilModuleType;
@@ -23,16 +23,16 @@ declare const JSDraw2: JSDraw2ModuleType;
  * Bracket class
  * @class scilligence.JSDraw2.Bracket
  */
-export class Bracket<TBio> implements IGraphics {
+export class Bracket<TBio, TBioType extends IBio<TBio>> implements IGraphics {
   readonly T: string;
-  public atoms: Atom<TBio>[];
+  public atoms: Atom<TBio, TBioType>[];
   public type: string | null;
   readonly _rect: Rect;
   private shape?: ShapeType;
   public sgrouptexts?: string;
   public subscript?: string | null;
   conn: any;
-  expandedatoms?: Atom<TBio>[];
+  expandedatoms?: Atom<TBio, TBioType>[];
 
   // IGraphics
   public id!: number;
@@ -42,7 +42,7 @@ export class Bracket<TBio> implements IGraphics {
   selected?: boolean;
   graphicsid?: number;
 
-  _parent!: Mol<TBio>;
+  _parent!: Mol<TBio, TBioType>;
 
   constructor(type: string | null, rect: Rect | null, shape?: ShapeType) {
     this.T = "BRACKET";
@@ -60,8 +60,8 @@ export class Bracket<TBio> implements IGraphics {
     return b as IGraphics;
   }
 
-  getXbonds(m: Mol<TBio>): Bond<TBio>[] {
-    const list: Bond<TBio>[] = [];
+  getXbonds(m: Mol<TBio, TBioType>): Bond<TBio, TBioType>[] {
+    const list: Bond<TBio, TBioType>[] = [];
     const bonds = m.bonds;
     for (let i = 0; i < bonds.length; ++i) {
       const b = bonds[i];
@@ -74,7 +74,7 @@ export class Bracket<TBio> implements IGraphics {
     return list;
   }
 
-  allAtomsIn(m: Mol<TBio>): boolean {
+  allAtomsIn(m: Mol<TBio, TBioType>): boolean {
     if (this.atoms.length == 0)
       return false;
     for (let i = 0; i < this.atoms.length; ++i) {
@@ -106,16 +106,16 @@ export class Bracket<TBio> implements IGraphics {
     return type;
   }
 
-  getSubscript(m: Mol<TBio>): number | null {
+  getSubscript(m: Mol<TBio, TBioType>): number | null {
     const t = m.getSgroupText(this, "BRACKET_TYPE");
     return t == null ? null : parseInt(t.text);
   }
 
-  createSubscript(m: Mol<TBio>, s: string) {
+  createSubscript(m: Mol<TBio, TBioType>, s: string) {
     if (scil.Utils.isNullOrEmpty(s))
       return null;
 
-    let t: Text<TBio> | null = m.getSgroupText(this, "BRACKET_TYPE");
+    let t: Text<TBio, TBioType> | null = m.getSgroupText(this, "BRACKET_TYPE");
     if (t != null)
       return t;
 
@@ -172,7 +172,7 @@ export class Bracket<TBio> implements IGraphics {
     return p.y >= r.top - tor && p.y <= r.bottom() + tor && (x1 >= -tor / 2 && x1 < tor || x2 >= -tor / 2 && x2 < tor);
   }
 
-  drawCur(surface: any, r: number, color: string, m?: Mol<TBio>): void {
+  drawCur(surface: any, r: number, color: string, m?: Mol<TBio, TBioType>): void {
     const r2 = this._rect;
     if (r2 == null)
       return;
@@ -186,14 +186,14 @@ export class Bracket<TBio> implements IGraphics {
     }
   }
 
-  draw(surface: any, m: Mol<TBio>, drawOpts: IDrawOptions): void {
+  draw(surface: any, m: Mol<TBio, TBioType>, drawOpts: IDrawOptions): void {
     const r = this._rect;
 
     const color = this.color == null ? "gray" : this.color;
     JSDraw2.Drawer.drawBracket(surface, r, color, drawOpts.linewidth);
   }
 
-  drawSelect(lasso: Lasso<TBio>): void {
+  drawSelect(lasso: Lasso<TBio, TBioType>): void {
     lasso.draw(this, this._rect.fourPoints());
   }
 
@@ -242,7 +242,7 @@ export class Bracket<TBio> implements IGraphics {
   }
 
   removeObject(obj: any) {
-    const a = JSDraw2.Atom.cast<TBio>(obj);
+    const a = JSDraw2.Atom.cast<TBio, TBioType>(obj);
     if (a == null)
       return;
     for (let i = 0; i < this.atoms.length; ++i) {
@@ -253,12 +253,12 @@ export class Bracket<TBio> implements IGraphics {
     }
   }
 
-  getTexts(m: Mol<TBio>) {
-    const ret: { topleft: Text<TBio>[], topright: Text<TBio>[], bottomleft: Text<TBio>[], bottomright: Text<TBio>[] } =
+  getTexts(m: Mol<TBio, TBioType>) {
+    const ret: { topleft: Text<TBio, TBioType>[], topright: Text<TBio, TBioType>[], bottomleft: Text<TBio, TBioType>[], bottomright: Text<TBio, TBioType>[] } =
       {topleft: [], topright: [], bottomleft: [], bottomright: []};
     const c1 = this._rect.center();
     for (let i = 0; i < m.graphics.length; ++i) {
-      const t = JSDraw2.Text.cast<TBio>(m.graphics[i]);
+      const t = JSDraw2.Text.cast<TBio, TBioType>(m.graphics[i]);
       if (t == null || t.anchors.length != 1 || t.anchors[0] != this)
         continue;
       const c = t._rect.center();
@@ -278,7 +278,7 @@ export class Bracket<TBio> implements IGraphics {
     return ret;
   }
 
-  static cast<TBio>(a: any): Bracket<TBio> {
+  static cast<TBio, TBioType extends IBio<TBio>>(a: any): Bracket<TBio, TBioType> {
     return a != null && a.T == 'BRACKET' ? a : null;
   }
 }

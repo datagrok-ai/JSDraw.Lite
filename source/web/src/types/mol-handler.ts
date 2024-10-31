@@ -1,5 +1,5 @@
 import type {Mol} from '../Mol';
-import type {IEditorOptions} from './jsdraw2';
+import type {IBio, IEditorOptions} from './jsdraw2';
 
 export const defaultMolHandlerOptions = new class {
   showimplicithydrogens: boolean = true;
@@ -8,8 +8,8 @@ export const defaultMolHandlerOptions = new class {
 export type MolHandlerOptions = typeof defaultMolHandlerOptions;
 
 /** Molecular handler for parser plugin. */
-export interface IMolHandler<TBio, TEditorOptions extends IEditorOptions> {
+export interface IMolHandler<TBio, TBioType extends IBio<TBio>, TEditorOptions extends IEditorOptions> {
   get bondlength(): number;
-  get m(): Mol<TBio>;
+  get m(): Mol<TBio, TBioType>;
   get options(): Partial<TEditorOptions>;
 }

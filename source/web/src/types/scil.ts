@@ -6,7 +6,7 @@ import type {ButtonDescType, Form, LangType} from '../../form/Form';
 import type {TabbedForm} from '../../form/TabbedForm';
 import type {Tabs} from '../../form/Tab';
 import type {Lang} from '../../form/Lang';
-import type {IEditorOptions} from './jsdraw2';
+import type {IBio, IEditorOptions} from './jsdraw2';
 
 export type IndexType = { prefix: string, index: number | null };
 
@@ -175,7 +175,7 @@ export type ScilModuleType = {
   MobileData: any;
 
   mstouch: any;
-  helm: IOrgWebEditor<any, IEditorOptions>;
+  helm: IOrgWebEditor<any, IBio<any>, IEditorOptions>;
 
   _base: any;
   //extend<T>(base: any, obj: T): T;

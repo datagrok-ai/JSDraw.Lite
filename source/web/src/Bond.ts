@@ -16,14 +16,14 @@ import type {Point} from './Point';
 import type {Atom} from './Atom';
 import type {Lasso} from './Lasso';
 import type {Mol} from './Mol';
-import type {BondType, JSDraw2ModuleType, RxnCenterType, IObjWithId, IEditorOptions, IDrawOptions} from './types/jsdraw2';
+import type {BondType, JSDraw2ModuleType, RxnCenterType, IObjWithId, IEditorOptions, IDrawOptions, IBio} from './types/jsdraw2';
 
 declare const dojo: DojoType;
 declare const dojox: DojoxType;
 
 declare const scil: ScilModuleType;
 declare const JSDraw2: JSDraw2ModuleType;
-declare const org: OrgType<any, IEditorOptions>;
+declare const org: OrgType<any, IBio<any>, IEditorOptions>;
 
 export type PosRType = { pos: string, r: string };
 export type BondAnnotationType = { ba1: string, ba2: string };
@@ -32,7 +32,7 @@ export type BondAnnotationType = { ba1: string, ba2: string };
  * Bond class
  * @class scilligence.JSDraw2.Bond
  */
-export class Bond<TBio> implements IObjWithId {
+export class Bond<TBio, TBioType extends IBio<TBio>> implements IObjWithId {
   /**
    @property {Atom} a1 The First Atom
    */
@@ -50,8 +50,8 @@ export class Bond<TBio> implements IObjWithId {
    */
   public readonly T: string;
   public id!: number | null;
-  public a1: Atom<TBio>;
-  public a2: Atom<TBio>;
+  public a1: Atom<TBio, TBioType>;
+  public a2: Atom<TBio, TBioType>;
   public apo1: number | null;
   public apo2: number | null;
   public color: string | null;
@@ -67,7 +67,7 @@ export class Bond<TBio> implements IObjWithId {
   public ratio2: number | string | null;
   public type: BondType;
 
-  public _parent!: Mol<TBio>;
+  public _parent!: Mol<TBio, TBioType>;
   public z?: number | boolean;
   public bondid?: number;
   public group: any;
@@ -78,7 +78,7 @@ export class Bond<TBio> implements IObjWithId {
    * @param {Atom} a2 - the second atom
    * @param {BONDTYPES} type - bond type
    */
-  constructor(a1: Atom<TBio>, a2: Atom<TBio>, type?: BondType) {
+  constructor(a1: Atom<TBio, TBioType>, a2: Atom<TBio, TBioType>, type?: BondType) {
     this.T = "BOND";
     this.a1 = a1;
     this.a2 = a2;
@@ -98,8 +98,8 @@ export class Bond<TBio> implements IObjWithId {
     this.type = type == null ? JSDraw2.BONDTYPES.SINGLE : type;
   }
 
-  clone(): Bond<TBio> {
-    const b: Bond<TBio> = new JSDraw2.Bond(this.a1, this.a2, this.type);
+  clone(): Bond<TBio, TBioType> {
+    const b: Bond<TBio, TBioType> = new JSDraw2.Bond(this.a1, this.a2, this.type);
     b.id = this.id;
     b.color = this.color;
     b.order = this.order;
@@ -118,7 +118,7 @@ export class Bond<TBio> implements IObjWithId {
     return b;
   }
 
-  replaceAtom(old: Atom<TBio>, na: Atom<TBio>): boolean {
+  replaceAtom(old: Atom<TBio, TBioType>, na: Atom<TBio, TBioType>): boolean {
     if (this.a1 == old)
       this.a1 = na;
     else if (this.a2 == old)
@@ -154,7 +154,7 @@ export class Bond<TBio> implements IObjWithId {
    * @param {Atom} a - one atom on the bond
    * @returns the other Atom
    */
-  otherAtom(a: Atom<TBio>): Atom<TBio> | null {
+  otherAtom(a: Atom<TBio, TBioType>): Atom<TBio, TBioType> | null {
     if (this.a1 == a)
       return this.a2;
     else if (this.a2 == a)
@@ -205,13 +205,13 @@ export class Bond<TBio> implements IObjWithId {
     }
   }
 
-  _centerDoubleBond(m: Mol<TBio>, b: BondB<TBio>): boolean {
+  _centerDoubleBond(m: Mol<TBio, TBioType>, b: BondB<TBio, TBioType>): boolean {
     const atoms1 = m.getNeighborAtoms(b.a1, b.a2);
     const atoms2 = m.getNeighborAtoms(b.a2, b.a1);
     return atoms1.length == 0 && atoms2.length == 2 || atoms2.length == 0 && atoms1.length == 2;
   }
 
-  _shirftDirection(m: Mol<TBio>, b: BondB<TBio>) {
+  _shirftDirection(m: Mol<TBio, TBioType>, b: BondB<TBio, TBioType>) {
     let a1 = null;
     let a2 = null;
     const atoms1 = m.getNeighborAtoms(b.a1, b.a2, true);
@@ -354,7 +354,7 @@ export class Bond<TBio> implements IObjWithId {
     return {ba1: s1, ba2: s2};
   }
 
-  drawBondAnnotation(surface: any, fontsize: number, b: BondB<TBio>) {
+  drawBondAnnotation(surface: any, fontsize: number, b: BondB<TBio, TBioType>) {
     const s = this._fmtBondAnn();
     const ba1 = s.ba1;
     const ba2 = s.ba2;
@@ -392,7 +392,7 @@ export class Bond<TBio> implements IObjWithId {
     }
   }
 
-  draw(surface: any, m: Mol<TBio>, drawOpts: IDrawOptions,
+  draw(surface: any, m: Mol<TBio, TBioType>, drawOpts: IDrawOptions,
     simpledraw: boolean, drawStep: number
   ): void {
     if (this.type == JSDraw2.BONDTYPES.DUMMY) {
@@ -470,8 +470,8 @@ export class Bond<TBio> implements IObjWithId {
         JSDraw2.Drawer.drawLine(surface, b.p1, c, color1, drawOpts.linewidth, null, "butt");
         JSDraw2.Drawer.drawLine(surface, c, b.p2, color2, drawOpts.linewidth, null, "butt");
         if (this.r1 == 1 && this.r2 == 2 || this.r1 == 2 && this.r2 == 1) {
-          JSDraw2.Bond.showHelmAnnotation<TBio>(this.a1, this.a2, this.r1);
-          JSDraw2.Bond.showHelmAnnotation<TBio>(this.a2, this.a1, this.r2);
+          JSDraw2.Bond.showHelmAnnotation<TBio, TBioType>(this.a1, this.a2, this.r1);
+          JSDraw2.Bond.showHelmAnnotation<TBio, TBioType>(this.a2, this.a1, this.r2);
         }
       }
       return;
@@ -588,17 +588,19 @@ export class Bond<TBio> implements IObjWithId {
     }
   }
 
-  drawSelect(lasso: Lasso<TBio>) {
+  drawSelect(lasso: Lasso<TBio, TBioType>) {
     lasso.draw(this, this.center());
   }
 
   // -- static --
 
-  static cast<TBio>(a: any): Bond<TBio> | null {
+  static cast<TBio, TBioType extends IBio<TBio>>(a: any): Bond<TBio, TBioType> | null {
     return a != null && a.T == 'BOND' ? a : null;
   }
 
-  static showHelmAnnotation<TBio>(a1: Atom<TBio>, a2: Atom<TBio>, r1: number): void {
+  static showHelmAnnotation<TBio, TBioType extends IBio<TBio>>(
+    a1: Atom<TBio, TBioType>, a2: Atom<TBio, TBioType>, r1: number
+  ): void {
     if (a1.bio == null || scil.Utils.isNullOrEmpty(a1.bio.annotation))
       return;
 
@@ -609,15 +611,15 @@ export class Bond<TBio> implements IObjWithId {
   }
 }
 
-export class BondB<TBio> {
-  public b: Bond<TBio>;
-  public a1: Atom<TBio>;
-  public a2: Atom<TBio>;
+export class BondB<TBio, TBioType extends IBio<TBio>> {
+  public b: Bond<TBio, TBioType>;
+  public a1: Atom<TBio, TBioType>;
+  public a2: Atom<TBio, TBioType>;
   public type: BondType;
   public p1: Point;
   public p2: Point;
 
-  constructor(b: Bond<TBio>) {
+  constructor(b: Bond<TBio, TBioType>) {
     this.b = b;
     this.a1 = b.a1;
     this.a2 = b.a2;

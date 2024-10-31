@@ -13,7 +13,7 @@ import type {OrgType} from './types/org';
 import type {Point} from './Point';
 import type {Atom} from './Atom';
 import type {Mol} from './Mol';
-import type {BondType, IDrawOptions, IEditorOptions, IGraphics, JSDraw2ModuleType, RxnCenterType} from './types/jsdraw2';
+import type {BondType, IBio, IDrawOptions, IEditorOptions, IGraphics, JSDraw2ModuleType, RxnCenterType} from './types/jsdraw2';
 import type {Rect} from './Rect';
 import type {Bracket} from './Bracket';
 import type {Bond} from './Bond';
@@ -25,7 +25,7 @@ declare const dojox: DojoxType;
 declare const scil: ScilModuleType;
 declare const scilligence: ScilModuleType;
 declare const JSDraw2: JSDraw2ModuleType;
-declare const org: OrgType<any, IEditorOptions>;
+declare const org: OrgType<any, IBio<any>, IEditorOptions>;
 
 export type PosRType = { pos: string, r: string };
 export type BondAnnotationType = { ba1: string, ba2: string };
@@ -34,7 +34,7 @@ export type BondAnnotationType = { ba1: string, ba2: string };
  * Text class
  * @class scilligence.JSDraw2.Text
  */
-export class Text<TBio> /* TODO: implements IGraphics */ {
+export class Text<TBio, TBioType extends IBio<TBio>> /* TODO: implements IGraphics */ {
   /**
    @property {Rect} _rect Position
    */
@@ -60,7 +60,7 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
   public selected: boolean;
   public fieldtype: string | null;
   private readonly: boolean;
-  public anchors: (Atom<TBio> | Bond<TBio> | Bracket<TBio>) [];
+  public anchors: (Atom<TBio, TBioType> | Bond<TBio, TBioType> | Bracket<TBio, TBioType>) [];
   private italic: any;
   private objects?: any[];
   private dummy?: boolean;
@@ -83,8 +83,8 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
     this.italic = null;
   }
 
-  clone(): Text<TBio> {
-    const a = new JSDraw2.Text<TBio>(this._rect.clone(), this.text);
+  clone(): Text<TBio, TBioType> {
+    const a = new JSDraw2.Text<TBio, TBioType>(this._rect.clone(), this.text);
     a.id = this.id;
     a.color = this.color;
     a.fieldtype = this.fieldtype;
@@ -94,14 +94,14 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
     return a;
   }
 
-  allAnchorsIn(m: Mol<TBio>): boolean {
+  allAnchorsIn(m: Mol<TBio, TBioType>): boolean {
     if (this.anchors.length == 0)
       return false;
     for (var i = 0; i < this.anchors.length; ++i) {
       var a = this.anchors[i];
-      if (JSDraw2.Atom.cast<TBio>(a) != null && m.atoms.indexOf(a as Atom<TBio>) < 0 ||
-        JSDraw2.Bond.cast<TBio>(a) != null && m.bonds.indexOf(a as Bond<TBio>) < 0 ||
-        JSDraw2.Bracket.cast<TBio>(a) != null && m.graphics.indexOf(a as Bracket<TBio>) < 0)
+      if (JSDraw2.Atom.cast<TBio, TBioType>(a) != null && m.atoms.indexOf(a as Atom<TBio, TBioType>) < 0 ||
+        JSDraw2.Bond.cast<TBio, TBioType>(a) != null && m.bonds.indexOf(a as Bond<TBio, TBioType>) < 0 ||
+        JSDraw2.Bracket.cast<TBio, TBioType>(a) != null && m.graphics.indexOf(a as Bracket<TBio, TBioType>) < 0)
         return false;
     }
     return true;
@@ -109,15 +109,15 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
 
   attach(obj: any) {
     // anchors can contain one bracket, or any number of atoms and/or bonds
-    if (JSDraw2.Bracket.cast<TBio>(obj) != null) {
+    if (JSDraw2.Bracket.cast<TBio, TBioType>(obj) != null) {
       this.anchors = [obj];
       return true;
     }
 
-    if (JSDraw2.Atom.cast<TBio>(obj) == null && JSDraw2.Bond.cast<TBio>(obj) == null)
+    if (JSDraw2.Atom.cast<TBio, TBioType>(obj) == null && JSDraw2.Bond.cast<TBio, TBioType>(obj) == null)
       return false;
 
-    if (this.anchors.length == 1 && JSDraw2.Bracket.cast<TBio>(this.anchors[0]) != null)
+    if (this.anchors.length == 1 && JSDraw2.Bracket.cast<TBio, TBioType>(this.anchors[0]) != null)
       this.objects = [];
 
     for (var i = 0; i < this.anchors.length; ++i) {
@@ -151,7 +151,7 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
     return s;
   }
 
-  readHtml(e: Element, map: (Atom<TBio> | Bond<TBio>)[]): boolean {
+  readHtml(e: Element, map: (Atom<TBio, TBioType> | Bond<TBio, TBioType>)[]): boolean {
     var r = JSDraw2.Rect.fromString(e.getAttribute("p")!);
     var s = e.getAttribute("s")!;
     if (s == null) {
@@ -184,7 +184,7 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
       var ss = s2.split(',');
       for (var j = 0; j < ss.length; ++j) {
         var a = map[parseInt(ss[j])];
-        if (a != null && (JSDraw2.Atom.cast<TBio>(a) != null || JSDraw2.Bond.cast<TBio>(a) != null || JSDraw2.Bracket.cast<TBio>(a) != null))
+        if (a != null && (JSDraw2.Atom.cast<TBio, TBioType>(a) != null || JSDraw2.Bond.cast<TBio, TBioType>(a) != null || JSDraw2.Bracket.cast<TBio, TBioType>(a) != null))
           anchors.push(a);
       }
       this.anchors = anchors;
@@ -217,7 +217,7 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
     return this._rect != null && this._rect.contains(p);
   }
 
-  removeObject(obj: Bracket<TBio>): void {
+  removeObject(obj: Bracket<TBio, TBioType>): void {
     for (let i = 0; i < this.anchors.length; ++i) {
       if (this.anchors[i] == obj) {
         this.anchors.splice(i, 1);
@@ -226,7 +226,7 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
     }
   }
 
-  drawCur(surface: any, r: number, color: string, m?: Mol<TBio>): void {
+  drawCur(surface: any, r: number, color: string, m?: Mol<TBio, TBioType>): void {
     const p = this._rect.center();
     surface.createCircle({cx: p.x, cy: p.y, r: r}).setFill(color);
 
@@ -236,7 +236,7 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
     }
   }
 
-  draw(surface: any, m: Mol<TBio>, drawOpts: IDrawOptions) {
+  draw(surface: any, m: Mol<TBio, TBioType>, drawOpts: IDrawOptions) {
     var s = this.text;
     if (s == null)
       return;
@@ -253,18 +253,18 @@ export class Text<TBio> /* TODO: implements IGraphics */ {
     //    var c = ss[0].substr(0, ss[0].indexOf('='));
     //    c = scilligence.Utils.trim(c);
     //    for (var i = 0; i < this.anchors.length; ++i) {
-    //        var b = JSDraw2.Bond.cast<TBio>(this.anchors[i]);
+    //        var b = JSDraw2.Bond.cast<TBio, TBioType>(this.anchors[i]);
     //        if (b != null)
     //            JSDraw2.Drawer.drawLabel(surface, b.center(), c, color, fontsize * 0.85);
     //    }
     //}
   }
 
-  drawSelect(lasso: Lasso<TBio>): void {
+  drawSelect(lasso: Lasso<TBio, TBioType>): void {
     lasso.draw(this, this._rect.fourPoints());
   }
 
-  public static cast<TBio>(a: any): Text<TBio> | null {
+  public static cast<TBio, TBioType extends IBio<TBio>>(a: any): Text<TBio, TBioType> | null {
     return a != null && a.T == 'TEXT' ? a : null;
   }
 }

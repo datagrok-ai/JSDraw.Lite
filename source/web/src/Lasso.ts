@@ -12,20 +12,20 @@ import type {JSDraw2ModuleType, ScilModuleType} from './types';
 import type {OrgType} from './types/org';
 import type {Point} from './Point';
 import type {Atom} from './Atom';
-import type {IEditorOptions} from './types/jsdraw2';
+import type {IBio, IEditorOptions} from './types/jsdraw2';
 
 declare const scil: ScilModuleType;
 declare const JSDraw2: JSDraw2ModuleType;
-declare const org: OrgType<any, IEditorOptions>;
+declare const org: OrgType<any, IBio<any>, IEditorOptions>;
 
-export type LassoNode<TBio> = {
-  a: Atom<TBio>;
+export type LassoNode<TBio, TBioType extends IBio<TBio>> = {
+  a: Atom<TBio, TBioType>;
   nodes: any[];
 };
 
-export class Lasso<TBio> {
+export class Lasso<TBio, TBioType extends IBio<TBio>> {
   private surface: any;
-  private list: LassoNode<TBio>[] | null;
+  private list: LassoNode<TBio, TBioType>[] | null;
   private linewidth: number;
   private lasthits: any[];
   private curhits: any[];
@@ -41,7 +41,7 @@ export class Lasso<TBio> {
     this.line = null;
   }
 
-  hit(a: Atom<TBio>): void {
+  hit(a: Atom<TBio, TBioType>): void {
     if (scil.Utils.indexOf(this.lasthits, a) >= 0)
       return;
 

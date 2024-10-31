@@ -1,4 +1,4 @@
-import type {IDrawOptions, IEditorOptions, JSDraw2ModuleType} from './types/jsdraw2';
+import type {IBio, IDrawOptions, IEditorOptions, JSDraw2ModuleType} from './types/jsdraw2';
 import type {ScilModuleType} from './types';
 
 import type {IMolHandler, MolHandlerOptions} from './types/mol-handler';
@@ -9,15 +9,15 @@ import type {OrgType} from './types/org';
 
 declare const JSDraw2: JSDraw2ModuleType;
 declare const scil: ScilModuleType;
-declare const org: OrgType<any, IEditorOptions>;
+declare const org: OrgType<any, IBio<any>, IEditorOptions>;
 
-export class MolHandler<TBio, TEditorOptions extends IEditorOptions>
-  implements IMolHandler<TBio, TEditorOptions> {
+export class MolHandler<TBio, TBioType extends IBio<TBio>, TEditorOptions extends IEditorOptions>
+  implements IMolHandler<TBio, TBioType, TEditorOptions> {
   public readonly T: string;
 
 
   public readonly bondlength: number;
-  public readonly m: Mol<TBio>;
+  public readonly m: Mol<TBio, TBioType>;
   public readonly options: Partial<TEditorOptions>;
 
   constructor(options?: MolHandlerOptions) {
